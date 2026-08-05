@@ -1,0 +1,14 @@
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Could not read workspace metadata from C:\Users\25804\.gradle\caches\8.14\kotlin-dsl\accessors\1a795bbada928f935016a29e154fa572\metadata.bin
+> C:\Users\25804\.gradle\caches\8.14\kotlin-dsl\accessors\1a795bbada928f935016a29e154fa572\metadata.bin (The system cannot find the path specified)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 926ms

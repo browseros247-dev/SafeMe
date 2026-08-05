@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SafeMe</string>
+
+    <string name="welcome_get_started">Get started</string>
+    <string name="welcome_review_terms">Review Terms</string>
+
+    <string name="perm_back">Back</string>
+    <string name="perm_required_badge">Required</string>
+    <string name="perm_grant">Grant</string>
+    <string name="perm_granted">Granted ✓</string>
+    <string name="perm_skip">Skip for now</string>
+
+    <string name="perm_notifications_title">Notifications</string>
+    <string name="perm_notifications_sub">Alerts for blocks, reports &amp; sessions</string>
+
+    <string name="perm_battery_title">Battery optimization</string>
+    <string name="perm_battery_sub">Whitelist SafeMe so protection persists</string>
+
+
+    <string name="perm_a11y_title">Accessibility</string>
+    <string name="perm_a11y_sub">Core blocking engine — detects blocked content</string>
+
+    <string name="perm_required_toast">Grant the required permissions to continue</string>
+    <string name="perm_skipped_toast">Skipped — you can grant it later from Profile</string>
+    <string name="perm_granted_toast">Permission granted</string>
+    <string name="perm_welcome_toast">Welcome to SafeMe — you\'re protected</string>
+
+    <string name="home_welcome">Welcome to SafeMe</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_block">Block</string>
+    <string name="nav_focus">Focus</string>
+    <string name="nav_schedule">Schedule</string>
+    <string name="nav_profile">Profile</string>
+
+    <string name="accessibility_service_label">SafeMe Accessibility</string>
+    <string name="accessibility_service_description">SafeMe uses accessibility services to detect and block content that distracts you while the app is active.</string>
+
+    <string name="bs_title">Block Screen</string>
+    <string name="bs_preview">Preview</string>
+    <string name="bs_site_blocked">This site is blocked</string>
+    <string name="bs_preview_msg_default">Stay safe, Alex. You chose this.</string>
+    <string name="bs_closing">Closing in %1$ds.</string>
+
+    <string name="bs_customization">Customization</string>
+    <string name="bs_motivation_image">Motivation image</string>
+    <string name="bs_img_sub_none">None • SAF persistable URI</string>
+    <string name="bs_img_sub_set">%1$s • persistable</string>
+    <string name="bs_choose">Choose</string>
+
+    <string name="bs_custom_message">Custom message</string>
+    <string name="bs_edit">Edit</string>
+
+    <string name="bs_close_gate">Close-gate policy</string>
+    <string name="bs_dwell">Dwell countdown</string>
+    <string name="bs_dwell_sub">Time before Close unlocks • 3-120s</string>
+    <string name="bs_redirect_url">Redirect URL after close</string>
+    <string name="bs_redirect_sub_none">None - returns to the app</string>
+    <string name="bs_clear">Clear</string>
+
+    <string name="bs_why">"Why am I seeing this?"</string>
+    <string name="bs_why_sub">Show the explanation toggle</string>
+
+    <string name="bs_preview_block">Preview block screen</string>
+    <string name="bs_rate">Rate SafeMe on Play Store</string>
+
+    <string name="bs_no_image">No image</string>
+    <string name="bs_cancel">Cancel</string>
+    <string name="bs_done">Done</string>
+    <string name="bs_save">Save</string>
+    <string name="bs_suggestions">Suggestions</string>
+    <string name="bs_img_sub_sheet">Shown on the block screen behind your message • simulates SAF persistence.</string>
+    <string name="bs_msg_sub_sheet">Shown on the block screen.</string>
+    <string name="bs_url_sub_sheet">Where to go after the countdown finishes.</string>
+    <string name="bs_url_placeholder">https://example.com</string>
+    <string name="bs_url_note">Leave empty to return to the app after closing.</string>
+
+    <string name="bs_img_sunset">sunset</string>
+    <string name="bs_img_ocean">ocean</string>
+    <string name="bs_img_forest">forest</string>
+    <string name="bs_img_aurora">aurora</string>
+    <string name="bs_img_mono">mono</string>
+    <string name="bs_img_peak">peak</string>
+
+    <string name="bs_toast_msg_empty">Message can\'t be empty</string>
+    <string name="bs_toast_msg_saved">Message saved</string>
+    <string name="bs_toast_url_invalid">Enter a valid URL (https://…)</string>
+    <string name="bs_toast_redirect_set">Redirect set to %1$s</string>
+    <string name="bs_toast_redirect_cleared">Redirect cleared</string>
+    <string name="bs_toast_img_set">Motivation image set to %1$s</string>
+    <string name="bs_toast_img_none">No motivation image</string>
+    <string name="bs_toast_redirecting">Redirecting to %1$s</string>
+    <string name="bs_toast_back_app">Back to the app</string>
+    <string name="bs_toast_rate">Play Store rating prompt</string>
+    <string name="bs_toast_why">Why: matched keyword blocked by SafeMe</string>
+
+    <string name="bs_overlay_why">Why am I seeing this?</string>
+    <string name="bs_overlay_label">Close-gate • dwell countdown</string>
+    <string name="bs_close">Close</string>
+
+    <string name="home_greeting_morning">Good morning</string>
+    <string name="home_greeting_afternoon">Good afternoon</string>
+    <string name="home_greeting_evening">Good evening</string>
+    <string name="home_user_name">Alex</string>
+    <string name="home_header_greeting">%1$s, %2$s</string>
+    <string name="home_protected">Protected</string>
+
+    <string name="home_shield_tag">Shield status</string>
+    <string name="home_hero_title">Fully protected</string>
+    <string name="home_hero_subtitle">8 of 10 layers active · 2 need attention</string>
+    <string name="home_review_shield">Review shield</string>
+
+    <string name="home_a11y_title">Accessibility service is off</string>
+    <string name="home_a11y_sub">SafeMe can\'t detect blocked content until you enable it</string>
+    <string name="home_disabled">Disabled</string>
+    <string name="home_open">Open</string>
+
+    <string name="home_master_title">Master protection</string>
+    <string name="home_master_sub">Master switch — blocks across all layers</string>
+
+    <string name="home_quick_actions">Quick actions</string>
+    <string name="home_all">All</string>
+    <string name="home_start_focus">Start Focus</string>
+    <string name="home_start_focus_sub">Stop Me session</string>
+    <string name="home_add_keyword">Add keyword</string>
+    <string name="home_add_keyword_sub">Block more sites</string>
+    <string name="home_new_schedule">New schedule</string>
+    <string name="home_new_schedule_sub">Recurring window</string>
+    <string name="home_backup">Backup</string>
+    <string name="home_backup_sub">Export to JSON</string>
+
+    <string name="home_today">Today</string>
+    <string name="home_stat_blocked">Blocked</string>
+    <string name="home_stat_focus_time">Focus time</string>
+    <string name="home_stat_schedules">Schedules</string>
+
+    <string name="home_recent_activity">Recent activity</string>
+    <string name="home_history">History</string>
+    <string name="home_feed_1_t">Blocked TikTok</string>
+    <string name="home_feed_1_s">Opened during study window · close-gate shown</string>
+    <string name="home_feed_1_tm">9:38 PM</string>
+    <string name="home_feed_2_t">Focus session complete</string>
+    <string name="home_feed_2_s">45 min · 32 blocks · whitelist untouched</string>
+    <string name="home_feed_2_tm">8:15 PM</string>
+    <string name="home_feed_3_t">Permission revoked</string>
+    <string name="home_feed_3_s">Accessibility off · onboarding re-opened</string>
+    <string name="home_feed_3_tm">11:02 AM</string>
+
+    <string name="home_toast_on">On</string>
+    <string name="home_toast_off">Off</string>
+    <string name="home_toast_all">All actions, everywhere</string>
+
+    <string name="home_keywords_title">Keywords</string>
+    <string name="home_scheduleedit_title">New Schedule</string>
+    <string name="home_backup_title">Backup</string>
+    <string name="home_history_title">History</string>
+
+    <string name="blk_title">Blocking</string>
+    <string name="blk_help_toast">Blocking help</string>
+    <string name="blk_shield_status">Blocking active</string>
+    <string name="blk_shield_sub">%1$s keywords · %2$s layers · VPN on</string>
+    <string name="blk_stat_blocked_today">Blocked today</string>
+    <string name="blk_stat_keywords">Keywords</string>
+    <string name="blk_stat_layers">Layers active</string>
+    <string name="blk_manage_title">Custom Keywords &amp; Web Blocking</string>
+    <string name="blk_manage_sub">%1$s keywords · %2$s websites · %3$s trusted</string>
+    <string name="blk_manage_toast">Manage keywords &amp; websites</string>
+    <string name="blk_seg_keywords">Keywords</string>
+    <string name="blk_seg_websites">Websites</string>
+    <string name="blk_seg_keywords_count">7</string>
+    <string name="blk_seg_websites_count">3</string>
+    <string name="blk_seg_trusted_count">2</string>
+    <string name="blk_more">More blocking</string>
+    <string name="blk_card_appfeature">App-Feature</string>
+    <string name="blk_card_appfeature_sub">Reels · Shorts · Stories</string>
+    <string name="blk_card_safesearch">SafeSearch</string>
+    <string name="blk_card_safesearch_sub">Browsers · redirect</string>
+    <string name="blk_card_blockscreen">Block Screen</string>
+    <string name="blk_card_blockscreen_sub">Message · close-gate</string>
+    <string name="blk_card_vpn">DNS &amp; VPN Filtering</string>
+    <string name="blk_card_vpn_sub">VPN · presets</string>
+    <string name="blk_card_antitamper">Anti-Tamper</string>
+    <string name="blk_card_antitamper_sub">Prevent uninstall · power menu</string>
+    <string name="blk_card_titleblock">Block by Title</string>
+    <string name="blk_card_titleblock_sub">System pages · app titles</string>
+    <string name="blk_toast_on">On</string>
+    <string name="blk_toast_off">Off</string>
+    <string name="blk_coming_soon">Coming soon</string>
+
+    <string name="sch_title">Schedule-Based App Blocking</string>
+    <string name="sch_new">+ New</string>
+    <string name="sch_hero_tag">Schedule-Based App Blocking</string>
+    <string name="sch_hero_count">2 active schedules</string>
+    <string name="sch_hero_sub">Next boundary · Study today at 21:00</string>
+    <string name="sch_hero_pill">On</string>
+    <string name="sch_your_schedules">Your schedules</string>
+    <string name="sch_study_name">Study</string>
+    <string name="sch_study_days">Mon · Wed · Fri</string>
+    <string name="sch_study_time">21:00 – 23:00</string>
+    <string name="sch_study_mode">Internet + Launch</string>
+    <string name="sch_study_apps">12 apps</string>
+    <string name="sch_study_next">Next · Mon, Wed, Fri</string>
+    <string name="sch_mornings_name">No-scroll mornings</string>
+    <string name="sch_mornings_days">Daily</string>
+    <string name="sch_mornings_time">07:00 – 09:00</string>
+    <string name="sch_mornings_mode">Launch blocked</string>
+    <string name="sch_mornings_apps">6 apps</string>
+    <string name="sch_mornings_next">Next · tomorrow</string>
+    <string name="sch_edit">Edit</string>
+    <string name="sch_note">Alarm-driven boundaries with a 15-min safety net and boot re-arm — restrictions never silently lapse.</string>
+    <string name="sch_toast_on">On</string>
+    <string name="sch_toast_off">Off</string>
+
+    <string name="foc_title">Stop Me</string>
+    <string name="foc_pill">Focus mode</string>
+    <string name="foc_hero_label">How long do you need?</string>
+    <string name="foc_min">min</string>
+    <string name="foc_custom">+ Custom duration</string>
+    <string name="foc_start">Start Focus</string>
+    <string name="foc_sessions">Scheduled sessions</string>
+    <string name="foc_sess_deep_name">Deep work</string>
+    <string name="foc_sess_deep_sub">Daily 9:00 – 11:00 · 4 sessions</string>
+    <string name="foc_sess_evening_name">Evening unwind</string>
+    <string name="foc_sess_evening_sub">Mon–Fri 22:00 – 23:00</string>
+    <string name="foc_whitelist_title">Whitelist apps</string>
+    <string name="foc_whitelist_sub">These stay usable during sessions</string>
+    <string name="foc_manage">Manage</string>
+    <string name="foc_widget_title">2×1 widget</string>
+    <string name="foc_widget_sub">Quick-start from your home screen</string>
+    <string name="foc_add">Add</string>
+    <string name="foc_note">Active sessions show a countdown foreground notification and can\'t be skipped without the close-gate or PIN.</string>
+    <string name="foc_toast_on">On</string>
+    <string name="foc_toast_off">Off</string>
+    <string name="foc_toast_start">Focus started — 25:00 countdown</string>
+    <string name="foc_toast_custom">Custom duration — set any length</string>
+    <string name="foc_toast_widget">Widget added to home screen</string>
+    <string name="foc_active_title">Deep focus in progress</string>
+    <string name="foc_whitelist_placeholder">Focus Whitelist</string>
+
+    <string name="prof_title">Profile</string>
+    <string name="prof_share">Sharing SafeMe…</string>
+    <string name="prof_name">Alex</string>
+    <string name="prof_since">Protected since Mar 2026</string>
+    <string name="prof_streak">38-day streak</string>
+    <string name="prof_appearance">Appearance</string>
+    <string name="prof_theme_title">Dark / Light Mode</string>
+    <string name="prof_theme_sub">Follow system or choose dark / light</string>
+    <string name="prof_theme_system">System</string>
+    <string name="prof_theme_dark">Dark</string>
+    <string name="prof_theme_light">Light</string>
+    <string name="prof_theme_system_toast">Following system theme</string>
+    <string name="prof_theme_dark_toast">Dark theme applied</string>
+    <string name="prof_theme_light_toast">Light theme applied</string>
+    <string name="prof_protection">Protection</string>
+    <string name="prof_applock_title">App Lock</string>
+    <string name="prof_applock_sub">PIN · pattern · biometric · brute-force guard</string>
+    <string name="prof_acc_title">Accountability</string>
+    <string name="prof_acc_sub">Partner · time delay · daily report</string>
+    <string name="prof_acc_soon">Coming soon</string>
+    <string name="prof_backup_title">Backup &amp; Restore</string>
+    <string name="prof_backup_sub">Export / import · atomic · versioned</string>
+    <string name="prof_protected_title">Protected Services</string>
+    <string name="prof_protected_sub">Third-party accessibility registry</string>
+    <string name="prof_permissions_title">Permissions</string>
+    <string name="prof_permissions_sub">0 of 4 granted · finish setup</string>
+    <string name="prof_support">Support</string>
+    <string name="prof_troubleshoot_title">Troubleshooting</string>
+    <string name="prof_troubleshoot_sub">Background autostart · enable it manually</string>
+    <string name="prof_crash_title">Crash Logs</string>
+    <string name="prof_crash_sub">Diagnostics · export · clear</string>
+    <string name="prof_crash_badge">2</string>
+    <string name="prof_relay_title">Reliable Accessibility</string>
+    <string name="prof_relay_sub">ADB WRITE_SECURE_SETTINGS guide</string>
+    <string name="prof_about_title">About</string>
+    <string name="prof_about_sub">v1.0.76 · version info</string>
+    <string name="prof_contact_title">Contact Support</string>
+    <string name="prof_contact_sub">We reply within a day</string>
+    <string name="prof_contact_toast">Contact: support@safeme.app</string>
+    <string name="prof_danger">Danger zone</string>
+    <string name="prof_delete">Delete account</string>
+    <string name="prof_delete_title">Delete account?</string>
+    <string name="prof_delete_body">This removes all local data and disables protection. This can\'t be undone.</string>
+    <string name="prof_delete_cancel">Cancel</string>
+    <string name="prof_delete_confirm">Delete</string>
+    <string name="prof_delete_toast">Account deletion requested</string>
+    <string name="prof_footer_1">SafeMe v1.0.76 · open://protectyourself</string>
+    <string name="prof_footer_2">No ads · no trackers · no analytics</string>
+    <string name="prof_soon_toast">Coming soon</string>
+    <string name="vpn_back">Back</string>
+    <string name="vpn_title">DNS &amp; VPN Filtering</string>
+    <string name="vpn_status_on">VPN filtering is on</string>
+    <string name="vpn_status_off">VPN filtering is off</string>
+    <string name="vpn_pill_active">Active</string>
+    <string name="vpn_pill_off">Off</string>
+    <string name="vpn_custom_status_v4">Custom · %1$s</string>
+    <string name="vpn_custom_status_v4v6">Custom · %1$s · %2$s</string>
+    <string name="vpn_sub_exempt">%1$s · %2$d exempt</string>
+    <string name="vpn_status_re_enable">Tap to re-enable protection</string>
+    <string name="vpn_group_dns">DNS preset</string>
+    <string name="vpn_group_notification">Notification</string>
+    <string name="vpn_preset_cloudflare">Cloudflare Family</string>
+    <string name="vpn_preset_cloudflare_sub">Balanced · malware + adult blocked</string>
+    <string name="vpn_preset_adguard">AdGuard Family</string>
+    <string name="vpn_preset_adguard_sub">Strict · + ads &amp; trackers</string>
+    <string name="vpn_preset_custom">Custom preset</string>
+    <string name="vpn_custom_sub_default">IPv4 / IPv6 validated</string>
+    <string name="vpn_custom_sub_v4">IPv4 %1$s</string>
+    <string name="vpn_custom_sub_v4v6">IPv4 %1$s · IPv6 %2$s</string>
+    <string name="vpn_whitelist_title">VPN whitelist apps</string>
+    <string name="vpn_whitelist_none">No apps exempt</string>
+    <string name="vpn_whitelist_count">%1$d app(s) exempt</string>
+    <string name="vpn_whitelist_manage">Manage</string>
+    <string name="vpn_notif_default">Default</string>
+    <string name="vpn_notif_hide">Hide</string>
+    <string name="vpn_notif_custom">Custom</string>
+    <string name="vpn_notif_custom_placeholder">Custom message…</string>
+    <string name="vpn_note">Foreground service with START_STICKY — auto-restores on boot &amp; app foreground.</string>
+    <string name="vpn_sheet_dns_title">Custom DNS</string>
+    <string name="vpn_sheet_dns_sub">Enter resolver addresses — IPv4 is required.</string>
+    <string name="vpn_dns_v4_placeholder">IPv4 e.g. 1.1.1.1</string>
+    <string name="vpn_dns_v6_placeholder">IPv6 (optional)</string>
+    <string name="vpn_dns_note">IPv4 is validated strictly; IPv6 is optional and validated if provided.</string>
+    <string name="vpn_dns_invalid">Enter a valid IPv4 address (and IPv6 if provided).</string>
+    <string name="vpn_cancel">Cancel</string>
+    <string name="vpn_save">Save</string>
+    <string name="vpn_sheet_apps_title">VPN whitelist</string>
+    <string name="vpn_sheet_apps_sub">Select apps exempt from filtering.</string>
+    <string name="vpn_app_search_placeholder">Search apps…</string>
+    <string name="vpn_app_no_results">No apps match</string>
+    <string name="vpn_app_loading">Loading apps…</string>
+    <string name="vpn_done">Done</string>
+    <string name="vpn_fgs_subtype">DNS &amp; VPN filtering</string>
+    <string name="vpn_notif_channel">DNS &amp; VPN filtering</string>
+    <string name="vpn_notif_title">VPN filtering is on</string>
+    <string name="vpn_notif_active">Filtering your traffic. Tap to open SafeMe.</string>
+    <string name="vpn_notif_hidden">Protection is active</string>
+    <string name="vpn_notif_stop">Stop</string>
+
+    <string name="kw_title">Keyword Manager</string>
+    <string name="kw_seg_keywords">Keywords</string>
+    <string name="kw_seg_websites">Websites</string>
+    <string name="kw_tab_blocklist">Blocklist</string>
+    <string name="kw_tab_whitelist">Whitelist</string>
+    <string name="kw_tab_blocked">Blocked</string>
+    <string name="kw_tab_trusted">Trusted</string>
+    <string name="kw_search_keywords">Search keywords…</string>
+    <string name="kw_search_websites">Search websites…</string>
+    <string name="kw_add_keyword">Add keyword</string>
+    <string name="kw_add_website">Add website</string>
+    <string name="kw_reset">Reset</string>
+    <string name="kw_whitelist_note">Whitelist keywords override the blocklist.</string>
+    <string name="kw_trusted_note">Trusted websites override the blocked list.</string>
+    <string name="kw_blocked_suffix">%1$s · blocked</string>
+    <string name="kw_sub_whitelist">Whitelisted</string>
+    <string name="kw_sub_trusted">Trusted</string>
+    <string name="kw_empty_blocklist">No custom keywords yet. Add one to get started.</string>
+    <string name="kw_empty_whitelist">No whitelisted keywords.</string>
+    <string name="kw_empty_blocked">No custom websites blocked yet.</string>
+    <string name="kw_empty_trusted">No trusted websites.</string>
+    <string name="kw_sheet_add_keyword">Add keyword</string>
+    <string name="kw_sheet_edit_keyword">Edit keyword</string>
+    <string name="kw_sheet_add_website">Add website</string>
+    <string name="kw_sheet_edit_website">Edit website</string>
+    <string name="kw_sheet_field">Value</string>
+    <string name="kw_sheet_category">Category</string>
+    <string name="kw_sheet_save">Save</string>
+    <string name="kw_sheet_cancel">Cancel</string>
+    <string name="kw_toast_empty">Keyword can\'t be empty</string>
+    <string name="kw_toast_website_empty">Website can\'t be empty</string>
+    <string name="kw_toast_duplicate">Already on the list</string>
+    <string name="kw_toast_invalid_domain">Enter a valid domain (e.g. example.com)</string>
+    <string name="kw_toast_added">Keyword added to %1$s</string>
+    <string name="kw_toast_updated">Keyword updated</string>
+    <string name="kw_toast_website_added">Website added to %1$s</string>
+    <string name="kw_toast_website_updated">Website updated</string>
+    <string name="kw_toast_whitelist_added">Keyword added to whitelist</string>
+    <string name="kw_toast_trusted_added">Website added to trusted</string>
+    <string name="kw_toast_reset">Reset to defaults</string>
+    <string name="kw_toast_error">Couldn\'t save. Please try again.</string>
+</resources>

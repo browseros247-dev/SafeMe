@@ -1,0 +1,308 @@
+package com.safeme.app.ui.screens.vpn
+
+import android.app.Application
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.VpnService
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.safeme.app.data.DnsVpnSettings
+import com.safeme.app.data.NOTIF_CUSTOM
+import com.safeme.app.data.NOTIF_DEFAULT
+import com.safeme.app.data.NOTIF_HIDE
+import com.safeme.app.data.dnsVpnSettings
+import com.safeme.app.data.setVpnCustomDns
+import com.safeme.app.data.setVpnEnabled
+import com.safeme.app.data.setVpnNotifCustom
+import com.safeme.app.data.setVpnNotifMode
+import com.safeme.app.data.setVpnPreset
+import com.safeme.app.data.setVpnWhitelist
+import com.safeme.app.service.SafeMeVpnService
+import com.safeme.app.vpn.DnsPreset
+import com.safeme.app.vpn.VpnStatusStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+data class AppInfo(
+    val packageName: String,
+    val label: String,
+)
+
+data class DnsVpnUiState(
+    val loading: Boolean = true,
+    val enabled: Boolean = false,
+    val preset: DnsPreset = DnsPreset.CLOUDFLARE_FAMILY,
+    val customV4: String = "",
+    val customV6: String = "",
+    val whitelist: Set<String> = emptySet(),
+    val notifMode: String = NOTIF_DEFAULT,
+    val notifCustom: String = "",
+    val running: Boolean = false,
+    val installedApps: List<AppInfo> = emptyList(),
+    val appsLoaded: Boolean = false,
+)
+
+class DnsVpnViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val _uiState = MutableStateFlow(DnsVpnUiState())
+    val uiState: StateFlow<DnsVpnUiState> = _uiState.asStateFlow()
+
+    private val _toasts = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val toasts: SharedFlow<String> = _toasts.asSharedFlow()
+
+    private val _consentRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val consentRequest: SharedFlow<Unit> = _consentRequest.asSharedFlow()
+
+    private var pendingEnable = false
+
+    init {
+        viewModelScope.launch {
+            getApplication<Application>().dnsVpnSettings().collect { settings ->
+                _uiState.update {
+                    it.copy(
+                        loading = false,
+                        enabled = settings.enabled,
+                        preset = settings.preset,
+                        customV4 = settings.customV4,
+                        customV6 = settings.customV6,
+                        whitelist = settings.whitelist,
+                        notifMode = settings.notifMode,
+                        notifCustom = settings.notifCustom,
+                    )
+                }
+            }
+        }
+        // Real-time tunnel status: reflects the actual system VPN state,
+        // including revocations that never reach the ViewModel otherwise.
+        viewModelScope.launch {
+            VpnStatusStore.active.collect { active ->
+                _uiState.update { it.copy(running = active) }
+            }
+        }
+        loadInstalledApps()
+    }
+
+    fun showToast(message: String) {
+        _toasts.tryEmit(message)
+    }
+
+    private fun loadInstalledApps() {
+        viewModelScope.launch {
+            // PackageManager queries + label loading are slow; never run them on
+            // the main thread or the screen's first frame is delayed.
+            val apps = withContext(Dispatchers.Default) { enumerateApps() }
+            _uiState.update { it.copy(installedApps = apps, appsLoaded = true) }
+        }
+    }
+
+    private fun enumerateApps(): List<AppInfo> {
+        val pm = getApplication<Application>().packageManager
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val resolved = runCatching { pm.queryIntentActivities(intent, 0) }.getOrDefault(emptyList())
+        val seen = HashSet<String>()
+        val result = mutableListOf<AppInfo>()
+        for (ri in resolved) {
+            val pkg = ri.activityInfo?.packageName ?: continue
+            if (!seen.add(pkg)) continue
+            val label = runCatching {
+                pm.getApplicationInfo(pkg, 0).loadLabel(pm).toString()
+            }.getOrElse { pkg }
+            result.add(AppInfo(pkg, label))
+        }
+        return result.sortedBy { it.label.lowercase() }
+    }
+
+    fun toggle() {
+        val state = _uiState.value
+        if (state.loading) return
+        when {
+            state.enabled && state.running -> disable()
+            state.enabled && !state.running -> {
+                // The user's intent is "on" but the tunnel is down (e.g. the
+                // system disabled it, or a START_STICKY restart failed).
+                // Re-establish rather than flip the persisted state off.
+                reEnable()
+            }
+            else -> enable()
+        }
+    }
+
+    private fun reEnable() {
+        viewModelScope.launch {
+            startService()
+            showToast("Re-enabling VPN filtering")
+        }
+    }
+
+    private fun enable() {
+        val app = getApplication<Application>()
+        if (VpnService.prepare(app) != null) {
+            pendingEnable = true
+            _consentRequest.tryEmit(Unit)
+            return
+        }
+        doEnable()
+    }
+
+    private fun doEnable() {
+        pendingEnable = false
+        viewModelScope.launch {
+            getApplication<Application>().setVpnEnabled(true)
+            startService()
+            _uiState.update { it.copy(enabled = true) }
+            checkRunning()
+            showToast("VPN filtering enabled")
+        }
+    }
+
+    private fun disable() {
+        viewModelScope.launch {
+            stopService()
+            getApplication<Application>().setVpnEnabled(false)
+            _uiState.update { it.copy(enabled = false, running = false) }
+            showToast("VPN filtering disabled")
+        }
+    }
+
+    fun onConsentResult() {
+        val app = getApplication<Application>()
+        if (VpnService.prepare(app) == null) {
+            if (pendingEnable) {
+                doEnable()
+            }
+        } else {
+            pendingEnable = false
+            showToast("VPN permission not granted")
+        }
+    }
+
+    fun checkRunning() {
+        _uiState.update { it.copy(running = VpnStatusStore.active.value) }
+    }
+
+    fun selectPreset(preset: DnsPreset) {
+        viewModelScope.launch {
+            getApplication<Application>().setVpnPreset(preset)
+            _uiState.update { it.copy(preset = preset) }
+            restartIfRunning()
+        }
+    }
+
+    fun saveCustomDns(v4: String, v6: String): Boolean {
+        val cleanV4 = v4.trim()
+        val cleanV6 = v6.trim()
+        if (!isValidIpv4(cleanV4)) {
+            showToast("Invalid IPv4 address")
+            return false
+        }
+        if (cleanV6.isNotEmpty() && !isValidIpv6(cleanV6)) {
+            showToast("Invalid IPv6 address")
+            return false
+        }
+        viewModelScope.launch {
+            getApplication<Application>().setVpnCustomDns(cleanV4, cleanV6)
+            getApplication<Application>().setVpnPreset(DnsPreset.CUSTOM)
+            _uiState.update {
+                it.copy(customV4 = cleanV4, customV6 = cleanV6, preset = DnsPreset.CUSTOM)
+            }
+            restartIfRunning()
+            showToast("Custom DNS saved")
+        }
+        return true
+    }
+
+    fun setNotifMode(mode: String) {
+        viewModelScope.launch {
+            getApplication<Application>().setVpnNotifMode(mode)
+            _uiState.update { it.copy(notifMode = mode) }
+            refreshNotificationIfRunning()
+        }
+    }
+
+    fun setNotifCustom(text: String) {
+        _uiState.update { it.copy(notifCustom = text) }
+        viewModelScope.launch {
+            getApplication<Application>().setVpnNotifCustom(text)
+            refreshNotificationIfRunning()
+        }
+    }
+
+    fun toggleWhitelistApp(pkg: String) {
+        val current = _uiState.value.whitelist
+        val updated = if (pkg in current) current - pkg else current + pkg
+        _uiState.update { it.copy(whitelist = updated) }
+        viewModelScope.launch {
+            getApplication<Application>().setVpnWhitelist(updated)
+            restartIfRunning()
+        }
+    }
+
+    fun applyWhitelist() {
+        val count = _uiState.value.whitelist.size
+        showToast(if (count == 0) "Whitelist cleared" else "$count whitelisted")
+    }
+
+    private fun restartIfRunning() {
+        if (_uiState.value.enabled && VpnStatusStore.active.value) {
+            stopService()
+            startService()
+        }
+    }
+
+    /**
+     * Notification-only changes must not tear down and rebuild the tunnel
+     * (that would drop every app's connections for a cosmetic change).
+     * Instead the running service is asked to refresh its notification.
+     */
+    private fun refreshNotificationIfRunning() {
+        if (!VpnStatusStore.active.value) return
+        val app = getApplication<Application>()
+        val intent = Intent(app, SafeMeVpnService::class.java)
+            .setAction(SafeMeVpnService.ACTION_UPDATE_NOTIF)
+        runCatching { app.startService(intent) }
+    }
+
+    private fun startService() {
+        val app = getApplication<Application>()
+        val intent = Intent(app, SafeMeVpnService::class.java)
+            .setAction(SafeMeVpnService.ACTION_START)
+        app.startForegroundService(intent)
+    }
+
+    private fun stopService() {
+        val app = getApplication<Application>()
+        val intent = Intent(app, SafeMeVpnService::class.java)
+            .setAction(SafeMeVpnService.ACTION_STOP)
+        runCatching { app.startService(intent) }
+    }
+
+    private fun isValidIpv4(ip: String): Boolean {
+        if (ip.isEmpty()) return false
+        val parts = ip.split('.')
+        if (parts.size != 4) return false
+        for (part in parts) {
+            if (part.isEmpty()) return false
+            if (part.length > 1 && part.startsWith("0")) return false
+            if (part.any { !it.isDigit() }) return false
+            val value = part.toIntOrNull() ?: return false
+            if (value < 0 || value > 255) return false
+        }
+        return true
+    }
+
+    private fun isValidIpv6(ip: String): Boolean {
+        if (ip.isEmpty()) return false
+        val candidate = ip.trim('[', ']')
+        if (candidate.contains('.')) return false
+        val addr = runCatching { java.net.InetAddress.getByName(candidate) }.getOrNull()
+        return addr is java.net.Inet6Address
+    }
+}

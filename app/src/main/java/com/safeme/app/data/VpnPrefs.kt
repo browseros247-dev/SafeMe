@@ -36,6 +36,13 @@ const val NOTIF_DEFAULT = "Default"
 const val NOTIF_HIDE = "Hide"
 const val NOTIF_CUSTOM = "Custom"
 
+/**
+ * The only supported notification modes. Persisted values are normalized
+ * against this set so a stale/corrupt stored mode can never leave the UI
+ * without a selected segment or the service without a known text branch.
+ */
+val VALID_NOTIF_MODES = setOf(NOTIF_DEFAULT, NOTIF_HIDE, NOTIF_CUSTOM)
+
 fun Context.dnsVpnSettings(): Flow<DnsVpnSettings> =
     vpnDataStore.data
         .catch { emit(emptyPreferences()) }
@@ -46,7 +53,7 @@ fun Context.dnsVpnSettings(): Flow<DnsVpnSettings> =
                 customV4 = prefs[KEY_VPN_CUSTOM_V4] ?: "",
                 customV6 = prefs[KEY_VPN_CUSTOM_V6] ?: "",
                 whitelist = prefs[KEY_VPN_WHITELIST] ?: emptySet(),
-                notifMode = prefs[KEY_VPN_NOTIF_MODE] ?: NOTIF_DEFAULT,
+                notifMode = prefs[KEY_VPN_NOTIF_MODE]?.takeIf { it in VALID_NOTIF_MODES } ?: NOTIF_DEFAULT,
                 notifCustom = prefs[KEY_VPN_NOTIF_CUSTOM] ?: "",
             )
         }
@@ -71,7 +78,7 @@ suspend fun Context.setVpnWhitelist(whitelist: Set<String>) {
 }
 
 suspend fun Context.setVpnNotifMode(mode: String) {
-    vpnDataStore.edit { it[KEY_VPN_NOTIF_MODE] = mode }
+    vpnDataStore.edit { it[KEY_VPN_NOTIF_MODE] = mode.takeIf { m -> m in VALID_NOTIF_MODES } ?: NOTIF_DEFAULT }
 }
 
 suspend fun Context.setVpnNotifCustom(message: String) {

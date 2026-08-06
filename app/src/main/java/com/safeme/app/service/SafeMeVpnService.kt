@@ -266,13 +266,19 @@ class SafeMeVpnService : VpnService(), SocketProtector {
                     builder.addDnsServer("1.1.1.1")
                     builder.addDnsServer("2606:4700:4700::1111")
                 }
-                DnsPreset.CUSTOM -> Unit
-            }
-            if (vpnSettings.customV4.isNotBlank()) {
-                builder.addDnsServer(vpnSettings.customV4)
-            }
-            if (vpnSettings.customV6.isNotBlank()) {
-                builder.addDnsServer(vpnSettings.customV6)
+                DnsPreset.CUSTOM -> {
+                    // Custom servers apply ONLY under the Custom preset. The
+                    // built-in presets are mutually exclusive with custom values,
+                    // so leftover custom addresses from a previous selection must
+                    // not leak into e.g. Cloudflare/AdGuard (they would be used in
+                    // addition to — or instead of — the chosen preset).
+                    if (vpnSettings.customV4.isNotBlank()) {
+                        builder.addDnsServer(vpnSettings.customV4)
+                    }
+                    if (vpnSettings.customV6.isNotBlank()) {
+                        builder.addDnsServer(vpnSettings.customV6)
+                    }
+                }
             }
 
             // Our own package must never be routed back into the tunnel.
@@ -319,10 +325,13 @@ class SafeMeVpnService : VpnService(), SocketProtector {
                 add("1.1.1.1")
                 add("2606:4700:4700::1111")
             }
-            DnsPreset.CUSTOM -> Unit
+            DnsPreset.CUSTOM -> {
+                // Same exclusivity rule as the tunnel builder: custom addresses
+                // apply only under the Custom preset.
+                if (vpnSettings.customV4.isNotBlank()) add(vpnSettings.customV4)
+                if (vpnSettings.customV6.isNotBlank()) add(vpnSettings.customV6)
+            }
         }
-        if (vpnSettings.customV4.isNotBlank()) add(vpnSettings.customV4)
-        if (vpnSettings.customV6.isNotBlank()) add(vpnSettings.customV6)
         return servers
     }
 

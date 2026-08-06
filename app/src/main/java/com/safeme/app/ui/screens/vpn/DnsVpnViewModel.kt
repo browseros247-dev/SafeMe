@@ -63,13 +63,33 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
 
     private var pendingEnable = false
 
+    /**
+     * Set while the user has explicitly turned the VPN on but the tunnel is
+     * still being established. Keeps the toggle "on" during that brief window
+     * even though [VpnStatusStore.active] is not yet true, so enabling does not
+     * cause a visual flip. Cleared once the tunnel comes up, or if the
+     * persisted state is (re)written to false (tunnel failed / revoked).
+     */
+    private var optimisticEnabled = false
+
     init {
         viewModelScope.launch {
             getApplication<Application>().dnsVpnSettings().collect { settings ->
+                // A persisted "disabled" write (onRevoke, tunnel-establishment
+                // failure, ACTION_STOP_PERSIST) also means the optimistic enable
+                // is no longer valid — and the toggle must flip back off even if
+                // the tunnel-state flow never emitted (e.g. establish() failed
+                // while the store was already false).
+                if (!settings.enabled) optimisticEnabled = false
                 _uiState.update {
                     it.copy(
                         loading = false,
-                        enabled = settings.enabled,
+                        // Only ever force the toggle OFF from persisted state.
+                        // A persisted "true" is intentionally NOT applied here:
+                        // it may be stale (process died while the VPN was running
+                        // and onRevoke() never fired), and the real signal for
+                        // "on" is the live tunnel state from VpnStatusStore.
+                        enabled = if (settings.enabled) it.enabled else false,
                         preset = settings.preset,
                         customV4 = settings.customV4,
                         customV6 = settings.customV6,
@@ -82,9 +102,20 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
         }
         // Real-time tunnel status: reflects the actual system VPN state,
         // including revocations that never reach the ViewModel otherwise.
+        // The toggle's `enabled` is DERIVED from the live tunnel state rather
+        // than the persisted preference, so a system-side disable (notification
+        // shade / Settings, another VPN taking over, or a dead process whose
+        // onRevoke() never ran) is reflected immediately — the persisted value
+        // alone can be stale for a long time in those cases.
         viewModelScope.launch {
             VpnStatusStore.active.collect { active ->
-                _uiState.update { it.copy(running = active) }
+                if (active) optimisticEnabled = false
+                _uiState.update { state ->
+                    state.copy(
+                        running = active,
+                        enabled = active || optimisticEnabled,
+                    )
+                }
             }
         }
         loadInstalledApps()
@@ -154,6 +185,7 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun doEnable() {
         pendingEnable = false
+        optimisticEnabled = true
         viewModelScope.launch {
             getApplication<Application>().setVpnEnabled(true)
             startService()
@@ -164,6 +196,7 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun disable() {
+        optimisticEnabled = false
         viewModelScope.launch {
             stopService()
             getApplication<Application>().setVpnEnabled(false)
@@ -185,7 +218,11 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun checkRunning() {
-        _uiState.update { it.copy(running = VpnStatusStore.active.value) }
+        _uiState.update { state ->
+            val active = VpnStatusStore.active.value
+            if (active) optimisticEnabled = false
+            state.copy(running = active, enabled = active || optimisticEnabled)
+        }
     }
 
     fun selectPreset(preset: DnsPreset) {

@@ -14,6 +14,7 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -25,6 +26,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -48,4 +52,12 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestUtil("androidx.test:orchestrator:1.5.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
 }
+
+

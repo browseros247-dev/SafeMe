@@ -2,6 +2,7 @@ package com.safeme.app.service
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -24,8 +25,11 @@ import kotlinx.coroutines.launch
  *
  * Reacts to [AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED], walks the active window's
  * node tree collecting visible text/titles/descriptions and URL-ish strings, then matches
- * them against the merged (bundled + user custom) keyword and website lists. On a match it
- * raises the block gate over the offending app by launching [BlockGateActivity].
+ * them against the merged (bundled + user custom) keyword and website lists. Title rules
+ * are matched against the window title only ([AccessibilityEvent.getText] on
+ * window-state-changed events), never against body text, so a rule like "Apps" can't fire
+ * just because the Settings home list shows an "Apps" entry. On a match it raises the
+ * block gate over the offending app by launching [BlockGateActivity].
  *
  * Robustness guarantees:
  *  - Every event is processed inside a try/catch; a malformed event or node tree can never
@@ -84,7 +88,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (texts.isEmpty()) return
 
         val match = findMatch(texts, state)
-            ?: findTitleMatchIfSettings(pkg, texts, state)
+            ?: findTitleMatchIfSettings(pkg, event, state)
             ?: return
         val key = "$pkg|${match.value}"
         val now = SystemClock.elapsedRealtime()
@@ -93,6 +97,31 @@ class SafeMeAccessibilityService : AccessibilityService() {
         lastBlockKey = key
         lastBlockAt = now
         launchGate(pkg, match)
+    }
+
+    /**
+     * Collects candidate window-title strings for a window-state-changed event.
+     * The framework populates [AccessibilityEvent.getText] with the window's
+     * title (verified on-device: "Settings", "Apps", "Notifications" for the
+     * corresponding Settings pages). On API 33+ the window's own title attribute
+     * is used as a fallback when the event carries no text.
+     */
+    private fun collectTitles(event: AccessibilityEvent): List<String> {
+        val out = ArrayList<String>()
+        try {
+            event.text?.forEach { t ->
+                t.toString().takeIf { it.isNotBlank() }?.let { out.add(it) }
+            }
+        } catch (_: Throwable) {
+        }
+        if (out.isEmpty() && Build.VERSION.SDK_INT >= 33) {
+            try {
+                rootInActiveWindow?.window?.title?.toString()
+                    ?.takeIf { it.isNotBlank() }?.let { out.add(it) }
+            } catch (_: Throwable) {
+            }
+        }
+        return out.distinct()
     }
 
     private fun collectTexts(event: AccessibilityEvent): List<String> {
@@ -191,19 +220,19 @@ class SafeMeAccessibilityService : AccessibilityService() {
     }
 
     private fun findTitleMatch(
-        texts: List<String>,
+        titles: List<String>,
         rules: List<TitleBlockRule>,
         state: BlockingPrefsState,
     ): MatchResult? {
         val enabledRules = rules.filter { it.enabled }
-        if (enabledRules.isEmpty()) return null
-        val lowerTexts = texts.map { it.lowercase() }
+        if (enabledRules.isEmpty() || titles.isEmpty()) return null
+        val lowerTitles = titles.map { it.lowercase() }
 
         // Whitelist keywords suppress title rules too, mirroring findMatch so the
         // whitelist escape hatch is honored consistently across all match paths.
         if (state.whitelistKeywords.any { wl ->
                 val needle = wl.lowercase()
-                needle.isNotBlank() && lowerTexts.any { it.contains(needle) }
+                needle.isNotBlank() && lowerTitles.any { it.contains(needle) }
             }
         ) {
             return null
@@ -213,9 +242,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
             val needle = rule.value.lowercase()
             if (needle.isBlank()) return@forEach
             val matched = when (rule.mode) {
-                TitleMatchMode.CONTAINS -> lowerTexts.any { it.contains(needle) }
-                TitleMatchMode.EXACT -> lowerTexts.any { it == needle }
-                TitleMatchMode.STARTS_WITH -> lowerTexts.any { it.startsWith(needle) }
+                TitleMatchMode.CONTAINS -> lowerTitles.any { it.contains(needle) }
+                TitleMatchMode.EXACT -> lowerTitles.any { it == needle }
+                TitleMatchMode.STARTS_WITH -> lowerTitles.any { it.startsWith(needle) }
             }
             if (matched) {
                 return MatchResult(rule.value, "title")
@@ -226,7 +255,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     private fun findTitleMatchIfSettings(
         pkg: String,
-        texts: List<String>,
+        event: AccessibilityEvent,
         state: BlockingPrefsState,
     ): MatchResult? {
         if (!isSettingsPackage(pkg)) {
@@ -245,7 +274,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             }
             return null
         }
-        return findTitleMatch(texts, state.titleBlockRules, state)
+        return findTitleMatch(collectTitles(event), state.titleBlockRules, state)
     }
 
     private fun launchGate(pkg: String, match: MatchResult) {

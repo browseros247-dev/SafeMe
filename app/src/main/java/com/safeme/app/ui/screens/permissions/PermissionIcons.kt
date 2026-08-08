@@ -78,22 +78,6 @@ val BatteryIcon: ImageVector by lazy {
     }.build()
 }
 
-val ClockIcon: ImageVector by lazy {
-    iconBuilder("Clock").apply {
-        strokePath {
-            moveTo(12f, 12f)
-            moveToRelative(-9f, 0f)
-            arcToRelative(9f, 9f, 0f, true, false, 18f, 0f)
-            arcToRelative(9f, 9f, 0f, true, false, -18f, 0f)
-        }
-        strokePath {
-            moveTo(12f, 7f)
-            verticalLineToRelative(5f)
-            lineToRelative(3f, 2f)
-        }
-    }.build()
-}
-
 val A11yPersonIcon: ImageVector by lazy {
     iconBuilder("A11yPerson").apply {
         strokePath {

@@ -173,9 +173,6 @@ suspend fun Context.incrementBlockedToday() {
     }
 }
 
-suspend fun Context.setBlockedToday(count: Int) {
-    blockingDataStore.edit { it[KEY_BLOCKED_TODAY] = count.coerceAtLeast(0) }
-}
 
 suspend fun Context.addBlockedKeyword(value: String, category: BlockedCategory) {
     val normalized = value.trim().lowercase()

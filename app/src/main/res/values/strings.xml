@@ -2,9 +2,6 @@
 <resources>
     <string name="app_name">SafeMe</string>
 
-    <string name="welcome_get_started">Get started</string>
-    <string name="welcome_review_terms">Review Terms</string>
-
     <string name="perm_back">Back</string>
     <string name="perm_required_badge">Required</string>
     <string name="perm_grant">Grant</string>
@@ -23,10 +20,7 @@
 
     <string name="perm_required_toast">Grant the required permissions to continue</string>
     <string name="perm_skipped_toast">Skipped — you can grant it later from Profile</string>
-    <string name="perm_granted_toast">Permission granted</string>
     <string name="perm_welcome_toast">Welcome to SafeMe — you\'re protected</string>
-
-    <string name="home_welcome">Welcome to SafeMe</string>
 
     <string name="nav_home">Home</string>
     <string name="nav_block">Block</string>
@@ -38,6 +32,7 @@
     <string name="accessibility_service_description">SafeMe uses accessibility services to detect and block content that distracts you while the app is active.</string>
 
     <string name="bs_title">Block Screen</string>
+    <string name="bs_header_sub">Customize the full-screen gate shown when content is blocked.</string>
     <string name="bs_preview">Preview</string>
     <string name="bs_site_blocked">This site is blocked</string>
     <string name="bs_preview_msg_default">Stay safe, Alex. You chose this.</string>
@@ -76,16 +71,7 @@
     <string name="bs_url_placeholder">https://example.com</string>
     <string name="bs_url_note">Leave empty to return to the app after closing.</string>
 
-    <string name="bs_img_sunset">sunset</string>
-    <string name="bs_img_ocean">ocean</string>
-    <string name="bs_img_forest">forest</string>
-    <string name="bs_img_aurora">aurora</string>
-    <string name="bs_img_mono">mono</string>
-    <string name="bs_img_peak">peak</string>
-
-    <string name="bs_toast_msg_empty">Message can\'t be empty</string>
     <string name="bs_toast_msg_saved">Message saved</string>
-    <string name="bs_toast_url_invalid">Enter a valid URL (https://…)</string>
     <string name="bs_toast_redirect_set">Redirect set to %1$s</string>
     <string name="bs_toast_redirect_cleared">Redirect cleared</string>
     <string name="bs_toast_img_set">Motivation image set to %1$s</string>
@@ -151,7 +137,6 @@
     <string name="home_toast_off">Off</string>
     <string name="home_toast_all">All actions, everywhere</string>
 
-    <string name="home_keywords_title">Keywords</string>
     <string name="home_scheduleedit_title">New Schedule</string>
     <string name="home_backup_title">Backup</string>
     <string name="home_history_title">History</string>
@@ -165,17 +150,11 @@
     <string name="blk_stat_layers">Layers active</string>
     <string name="blk_manage_title">Custom Keywords &amp; Web Blocking</string>
     <string name="blk_manage_sub">%1$s keywords · %2$s websites · %3$s trusted</string>
-    <string name="blk_manage_toast">Manage keywords &amp; websites</string>
     <string name="blk_seg_keywords">Keywords</string>
     <string name="blk_seg_websites">Websites</string>
-    <string name="blk_seg_keywords_count">7</string>
-    <string name="blk_seg_websites_count">3</string>
-    <string name="blk_seg_trusted_count">2</string>
     <string name="blk_more">More blocking</string>
     <string name="blk_card_appfeature">App-Feature</string>
     <string name="blk_card_appfeature_sub">Reels · Shorts · Stories</string>
-    <string name="blk_card_safesearch">SafeSearch</string>
-    <string name="blk_card_safesearch_sub">Browsers · redirect</string>
     <string name="blk_card_blockscreen">Block Screen</string>
     <string name="blk_card_blockscreen_sub">Message · close-gate</string>
     <string name="blk_card_vpn">DNS &amp; VPN Filtering</string>
@@ -239,6 +218,7 @@
     <string name="foc_whitelist_placeholder">Focus Whitelist</string>
 
     <string name="prof_title">Profile</string>
+    <string name="prof_header_sub">Your account, appearance, permissions &amp; support.</string>
     <string name="prof_share">Sharing SafeMe…</string>
     <string name="prof_name">Alex</string>
     <string name="prof_since">Protected since Mar 2026</string>
@@ -289,6 +269,7 @@
     <string name="prof_soon_toast">Coming soon</string>
     <string name="vpn_back">Back</string>
     <string name="vpn_title">DNS &amp; VPN Filtering</string>
+    <string name="vpn_header_sub">Filter traffic at the DNS level to block adult &amp; harmful sites.</string>
     <string name="vpn_status_on">VPN filtering is on</string>
     <string name="vpn_status_off">VPN filtering is off</string>
     <string name="vpn_pill_active">Active</string>
@@ -338,6 +319,7 @@
     <string name="vpn_notif_stop">Stop</string>
 
     <string name="kw_title">Keyword Manager</string>
+    <string name="kw_header_sub">Block or allow keywords &amp; websites across all layers.</string>
     <string name="kw_seg_keywords">Keywords</string>
     <string name="kw_seg_websites">Websites</string>
     <string name="kw_tab_blocklist">Blocklist</string>
@@ -376,6 +358,5 @@
     <string name="kw_toast_website_updated">Website updated</string>
     <string name="kw_toast_whitelist_added">Keyword added to whitelist</string>
     <string name="kw_toast_trusted_added">Website added to trusted</string>
-    <string name="kw_toast_reset">Reset to defaults</string>
     <string name="kw_toast_error">Couldn\'t save. Please try again.</string>
 </resources>

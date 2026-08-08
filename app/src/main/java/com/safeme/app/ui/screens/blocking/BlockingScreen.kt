@@ -62,7 +62,6 @@ fun BlockingScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val colors = LocalAppColors.current
-    val manageToast = stringResource(R.string.blk_manage_toast)
     val comingSoonToast = stringResource(R.string.blk_coming_soon)
     val helpToast = stringResource(R.string.blk_help_toast)
 
@@ -93,7 +92,6 @@ fun BlockingScreen(
             Spacer(Modifier.size(12.dp))
             ManageCard(
                 subtitle = state.manageSub,
-                onCardClick = { viewModel.showToast(manageToast) },
                 onKeywordsClick = onOpenKeywords,
                 onWebsitesClick = onOpenWebsites
             )
@@ -327,18 +325,21 @@ private fun StatCard(
 @Composable
 private fun ManageCard(
     subtitle: String,
-    onCardClick: () -> Unit,
     onKeywordsClick: () -> Unit,
     onWebsitesClick: () -> Unit,
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val colors = LocalAppColors.current
 
+    // Tapping anywhere on the card opens the screen of the currently selected
+    // segment, so the whole surface is as tappable as the Keywords/Websites buttons.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .cardShape(radius = 18.dp)
-            .clickable(onClick = onCardClick)
+            .clickable(onClick = {
+                if (selectedTab == 0) onKeywordsClick() else onWebsitesClick()
+            })
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -466,16 +467,6 @@ private fun MoreGrid(
                 modifier = Modifier.weight(1f)
             )
             MoreCard(
-                icon = BlkGlobeIcon,
-                variant = IconVariant.Green,
-                title = stringResource(R.string.blk_card_safesearch),
-                sub = stringResource(R.string.blk_card_safesearch_sub),
-                onClick = onComingSoon,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MoreCard(
                 icon = BlkSquarePlusIcon,
                 variant = IconVariant.Dark,
                 title = stringResource(R.string.blk_card_blockscreen),
@@ -483,6 +474,8 @@ private fun MoreGrid(
                 onClick = onOpenBlockScreen,
                 modifier = Modifier.weight(1f)
             )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MoreCard(
                 icon = BlkShieldIcon,
                 variant = IconVariant.Green,
@@ -491,8 +484,6 @@ private fun MoreGrid(
                 onClick = onVpn,
                 modifier = Modifier.weight(1f)
             )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MoreCard(
                 icon = BlkShieldAlertIcon,
                 variant = IconVariant.Red,
@@ -501,6 +492,8 @@ private fun MoreGrid(
                 onClick = onComingSoon,
                 modifier = Modifier.weight(1f)
             )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MoreCard(
                 icon = BlkCrossIcon,
                 variant = IconVariant.Amber,
@@ -509,6 +502,9 @@ private fun MoreGrid(
                 onClick = onComingSoon,
                 modifier = Modifier.weight(1f)
             )
+            // The SafeSearch card was removed; keep the last row balanced so the
+            // remaining card doesn't stretch to full width.
+            Spacer(Modifier.weight(1f))
         }
     }
 }

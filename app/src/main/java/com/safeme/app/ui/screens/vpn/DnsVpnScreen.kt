@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -174,15 +175,17 @@ fun DnsVpnScreen(
 @Composable
 private fun VpnHeaderRow(onBack: () -> Unit) {
     val colors = LocalAppColors.current
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 12.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(top = 12.dp, bottom = 16.dp),
     ) {
         Box(
             modifier = Modifier
+                // Back button nudged 8px left, matching the reference header.
+                .offset(x = (-8).dp)
                 .size(40.dp)
+                .clip(RoundedCornerShape(14.dp))
                 .background(colors.surface, RoundedCornerShape(14.dp))
                 .border(1.dp, colors.line, RoundedCornerShape(14.dp))
                 .clickable(onClick = onBack),
@@ -195,13 +198,20 @@ private fun VpnHeaderRow(onBack: () -> Unit) {
                 tint = colors.ink,
             )
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.vpn_title),
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.6).sp,
             color = colors.ink,
-            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.vpn_header_sub),
+            fontSize = 12.sp,
+            lineHeight = 20.sp,
+            color = colors.ink2,
         )
     }
 }

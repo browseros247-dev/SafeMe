@@ -4,68 +4,65 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.system.ErrnoException
+import android.system.Os
+import android.util.Log
 import com.safeme.app.MainActivity
 import com.safeme.app.R
-import com.safeme.app.data.BlockingPrefsState
-import com.safeme.app.data.BundledKeywords
 import com.safeme.app.data.DnsVpnSettings
 import com.safeme.app.data.NOTIF_CUSTOM
 import com.safeme.app.data.NOTIF_HIDE
-import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.dnsVpnSettings
-import com.safeme.app.data.incrementBlockedToday
 import com.safeme.app.data.setVpnEnabled
-import com.safeme.app.vpn.BlockingRules
 import com.safeme.app.vpn.DnsPreset
-import com.safeme.app.vpn.SocketProtector
-import com.safeme.app.vpn.VpnEngine
+import com.safeme.app.vpn.TunnelRestartPolicy
 import com.safeme.app.vpn.VpnStatusStore
-import java.net.InetAddress
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 /**
- * SafeMe VPN filtering service.
+ * SafeMe DNS-filtering VPN service (reference-style, matching the
+ * Protect-Yourself architecture).
  *
- * The tunnel is established with routes 0.0.0.0/0 and ::/0 and a userspace
- * engine ([VpnEngine]) that:
- *  - forwards ALL traffic by default (UDP relay, TCP relay, ICMP echo), so
- *    every application keeps normal internet connectivity,
- *  - filters DNS by domain/keyword rules (NXDOMAIN for blocked names),
- *  - respects excluded applications via [android.net.VpnService.Builder.addDisallowedApplication].
+ * The tunnel is established WITHOUT routing any traffic into the TUN: the
+ * builder only advertises a family-safe DNS resolver via [VpnService.Builder.addDnsServer]
+ * (Cloudflare Family / AdGuard Family / custom preset). Android's system
+ * resolver then sends every app's DNS query to that resolver, which performs
+ * the actual adult-content filtering. The app does not relay packets and does
+ * not evaluate a local blocklist — filtering is delegated entirely to the
+ * family-safe DNS provider.
  *
- * Lifecycle: START_STICKY, serialized start/stop, automatic restart on network
- * changes, clean teardown on destroy, persisted enabled state restored at boot
- * by [VpnBootReceiver].
+ * - Whitelisted apps (and the app itself) bypass the VPN via [VpnService.Builder.addDisallowedApplication].
+ * - [VpnService.Builder.allowBypass] lets apps that explicitly request it skip
+ *   the VPN (required for some system services).
+ * - Lifecycle: START_STICKY, serialized start/stop/restart, clean teardown on
+ *   destroy, persisted enabled state restored at boot by [VpnBootReceiver].
+ *
+ * Known limitation (inherent to this architecture): because no traffic flows
+ * through the TUN, the app cannot inspect or block encrypted DNS (DoH/DoT/DoQ).
+ * Apps that use their own resolver (Chrome Secure DNS, hardcoded DNS) can
+ * bypass the filter — the same tradeoff the reference project accepts.
+ *
+ * On-screen URL/keyword blocking for browsers is handled separately by
+ * [SafeMeAccessibilityService] (which raises [com.safeme.app.BlockGateActivity]).
  */
-class SafeMeVpnService : VpnService(), SocketProtector {
+class SafeMeVpnService : VpnService() {
 
     companion object {
         const val ACTION_START = "com.safeme.app.action.START_VPN"
         const val ACTION_STOP = "com.safeme.app.action.STOP_VPN"
         const val ACTION_STOP_PERSIST = "com.safeme.app.action.STOP_VPN_PERSIST"
         const val ACTION_UPDATE_NOTIF = "com.safeme.app.action.UPDATE_NOTIF"
+        const val ACTION_RESTART = "com.safeme.app.action.RESTART_VPN"
         const val CHANNEL_ID = "vpn_filtering"
         const val NOTIFICATION_ID = 1
 
@@ -73,8 +70,7 @@ class SafeMeVpnService : VpnService(), SocketProtector {
         const val TUN_ADDR_V6 = "fd00:10:0:0:2::2"
         const val TUN_MTU = 1280
 
-        const val NETWORK_RESTART_DEBOUNCE_MS = 1500L
-        const val RESTART_COOLDOWN_MS = 5000L
+        const val TUNNEL_RESTART_COOLDOWN_MS = 5000L
 
         @Volatile
         var isActive = false
@@ -83,59 +79,41 @@ class SafeMeVpnService : VpnService(), SocketProtector {
     private val commandExecutor: ExecutorService = Executors.newSingleThreadExecutor { r ->
         Thread(r, "SafeMe-VpnCommand").apply { isDaemon = true }
     }
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val mainHandler = Handler(Looper.getMainLooper())
+    // Written by the command executor, read by the main thread in onDestroy's
+    // teardown — must be volatile so closeInterface() never misses a freshly
+    // assigned fd and leaves an orphaned tunnel running behind a dead service.
+    @Volatile
+    private var vpnInterface: ParcelFileDescriptor? = null
 
-    private val restartDebounced = AtomicBoolean(false)
-
-    private var engine: VpnEngine? = null
-    private var networkCallbackRegistered = false
-    private var rulesJob: kotlinx.coroutines.Job? = null
+    /** Detects unexpected tunnel death (fd closed by the system without onRevoke). */
+    @Volatile
+    private var watchdogThread: Thread? = null
+    private var lastTunnelRestartAt = 0L
 
     /**
-     * The default network the tunnel is currently running over. Tracked so a
-     * restart is only triggered by a REAL handover (Wi-Fi ↔ cellular, loss of
-     * connectivity), never by the initial onAvailable that fires right after
-     * registering the callback, and never by same-network capability churn.
+     * Set once the service is being torn down. Guards against a command that
+     * was already in flight (or queued) when [onDestroy] ran: it must not
+     * establish a tunnel behind a destroyed service, which would orphan a
+     * live VPN with no notification and no clean teardown.
      */
     @Volatile
-    private var currentDefaultNetwork: Network? = null
-
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            val previous = currentDefaultNetwork
-            currentDefaultNetwork = network
-            // The first onAvailable after registration is the network we just
-            // started the tunnel on — restarting then would churn every app's
-            // connections ~1.5s after each enable (and race the teardown).
-            if (previous != null && previous != network) {
-                scheduleTunnelRestart()
-            }
-        }
-
-        override fun onLost(network: Network) {
-            if (currentDefaultNetwork == network) {
-                currentDefaultNetwork = null
-                scheduleTunnelRestart()
-            }
-        }
-    }
+    private var destroyed = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("SafeMeVpn", "onStartCommand action=${intent?.action}")
         when (intent?.action) {
             ACTION_STOP -> {
-                // Internal stop (e.g. config-change restart): keep the persisted
-                // enabled state untouched.
+                // User turned the VPN off from the UI (persisted state is already
+                // handled by the caller). Stop the service itself, or the
+                // foreground notification would linger with no tunnel behind it.
                 dispatchCommand {
                     stopTunnel()
                     stopSelf()
                 }
             }
             ACTION_STOP_PERSIST -> {
-                // User-initiated stop from the notification: persist the off state
-                // so the UI and boot receiver stay consistent.
                 dispatchCommand {
                     stopTunnel()
                     runBlocking { setVpnEnabled(false) }
@@ -143,8 +121,6 @@ class SafeMeVpnService : VpnService(), SocketProtector {
                 }
             }
             ACTION_UPDATE_NOTIF -> {
-                // Notification-only change: refresh the foreground notification
-                // without tearing down the tunnel.
                 dispatchCommand {
                     if (isActive) {
                         runCatching {
@@ -153,108 +129,75 @@ class SafeMeVpnService : VpnService(), SocketProtector {
                     }
                 }
             }
+            ACTION_RESTART -> {
+                dispatchCommand {
+                    restartTunnel()
+                }
+            }
             else -> {
                 dispatchCommand {
-                    if (engine == null || !isActive) {
+                    if (vpnInterface == null || !isActive) {
                         startTunnel()
                     }
-                    // Already running: nothing to do. Config changes are applied
-                    // through a STOP followed by a START from the UI.
                 }
             }
         }
         return START_STICKY
     }
 
-    /** Dispatches a command onto the serial executor without ever throwing on
-     *  the caller (main) thread — e.g. if the executor was shut down during
-     *  teardown, the command is simply dropped. */
     private fun dispatchCommand(command: () -> Unit) {
         if (commandExecutor.isShutdown) return
         runCatching { commandExecutor.execute(command) }
     }
 
     override fun onDestroy() {
-        commandExecutor.execute {
+        Log.d("SafeMeVpn", "onDestroy called")
+        destroyed = true
+        runBlocking {
             stopTunnel()
-            commandExecutor.shutdown()
-            serviceScope.cancel()
         }
+        commandExecutor.shutdown()
         super.onDestroy()
     }
 
-    // ------------------------------------------------------------------
-    // Tunnel lifecycle
-    // ------------------------------------------------------------------
-
     private fun startTunnel() {
         try {
-            // A restart may have been scheduled while the tunnel was down; a
-            // fresh start supersedes it.
-            cancelPendingRestart()
+            Log.d("SafeMeVpn", "startTunnel begin")
+            stopTunnel()
+
             val vpnSettings = runBlocking { dnsVpnSettings().first() }
             if (!vpnSettings.enabled) {
-                // START_STICKY restart after a system kill, but the user has
-                // disabled the VPN: don't resurrect it.
                 stopSelf()
                 return
             }
-            val blockingState = runBlocking { blockingPrefs().first() }
-            val rulesRef = java.util.concurrent.atomic.AtomicReference(buildRules(blockingState))
 
-            val newEngine = establishTunnel(vpnSettings, rulesRef)
-            if (newEngine == null) {
-                // Tunnel could not be established — revert persisted state so
-                // the UI and the boot receiver stay consistent.
+            if (!establishAndActivate(vpnSettings)) {
                 isActive = false
                 VpnStatusStore.setActive(false)
-                runBlocking { setVpnEnabled(false) }
                 stopSelf()
                 return
             }
-
-            engine = newEngine
-            isActive = true
-            VpnStatusStore.setActive(true)
-            newEngine.start()
-            startForegroundWithNotification(vpnSettings)
-            registerNetworkCallback()
-            // Apply blocking-rule changes (keywords, websites, master toggle)
-            // to the running tunnel without a restart.
-            startRulesCollector(rulesRef)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             isActive = false
             VpnStatusStore.setActive(false)
-            engine?.stop()
-            engine = null
+            closeInterface()
             stopSelf()
         }
     }
 
-    private fun buildRules(state: BlockingPrefsState): BlockingRules =
-        BlockingRules.fromPrefs(state, BundledKeywords.keywords, BundledKeywords.websites)
-
-    private fun startRulesCollector(ref: java.util.concurrent.atomic.AtomicReference<BlockingRules>) {
-        rulesJob?.cancel()
-        rulesJob = serviceScope.launch {
-            blockingPrefs().collect { state ->
-                if (isActive) ref.set(buildRules(state))
-            }
-        }
-    }
-
-    private fun establishTunnel(
-        vpnSettings: DnsVpnSettings,
-        rules: java.util.concurrent.atomic.AtomicReference<BlockingRules>,
-    ): VpnEngine? {
+    /**
+     * Reference-style DNS-filtering tunnel: advertise the family-safe resolver
+     * via [VpnService.Builder.addDnsServer] and deliberately add NO routes, so
+     * no traffic is routed into the TUN. Android's resolver uses the advertised
+     * DNS servers and the family-safe provider performs the filtering.
+     */
+    private fun establishTunnel(vpnSettings: DnsVpnSettings): ParcelFileDescriptor? {
         return try {
             val builder = Builder()
                 .addAddress(TUN_ADDR_V4, 32)
                 .addAddress(TUN_ADDR_V6, 128)
-                .addRoute("0.0.0.0", 0)
-                .addRoute("::", 0)
                 .setMtu(TUN_MTU)
 
             when (vpnSettings.preset) {
@@ -263,96 +206,186 @@ class SafeMeVpnService : VpnService(), SocketProtector {
                     builder.addDnsServer("2a10:50c0::ad1:ff")
                 }
                 DnsPreset.CLOUDFLARE_FAMILY -> {
-                    builder.addDnsServer("1.1.1.1")
-                    builder.addDnsServer("2606:4700:4700::1111")
+                    builder.addDnsServer("1.1.1.3")
+                    builder.addDnsServer("2606:4700:4700::1113")
                 }
                 DnsPreset.CUSTOM -> {
-                    // Custom servers apply ONLY under the Custom preset. The
-                    // built-in presets are mutually exclusive with custom values,
-                    // so leftover custom addresses from a previous selection must
-                    // not leak into e.g. Cloudflare/AdGuard (they would be used in
-                    // addition to — or instead of — the chosen preset).
-                    if (vpnSettings.customV4.isNotBlank()) {
-                        builder.addDnsServer(vpnSettings.customV4)
-                    }
-                    if (vpnSettings.customV6.isNotBlank()) {
-                        builder.addDnsServer(vpnSettings.customV6)
+                    val v4 = vpnSettings.customV4
+                    val v6 = vpnSettings.customV6
+                    if (v4.isBlank() && v6.isBlank()) {
+                        // A tunnel with no resolver would silently disable
+                        // filtering — fall back to the family-safe default.
+                        builder.addDnsServer("1.1.1.3")
+                        builder.addDnsServer("2606:4700:4700::1113")
+                    } else {
+                        if (v4.isNotBlank()) builder.addDnsServer(v4)
+                        if (v6.isNotBlank()) builder.addDnsServer(v6)
                     }
                 }
             }
 
-            // Our own package must never be routed back into the tunnel.
+            // Whitelisted apps (and the app itself) bypass the VPN entirely.
             runCatching { builder.addDisallowedApplication(packageName) }
-            // Excluded applications bypass the VPN entirely (existing behavior).
-            vpnSettings.whitelist.forEach { packageName ->
-                runCatching { builder.addDisallowedApplication(packageName) }
+            vpnSettings.whitelist.forEach { pkg ->
+                runCatching { builder.addDisallowedApplication(pkg) }
             }
 
-            val pfd = builder.establish() ?: return null
+            // Apps that explicitly request it may bypass the VPN (some system
+            // services require this). DNS filtering still applies to all other apps.
+            builder.allowBypass()
 
-            val dnsServers = collectDnsServers(vpnSettings)
-            val tunLocal = setOf(
-                InetAddress.getByName(TUN_ADDR_V4),
-                InetAddress.getByName(TUN_ADDR_V6),
-            )
-
-            VpnEngine(
-                pfd = pfd,
-                mtu = TUN_MTU,
-                rules = rules,
-                protector = this,
-                onBlocked = { notifyBlocked() },
-                onTunnelClosed = { scheduleTunnelRestart() },
-                tunLocalAddrs = tunLocal,
-                fallbackDns = dnsServers,
-            )
+            builder.establish()
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun collectDnsServers(vpnSettings: DnsVpnSettings): List<InetAddress> {
-        val servers = ArrayList<InetAddress>()
-        val add = { literal: String ->
-            runCatching { InetAddress.getByName(literal) }.getOrNull()?.let { servers.add(it) }
+    private fun establishAndActivate(vpnSettings: DnsVpnSettings): Boolean {
+        // A teardown may have been queued while this command was in flight —
+        // never start a foreground notification or a tunnel for a dead service.
+        if (destroyed) return false
+        startForegroundWithNotification(vpnSettings)
+        Log.d("SafeMeVpn", "startForeground called, establishing tunnel")
+        val pfd = establishTunnel(vpnSettings) ?: return false
+        vpnInterface = pfd
+        if (destroyed) {
+            // The service was destroyed while the tunnel was being established
+            // (onDestroy runs on the main thread, not the command executor).
+            // Check AFTER assigning vpnInterface so the teardown path (and any
+            // concurrent onDestroy stopTunnel) always sees the fresh fd and
+            // closes it — never leaving an orphaned VPN with no service.
+            isActive = false
+            VpnStatusStore.setActive(false)
+            closeInterface()
+            return false
         }
-        when (vpnSettings.preset) {
-            DnsPreset.ADGUARD_FAMILY -> {
-                add("94.140.14.15")
-                add("2a10:50c0::ad1:ff")
-            }
-            DnsPreset.CLOUDFLARE_FAMILY -> {
-                add("1.1.1.1")
-                add("2606:4700:4700::1111")
-            }
-            DnsPreset.CUSTOM -> {
-                // Same exclusivity rule as the tunnel builder: custom addresses
-                // apply only under the Custom preset.
-                if (vpnSettings.customV4.isNotBlank()) add(vpnSettings.customV4)
-                if (vpnSettings.customV6.isNotBlank()) add(vpnSettings.customV6)
-            }
-        }
-        return servers
+        isActive = true
+        VpnStatusStore.setActive(true)
+        // A successful establish is a fresh attempt: reset the anti-storm
+        // window so a user-initiated restart (preset/whitelist change) is
+        // never gated by a stale stamp from an earlier watchdog cycle — the
+        // watchdog only gives up if the tunnel dies within 5s of the LAST
+        // successful establish.
+        lastTunnelRestartAt = System.currentTimeMillis()
+        startWatchdog(pfd)
+        Log.d("SafeMeVpn", "tunnel established (DNS-filter mode)")
+        return true
     }
 
-    private fun stopTunnel() {
-        cancelPendingRestart()
-        rulesJob?.cancel()
-        rulesJob = null
-        engine?.stop()
-        engine = null
-        isActive = false
-        VpnStatusStore.setActive(false)
-        unregisterNetworkCallback()
+    private fun restartTunnel() {
+        try {
+            stopTunnel()
+            val vpnSettings = runBlocking { dnsVpnSettings().first() }
+            if (!vpnSettings.enabled) {
+                stopSelf()
+                return
+            }
+            if (!establishAndActivate(vpnSettings)) {
+                isActive = false
+                VpnStatusStore.setActive(false)
+                stopSelf()
+                return
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            isActive = false
+            VpnStatusStore.setActive(false)
+            closeInterface()
+            stopSelf()
+        }
     }
 
     /**
-     * The system has revoked/disabled our VPN (user turned it off in the
-     * notification shade or Settings, or another VPN took over). Persist the
-     * off state so the UI and the boot receiver agree with reality, and tear
-     * the tunnel down.
+     * A healthy DNS-only tunnel never delivers data, so a blocking read on the
+     * fd simply waits until the system closes the tunnel under us (network
+     * handover, another VPN taking over, airplane mode). That return is the
+     * only signal that filtering silently stopped — re-establish it so the
+     * UI state, the notification and the filter stay honest. A cooldown
+     * guards against a restart loop if the tunnel keeps dying immediately.
      */
+    private fun startWatchdog(pfd: ParcelFileDescriptor) {
+        watchdogThread?.interrupt()
+        val watcher = Thread({
+            // Captured before the thread starts, so it is never read before
+            // assignment; used to identify this watchdog instance later.
+            val me = Thread.currentThread()
+            try {
+                val buffer = ByteArray(2048)
+                while (true) {
+                    val outcome = try {
+                        // A DNS-only tunnel never delivers data, so a blocking
+                        // read just waits; a non-blocking fd reports EAGAIN.
+                        // Only a genuine error (EBADF / closed fd) means the
+                        // tunnel died. Treating EAGAIN/EINTR as death would
+                        // tear the tunnel down right after establish.
+                        TunnelRestartPolicy.onRead(
+                            Os.read(pfd.fileDescriptor, buffer, 0, buffer.size).toLong(),
+                            errno = null,
+                        )
+                    } catch (e: ErrnoException) {
+                        TunnelRestartPolicy.onRead(-1, e.errno)
+                    }
+                    when (outcome) {
+                        TunnelRestartPolicy.Outcome.KEEP_WAITING -> {
+                            // Transient (EAGAIN / interrupt wake): back off
+                            // briefly before re-reading. Data never arrives in
+                            // this DNS-only architecture; the loop exists only
+                            // as a liveness detector, so the same backoff is
+                            // fine for a delivered read too.
+                            Thread.sleep(50)
+                            continue
+                        }
+                        TunnelRestartPolicy.Outcome.TUNNEL_DEAD -> break
+                    }
+                }
+            } catch (_: Throwable) {
+                // fd closed / read error / interrupt — fall through to restart handling.
+            }
+            dispatchCommand {
+                // Only the CURRENT watchdog may act. A stale thread whose
+                // tunnel was deliberately torn down (or already replaced by a
+                // restart) must not re-establish anything — otherwise every
+                // ACTION_RESTART could trigger a second, spurious teardown
+                // once the new tunnel is already up.
+                if (watchdogThread !== me) return@dispatchCommand
+                if (!isActive) return@dispatchCommand
+                val now = System.currentTimeMillis()
+                if (TunnelRestartPolicy.shouldStopInsteadOfRestart(
+                        lastTunnelRestartAt,
+                        now,
+                        TUNNEL_RESTART_COOLDOWN_MS,
+                    )
+                ) {
+                    stopTunnel()
+                    stopSelf()
+                    return@dispatchCommand
+                }
+                lastTunnelRestartAt = now
+                restartTunnel()
+            }
+        }, "SafeMe-VpnWatchdog")
+        watchdogThread = watcher
+        watcher.isDaemon = true
+        watcher.start()
+    }
+
+    private fun closeInterface() {
+        vpnInterface?.let { runCatching { it.close() } }
+        vpnInterface = null
+    }
+
+    private fun stopTunnel() {
+        Log.d("SafeMeVpn", "stopTunnel called")
+        watchdogThread?.interrupt()
+        watchdogThread = null
+        closeInterface()
+        isActive = false
+        VpnStatusStore.setActive(false)
+    }
+
     override fun onRevoke() {
+        Log.d("SafeMeVpn", "onRevoke called")
         dispatchCommand {
             stopTunnel()
             runBlocking { setVpnEnabled(false) }
@@ -360,87 +393,6 @@ class SafeMeVpnService : VpnService(), SocketProtector {
         }
         super.onRevoke()
     }
-
-    // ------------------------------------------------------------------
-    // Network-change recovery
-    // ------------------------------------------------------------------
-
-    private fun registerNetworkCallback() {
-        if (networkCallbackRegistered) return
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
-        runCatching {
-            cm.registerDefaultNetworkCallback(networkCallback, mainHandler)
-            networkCallbackRegistered = true
-        }
-    }
-
-    private fun unregisterNetworkCallback() {
-        if (!networkCallbackRegistered) return
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
-        runCatching { cm.unregisterNetworkCallback(networkCallback) }
-        networkCallbackRegistered = false
-        // Forget the tracked network so the next registration's initial
-        // onAvailable is treated as the fresh baseline, not a handover.
-        currentDefaultNetwork = null
-    }
-
-    /**
-     * Debounced tunnel restart when connectivity changes (Wi-Fi ↔ cellular,
-     * carrier handover, airplane mode toggle). Re-establishing the tunnel
-     * re-reads DNS settings and gives every app a fresh, consistent path.
-     *
-     * The restart is cancellable: a subsequent startTunnel/stopTunnel removes
-     * the pending callback, so a stale restart can never fire after the user
-     * or UI already changed the tunnel state.
-     */
-    private var lastRestartAt = 0L
-    private var pendingRestart: Runnable? = null
-
-    private fun scheduleTunnelRestart() {
-        if (!isActive) return
-        if (!restartDebounced.compareAndSet(false, true)) return
-        val task = Runnable {
-            restartDebounced.set(false)
-            pendingRestart = null
-            val now = System.currentTimeMillis()
-            if (now - lastRestartAt < RESTART_COOLDOWN_MS) return@Runnable
-            dispatchCommand {
-                if (isActive) {
-                    stopTunnel()
-                    startTunnel()
-                    lastRestartAt = System.currentTimeMillis()
-                }
-            }
-        }
-        pendingRestart = task
-        mainHandler.postDelayed(task, NETWORK_RESTART_DEBOUNCE_MS)
-    }
-
-    private fun cancelPendingRestart() {
-        pendingRestart?.let { mainHandler.removeCallbacks(it) }
-        pendingRestart = null
-        restartDebounced.set(false)
-    }
-
-    // ------------------------------------------------------------------
-    // Socket protection (VpnService.protect) — prevents relay loops
-    // ------------------------------------------------------------------
-
-    override fun protect(socket: java.net.DatagramSocket): Boolean =
-        runCatching { super.protect(socket) }.getOrDefault(false)
-
-    override fun protect(socket: java.net.Socket): Boolean =
-        runCatching { super.protect(socket) }.getOrDefault(false)
-
-    private fun notifyBlocked() {
-        serviceScope.launch {
-            runCatching { incrementBlockedToday() }
-        }
-    }
-
-    // ------------------------------------------------------------------
-    // Foreground notification
-    // ------------------------------------------------------------------
 
     private fun startForegroundWithNotification(vpnSettings: DnsVpnSettings) {
         val channel = NotificationChannel(

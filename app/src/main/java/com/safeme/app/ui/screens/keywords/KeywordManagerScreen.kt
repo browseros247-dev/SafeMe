@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -50,8 +51,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.data.BlockedCategory
-import com.safeme.app.data.BlockedKeyword
-import com.safeme.app.data.BlockedWebsite
 import com.safeme.app.data.normalizeDomain
 import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.screens.blocking.BlkGlobeIcon
@@ -340,9 +339,15 @@ fun KeywordManagerScreen(
 @Composable
 private fun SubHeader(title: String, onBack: () -> Unit) {
     val colors = LocalAppColors.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 16.dp)
+    ) {
         Box(
             modifier = Modifier
+                // Back button nudged 8px left, matching the reference header.
+                .offset(x = (-8).dp)
                 .size(40.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(colors.surface)
@@ -357,12 +362,20 @@ private fun SubHeader(title: String, onBack: () -> Unit) {
                 tint = colors.ink,
             )
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = title,
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.6).sp,
             color = colors.ink,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.kw_header_sub),
+            fontSize = 12.sp,
+            lineHeight = 20.sp,
+            color = colors.ink2,
         )
     }
 }

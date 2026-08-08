@@ -4,15 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.safeme.app.data.dnsVpnSettings
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class VpnBootReceiver : BroadcastReceiver() {
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
@@ -21,12 +16,16 @@ class VpnBootReceiver : BroadcastReceiver() {
         ) {
             return
         }
-        scope.launch {
-            val settings = context.dnsVpnSettings().first()
-            if (!settings.enabled) return@launch
-            val start = Intent(context, SafeMeVpnService::class.java)
-                .setAction(SafeMeVpnService.ACTION_START)
-            context.startForegroundService(start)
-        }
+        // Read the persisted state and start the service synchronously while
+        // onReceive is still executing: the background-start exemption granted
+        // to a broadcast receiver only lasts for the duration of onReceive.
+        // Deferring startForegroundService to a coroutine can throw
+        // ForegroundServiceStartNotAllowedException on Android 12+.
+        val settings = runCatching { runBlocking { context.dnsVpnSettings().first() } }
+            .getOrNull() ?: return
+        if (!settings.enabled) return
+        val start = Intent(context, SafeMeVpnService::class.java)
+            .setAction(SafeMeVpnService.ACTION_START)
+        context.startForegroundService(start)
     }
 }

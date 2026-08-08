@@ -30,7 +30,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.safeme.app.R
 import com.safeme.app.ui.components.BottomNavBar
-import com.safeme.app.ui.components.MainNavDestinations
 import com.safeme.app.ui.screens.blocking.BlockingScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
 import com.safeme.app.ui.screens.focus.FocusScreen

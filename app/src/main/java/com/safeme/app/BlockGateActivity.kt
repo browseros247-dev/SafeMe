@@ -82,7 +82,6 @@ class BlockGateActivity : ComponentActivity() {
         const val EXTRA_PACKAGE = "safeme.gate.package"
         const val EXTRA_MATCHED = "safeme.gate.matched"
         const val EXTRA_TYPE = "safeme.gate.type"
-        const val EXTRA_CATEGORY = "safeme.gate.category"
         const val EXTRA_REDIRECT = "safeme.gate.redirect"
     }
 }

@@ -6,10 +6,7 @@ import android.content.pm.PackageManager
 import android.net.VpnService
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.safeme.app.data.DnsVpnSettings
-import com.safeme.app.data.NOTIF_CUSTOM
 import com.safeme.app.data.NOTIF_DEFAULT
-import com.safeme.app.data.NOTIF_HIDE
 import com.safeme.app.data.dnsVpnSettings
 import com.safeme.app.data.setVpnCustomDns
 import com.safeme.app.data.setVpnEnabled
@@ -20,7 +17,11 @@ import com.safeme.app.data.setVpnWhitelist
 import com.safeme.app.service.SafeMeVpnService
 import com.safeme.app.vpn.DnsPreset
 import com.safeme.app.vpn.VpnStatusStore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -51,6 +52,17 @@ data class DnsVpnUiState(
 )
 
 class DnsVpnViewModel(application: Application) : AndroidViewModel(application) {
+
+    private companion object {
+        /** Pause before persisting/refreshing the custom notification text. */
+        const val NOTIF_CUSTOM_DEBOUNCE_MS = 400L
+    }
+
+    private var notifCustomJob: Job? = null
+
+    // Application-scoped so a pending notification-text flush survives the
+    // ViewModel being cleared (viewModelScope is cancelled at that point).
+    private val flushScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _uiState = MutableStateFlow(DnsVpnUiState())
     val uiState: StateFlow<DnsVpnUiState> = _uiState.asStateFlow()
@@ -119,6 +131,22 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         loadInstalledApps()
+    }
+
+    override fun onCleared() {
+        // Flush any value still inside the debounce window so the last
+        // keystrokes before leaving the screen aren't lost — including an
+        // empty string, otherwise a cleared field would revert to stale text
+        // (viewModelScope is cancelled right after this, so the pending job
+        // can't run). onCleared runs on the main thread, so the write is done
+        // on an application-scoped IO scope instead of blocking teardown with
+        // runBlocking.
+        notifCustomJob?.cancel()
+        val pending = _uiState.value.notifCustom
+        flushScope.launch {
+            getApplication<Application>().setVpnNotifCustom(pending)
+        }
+        super.onCleared()
     }
 
     fun showToast(message: String) {
@@ -265,9 +293,16 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setNotifCustom(text: String) {
+        // Keep the field responsive, but defer the DataStore write and the
+        // live notification refresh until the user pauses typing — otherwise
+        // every keystroke rewrites prefs and re-posts the foreground
+        // notification while the VPN runs.
         _uiState.update { it.copy(notifCustom = text) }
-        viewModelScope.launch {
-            getApplication<Application>().setVpnNotifCustom(text)
+        notifCustomJob?.cancel()
+        notifCustomJob = viewModelScope.launch {
+            delay(NOTIF_CUSTOM_DEBOUNCE_MS)
+            // Flush the latest value, not the text from the cancelled event.
+            getApplication<Application>().setVpnNotifCustom(_uiState.value.notifCustom)
             refreshNotificationIfRunning()
         }
     }
@@ -289,8 +324,17 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun restartIfRunning() {
         if (_uiState.value.enabled && VpnStatusStore.active.value) {
-            stopService()
-            startService()
+            // The restart tears the tunnel down and re-establishes it, flipping
+            // VpnStatusStore.active false→true. Keep the toggle on during that
+            // window with the same optimistic mechanism enable() uses; the
+            // active-flow collector clears it once the new tunnel is up (or a
+            // failed re-establish leaves the toggle on so a tap re-enables).
+            optimisticEnabled = true
+            _uiState.update { it.copy(enabled = true) }
+            val app = getApplication<Application>()
+            val intent = Intent(app, SafeMeVpnService::class.java)
+                .setAction(SafeMeVpnService.ACTION_RESTART)
+            runCatching { app.startService(intent) }
         }
     }
 

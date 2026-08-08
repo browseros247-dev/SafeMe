@@ -4,21 +4,15 @@ import java.net.InetAddress
 
 enum class DnsPreset(
     val label: String,
-    val sub: String,
-    val v4: String,
-    val v6: String,
 ) {
-    CLOUDFLARE_FAMILY("Cloudflare Family", "Balanced · malware + adult blocked", "1.1.1.1", "2606:4700:4700::1111"),
-    ADGUARD_FAMILY("AdGuard Family", "Strict · + ads & trackers", "94.140.14.15", "2a10:50c0::ad1:ff"),
-    CUSTOM("Custom preset", "IPv4 / IPv6 validated", "", ""),
+    CLOUDFLARE_FAMILY("Cloudflare Family"),
+    ADGUARD_FAMILY("AdGuard Family"),
+    CUSTOM("Custom preset"),
     ;
 
     companion object {
         fun fromName(name: String?): DnsPreset? =
             entries.firstOrNull { it.name == name }
-
-        fun fromLabel(label: String): DnsPreset? =
-            entries.firstOrNull { it.label == label }
     }
 }
 

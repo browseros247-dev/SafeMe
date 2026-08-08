@@ -115,32 +115,46 @@ fun ProfileScreen(
 @Composable
 private fun SubHeader(onShare: () -> Unit) {
     val colors = LocalAppColors.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 14.dp)
     ) {
-        Text(
-            text = stringResource(R.string.prof_title),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = colors.ink,
-            modifier = Modifier.weight(1f)
-        )
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(colors.brandSoft)
-                .clickable(onClick = onShare),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(
-                imageVector = ProfShareIcon,
-                contentDescription = stringResource(R.string.prof_share),
-                tint = colors.ink2,
-                modifier = Modifier.size(20.dp)
+            Text(
+                text = stringResource(R.string.prof_title),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.6).sp,
+                color = colors.ink,
+                modifier = Modifier.weight(1f)
             )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(colors.brandSoft)
+                    .clickable(onClick = onShare),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = ProfShareIcon,
+                    contentDescription = stringResource(R.string.prof_share),
+                    tint = colors.ink2,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.prof_header_sub),
+            fontSize = 12.sp,
+            lineHeight = 20.sp,
+            color = colors.ink2
+        )
     }
 }
 

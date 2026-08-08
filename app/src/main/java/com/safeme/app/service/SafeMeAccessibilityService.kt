@@ -6,7 +6,6 @@ import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.safeme.app.BlockGateActivity
-import com.safeme.app.data.BlockedCategory
 import com.safeme.app.data.BlockingPrefsState
 import com.safeme.app.data.BundledKeywords
 import com.safeme.app.data.blockingPrefs
@@ -143,13 +142,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         state.blocklistKeywords.forEach { kw ->
             val needle = kw.value.lowercase()
             if (needle.isNotBlank() && lowerTexts.any { it.contains(needle) }) {
-                return MatchResult(kw.value, "keyword", kw.category)
+                return MatchResult(kw.value, "keyword")
             }
         }
         BundledKeywords.keywords.forEach { kw ->
             val needle = kw.value.lowercase()
             if (needle.isNotBlank() && lowerTexts.any { it.contains(needle) }) {
-                return MatchResult(kw.value, "keyword", kw.category)
+                return MatchResult(kw.value, "keyword")
             }
         }
 
@@ -170,13 +169,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         state.blockedWebsites.forEach { site ->
             val d = site.domain.lowercase()
             if (d.isNotEmpty() && hosts.any { it == d || it.endsWith(".$d") }) {
-                return MatchResult(site.domain, "website", site.category)
+                return MatchResult(site.domain, "website")
             }
         }
         BundledKeywords.websites.forEach { site ->
             val d = site.domain.lowercase()
             if (d.isNotEmpty() && hosts.any { it == d || it.endsWith(".$d") }) {
-                return MatchResult(site.domain, "website", site.category)
+                return MatchResult(site.domain, "website")
             }
         }
 
@@ -192,7 +191,6 @@ class SafeMeAccessibilityService : AccessibilityService() {
             putExtra(BlockGateActivity.EXTRA_PACKAGE, pkg)
             putExtra(BlockGateActivity.EXTRA_MATCHED, match.value)
             putExtra(BlockGateActivity.EXTRA_TYPE, match.type)
-            putExtra(BlockGateActivity.EXTRA_CATEGORY, match.category.name)
         }
         startActivity(intent)
     }
@@ -214,7 +212,6 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private data class MatchResult(
         val value: String,
         val type: String,
-        val category: BlockedCategory,
     )
 
     private companion object {

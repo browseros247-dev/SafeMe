@@ -72,10 +72,12 @@
 
 
   /* ---------- Header ---------- */
-  .sub{display:flex;align-items:center;gap:6px;padding:6px 0 14px}
-  .sub .back{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--ink);background:var(--surface);border:1px solid var(--line)}
+  .sub{display:flex;align-items:center;column-gap:10px;row-gap:0;padding:6px 0 14px;flex-wrap:wrap}
+  .sub .back{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--ink);background:var(--surface);border:1px solid var(--line);margin-left:-8px}
   .sub .back svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .sub h1{font-size:20px;font-weight:700;flex:1}
+  .sub h1{font-size:24px;font-weight:700;letter-spacing:-.6px;flex-basis:100%;text-align:left;margin-top:16px;line-height:1.2}
+  .nav-on .sub h1{flex:1;flex-basis:auto;text-align:left;margin-top:0}
+  .sub .sub-desc{font-size:12px;color:var(--ink-2);line-height:1.6;margin-top:6px;flex-basis:100%;text-align:left}
   .sub .act{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
   .sub .act svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
@@ -437,3 +439,6 @@
   .theme-head .tx{flex:1;min-width:0}
   .theme-head .t{font-size:15px;font-weight:600}
   .theme-head .s{font-size:12px;color:var(--ink-2);margin-top:1px}
+
+  /* ---------- Description text ---------- */
+  .desc{font-size:13px;color:var(--ink-2);text-align:center}

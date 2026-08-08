@@ -22,4 +22,8 @@ internal val bundledAdultWebsites: List<String> = listOf(
     "chaturbate.com", "stripchat.com", "livejasmin.com", "bongacams.com", "cam4.com", "camsoda.com", "xcams.com",
     "flirt4free.com", "imlive.com", "adultwork.com", "camster.com", "sexchat.com", "outpersonals.com",
     "victoriamilan.com", "sexdolls.com", "bad-dragon.com", "baddragon.com",
+    // High-traffic adult video / cam platforms frequently missed by short lists.
+    "onlyfans.com", "fansly.com", "manyvids.com", "porntrex.com", "eporner.com", "hqporner.com",
+    "sxyprn.com", "xnxx.tv", "xvideos.red", "pornhub.org", "pornhub.net", "phncdn.com", "trafficjunky.net",
+    "tnaflix.com", "drtuber.com", "sunporno.com", "nuvid.com", "beeg.com", "youjizz.com", "motherless.com",
 )

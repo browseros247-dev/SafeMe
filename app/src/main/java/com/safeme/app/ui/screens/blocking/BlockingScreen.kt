@@ -495,19 +495,16 @@ private fun MoreGrid(
                 modifier = Modifier.weight(1f)
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MoreCard(
-                icon = BlkCrossIcon,
-                variant = IconVariant.Amber,
-                title = stringResource(R.string.blk_card_titleblock),
-                sub = stringResource(R.string.blk_card_titleblock_sub),
-                onClick = onOpenTitleBlock,
-                modifier = Modifier.weight(1f)
-            )
-            // The SafeSearch card was removed; keep the last row balanced so the
-            // remaining card doesn't stretch to full width.
-            Spacer(Modifier.weight(1f))
-        }
+        // The SafeSearch card was removed, so the last entry spans the full row;
+        // a lone half-width card would leave an unbalanced empty margin.
+        MoreCard(
+            icon = BlkCrossIcon,
+            variant = IconVariant.Amber,
+            title = stringResource(R.string.blk_card_titleblock),
+            sub = stringResource(R.string.blk_card_titleblock_sub),
+            onClick = onOpenTitleBlock,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

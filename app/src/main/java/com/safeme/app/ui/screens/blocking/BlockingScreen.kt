@@ -156,10 +156,10 @@ private fun ShieldCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Brush.linearGradient(listOf(colors.brandMist, colors.brandSoft)))
-            .border(1.dp, colors.brand.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
-            .padding(18.dp)
+            .border(1.dp, colors.brand.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+            .padding(14.dp)
     ) {
         ShieldRings()
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -183,7 +183,7 @@ private fun ShieldCard(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.blk_shield_status),
@@ -200,7 +200,7 @@ private fun ShieldCard(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-            Spacer(Modifier.size(14.dp))
+            Spacer(Modifier.size(12.dp))
             MasterSwitch(checked = blocking, onToggle = onToggle)
         }
     }
@@ -301,10 +301,8 @@ private fun StatCard(
     val colors = LocalAppColors.current
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(colors.surface)
-            .border(1.dp, colors.line, RoundedCornerShape(16.dp))
-            .padding(12.dp),
+            .cardShape(radius = 18.dp)
+            .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -365,6 +363,7 @@ private fun ManageCard(
                     text = subtitle,
                     fontSize = 11.5.sp,
                     color = colors.ink2,
+                    lineHeight = 15.sp,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -459,8 +458,8 @@ private fun MoreGrid(
     onOpenTitleBlock: () -> Unit,
     onComingSoon: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MoreCard(
                 icon = BlkLayersIcon,
                 variant = IconVariant.Amber,
@@ -478,7 +477,7 @@ private fun MoreGrid(
                 modifier = Modifier.weight(1f)
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MoreCard(
                 icon = BlkShieldIcon,
                 variant = IconVariant.Green,
@@ -496,7 +495,7 @@ private fun MoreGrid(
                 modifier = Modifier.weight(1f)
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MoreCard(
                 icon = BlkCrossIcon,
                 variant = IconVariant.Amber,
@@ -538,11 +537,11 @@ private fun MoreCard(
             icon = icon,
             background = iconBg,
             tint = iconTint,
-            size = 38.dp,
-            iconSize = 19.dp,
-            radius = 12.dp
+            size = 40.dp,
+            iconSize = 20.dp,
+            radius = 13.dp
         )
-        Spacer(Modifier.size(10.dp))
+        Spacer(Modifier.size(12.dp))
         Text(
             text = title,
             fontSize = 13.5.sp,
@@ -554,6 +553,9 @@ private fun MoreCard(
             fontSize = 11.5.sp,
             color = colors.ink2,
             lineHeight = 15.sp,
+            // Reserve a fixed two-line slot so every card in the grid renders at
+            // the same height whether or not its subtitle wraps.
+            minLines = 2,
             modifier = Modifier.padding(top = 2.dp)
         )
     }

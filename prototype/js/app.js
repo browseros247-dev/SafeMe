@@ -5,12 +5,12 @@
     home:{group:'Main',nav:true}, block:{group:'Main',nav:true}, focus:{group:'Main',nav:true},
     schedule:{group:'Main',nav:true}, profile:{group:'Main',nav:true},
     keywords:{group:'Blocking'}, appfeature:{group:'Blocking'},
-    safebrowse:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, antitamper:{group:'Blocking'}, titleblock:{group:'Blocking'},
+    safebrowse:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, antitamper:{group:'Blocking'}, selfprotect:{group:'Blocking'}, titleblock:{group:'Blocking'},
     applock:{group:'Protection'}, accountability:{group:'Protection'}, backup:{group:'Protection'},
     crash:{group:'Protection'}, troubleshoot:{group:'Protection'}, about:{group:'Protection'}, protected:{group:'Protection'}, relay:{group:'Protection'},
     history:{group:'Focus & Schedules'}, focusactive:{group:'Focus & Schedules'}, focuswhitelist:{group:'Focus & Schedules'}, scheduleedit:{group:'Focus & Schedules'}
   };
-  const ORDER = ['welcome','permissions','permbattery','permalarms','perma11y','home','block','focus','schedule','profile','keywords','appfeature','safebrowse','blockscreen','vpn','antitamper','titleblock','applock','accountability','backup','crash','troubleshoot','about','protected','relay','history','focusactive','focuswhitelist','scheduleedit'];
+  const ORDER = ['welcome','permissions','permbattery','permalarms','perma11y','home','block','focus','schedule','profile','keywords','appfeature','safebrowse','blockscreen','vpn','antitamper','selfprotect','titleblock','applock','accountability','backup','crash','troubleshoot','about','protected','relay','history','focusactive','focuswhitelist','scheduleedit'];
   let stack = [];
 
   // Build prototype navigator

@@ -106,6 +106,16 @@
   .btn.focusing .on-hide{display:none}.btn.focusing .on-show{display:block}
   .btn[disabled]{opacity:.45;pointer-events:none}
 
+  /* ---------- Protect-row action button ---------- */
+  .protect-btn{display:block;width:100%;background:var(--brand-soft);border:1px solid rgba(217,119,87,.35);border-radius:18px;padding:14px 16px;text-align:left;color:var(--brand-dark);cursor:pointer;transition:.18s var(--ease)}
+  .protect-btn:active{transform:scale(.988);border-color:var(--brand)}
+  .protect-btn .pb-ic{width:40px;height:40px;border-radius:13px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 6px 14px rgba(217,119,87,.32)}
+  .protect-btn .pb-ic svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .protect-btn .pb-tx{flex:1;min-width:0}
+  .protect-btn .pb-t{font-size:15px;font-weight:700;line-height:1.35;color:var(--brand-dark)}
+  .protect-btn .pb-chev{color:var(--brand);display:flex;align-items:center;flex:none;transition:transform .18s var(--ease)}
+  .protect-btn .pb-chev svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
   /* ---------- Cards & lists ---------- */
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 1px 0 rgba(31,26,22,.02);padding:16px}
   .card + .card{margin-top:14px}

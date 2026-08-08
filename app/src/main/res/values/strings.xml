@@ -161,11 +161,46 @@
     <string name="blk_card_vpn_sub">VPN · presets</string>
     <string name="blk_card_antitamper">Anti-Tamper</string>
     <string name="blk_card_antitamper_sub">Prevent uninstall · power menu</string>
-    <string name="blk_card_titleblock">Block by Title</string>
+    <string name="blk_card_titleblock">Block Settings by Title</string>
     <string name="blk_card_titleblock_sub">System pages · app titles</string>
     <string name="blk_toast_on">On</string>
     <string name="blk_toast_off">Off</string>
     <string name="blk_coming_soon">Coming soon</string>
+
+    <string name="tb_title">Block Settings by Title</string>
+    <string name="tb_subtitle">Block System Settings pages when their window title matches one of your rules.</string>
+    <string name="tb_hero_tag_active">Active</string>
+    <string name="tb_hero_tag_setup">Setup</string>
+    <string name="tb_hero_title_on">Title blocking is on</string>
+    <string name="tb_hero_title_paused">Title blocking is paused</string>
+    <string name="tb_hero_title_empty">No title rules yet</string>
+    <plurals name="tb_hero_sub">
+        <item quantity="one">%1$d rule · %2$d active · matching in real time</item>
+        <item quantity="other">%1$d rules · %2$d active · matching in real time</item>
+    </plurals>
+    <string name="tb_hero_sub_empty">Add a rule to start blocking Settings pages by title.</string>
+    <string name="tb_search_placeholder">Search rules…</string>
+    <string name="tb_rules_label">Rules</string>
+    <string name="tb_empty_title">No title rules yet</string>
+    <string name="tb_empty_subtitle">Add your first rule to start blocking by window title.</string>
+    <string name="tb_add_title">+ Add Title</string>
+    <string name="tb_note">Uses the accessibility engine and applies only to System Settings.</string>
+    <string name="tb_sheet_add">Add title rule</string>
+    <string name="tb_sheet_edit">Edit title rule</string>
+    <string name="tb_sheet_subtitle">Blocks System Settings pages whose window title matches.</string>
+    <string name="tb_sheet_field_placeholder">e.g. Apps</string>
+    <string name="tb_sheet_match_label">Match</string>
+    <string name="tb_sheet_scope_note">Applies only to System Settings</string>
+    <string name="tb_toast_empty">Enter a title to block</string>
+    <string name="tb_toast_duplicate">Rule already exists</string>
+    <string name="tb_toast_added">Rule added</string>
+    <string name="tb_toast_updated">Rule updated</string>
+    <string name="tb_toast_deleted">Rule deleted</string>
+    <string name="tb_mode_contains">Contains</string>
+    <string name="tb_mode_exact">Exact</string>
+    <string name="tb_mode_starts_with">Starts with</string>
+    <string name="tb_search_no_match">No rules match your search.</string>
+    <string name="tb_sheet_delete">Delete rule</string>
 
     <string name="sch_title">Schedule-Based App Blocking</string>
     <string name="sch_new">+ New</string>

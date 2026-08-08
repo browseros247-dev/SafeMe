@@ -99,6 +99,8 @@ private fun BlockGate(
         when (type) {
             "website" ->
                 if (matched.isNotEmpty()) "Website blocked by SafeMe: $matched" else "This site is blocked by SafeMe"
+            "title" ->
+                if (matched.isNotEmpty()) "Settings page blocked by SafeMe: $matched" else "Settings page blocked by SafeMe"
             else ->
                 if (matched.isNotEmpty()) "Keyword blocked by SafeMe: $matched" else "Blocked by SafeMe"
         }

@@ -3,11 +3,14 @@ package com.safeme.app.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.os.SystemClock
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.safeme.app.BlockGateActivity
 import com.safeme.app.data.BlockingPrefsState
 import com.safeme.app.data.BundledKeywords
+import com.safeme.app.data.TitleBlockRule
+import com.safeme.app.data.TitleMatchMode
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.normalizeDomain
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +47,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastBlockAt: Long = 0L
 
+    @Volatile
+    private var titleScopeWarned: Boolean = false
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceScope.launch {
@@ -77,7 +83,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val texts = collectTexts(event)
         if (texts.isEmpty()) return
 
-        val match = findMatch(texts, state) ?: return
+        val match = findMatch(texts, state)
+            ?: findTitleMatchIfSettings(pkg, texts, state)
+            ?: return
         val key = "$pkg|${match.value}"
         val now = SystemClock.elapsedRealtime()
         if (lastBlockKey == key && now - lastBlockAt < COOLDOWN_MS) return
@@ -182,6 +190,64 @@ class SafeMeAccessibilityService : AccessibilityService() {
         return null
     }
 
+    private fun findTitleMatch(
+        texts: List<String>,
+        rules: List<TitleBlockRule>,
+        state: BlockingPrefsState,
+    ): MatchResult? {
+        val enabledRules = rules.filter { it.enabled }
+        if (enabledRules.isEmpty()) return null
+        val lowerTexts = texts.map { it.lowercase() }
+
+        // Whitelist keywords suppress title rules too, mirroring findMatch so the
+        // whitelist escape hatch is honored consistently across all match paths.
+        if (state.whitelistKeywords.any { wl ->
+                val needle = wl.lowercase()
+                needle.isNotBlank() && lowerTexts.any { it.contains(needle) }
+            }
+        ) {
+            return null
+        }
+
+        enabledRules.forEach { rule ->
+            val needle = rule.value.lowercase()
+            if (needle.isBlank()) return@forEach
+            val matched = when (rule.mode) {
+                TitleMatchMode.CONTAINS -> lowerTexts.any { it.contains(needle) }
+                TitleMatchMode.EXACT -> lowerTexts.any { it == needle }
+                TitleMatchMode.STARTS_WITH -> lowerTexts.any { it.startsWith(needle) }
+            }
+            if (matched) {
+                return MatchResult(rule.value, "title")
+            }
+        }
+        return null
+    }
+
+    private fun findTitleMatchIfSettings(
+        pkg: String,
+        texts: List<String>,
+        state: BlockingPrefsState,
+    ): MatchResult? {
+        if (!isSettingsPackage(pkg)) {
+            // Warn once per service session when a Settings-looking package is seen
+            // but isn't allowlisted. On OEM forks that ship Settings under a
+            // different package this is the only diagnostic that title blocking
+            // can't fire; plain app windows are ignored so the warning stays
+            // meaningful instead of firing on every window change.
+            if (!titleScopeWarned && looksLikeSettingsPackage(pkg) && state.titleBlockRules.any { it.enabled }) {
+                titleScopeWarned = true
+                Log.w(
+                    TAG,
+                    "Title rules configured, but Settings package \"$pkg\" is not in " +
+                        "allowlist $SETTINGS_PACKAGES; title blocking won't fire on this device's Settings"
+                )
+            }
+            return null
+        }
+        return findTitleMatch(texts, state.titleBlockRules, state)
+    }
+
     private fun launchGate(pkg: String, match: MatchResult) {
         val intent = Intent(this, BlockGateActivity::class.java).apply {
             addFlags(
@@ -215,8 +281,18 @@ class SafeMeAccessibilityService : AccessibilityService() {
     )
 
     private companion object {
+        // Known Settings packages. AOSP uses com.android.settings; some OEM
+        // forks route Settings sub-pages through a different package and would
+        // need to be added here for title blocking to fire on those devices.
+        val SETTINGS_PACKAGES = setOf("com.android.settings")
+        const val TAG = "SafeMeA11y"
         const val COOLDOWN_MS = 4_000L
         const val MAX_DEPTH = 12
         const val MAX_STRINGS = 200
     }
+
+    private fun isSettingsPackage(pkg: String): Boolean = pkg in SETTINGS_PACKAGES
+
+    private fun looksLikeSettingsPackage(pkg: String): Boolean =
+        pkg.contains("settings", ignoreCase = true)
 }

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.UUID
 
 enum class BlockedCategory(val label: String) {
     ADULT("Adult"),
@@ -33,11 +34,25 @@ data class BlockedWebsite(
     val category: BlockedCategory,
 )
 
+enum class TitleMatchMode {
+    CONTAINS,
+    EXACT,
+    STARTS_WITH,
+}
+
+data class TitleBlockRule(
+    val id: String,
+    val value: String,
+    val mode: TitleMatchMode,
+    val enabled: Boolean = true,
+)
+
 data class BlockingPrefsState(
     val blocklistKeywords: List<BlockedKeyword> = emptyList(),
     val whitelistKeywords: List<String> = emptyList(),
     val blockedWebsites: List<BlockedWebsite> = emptyList(),
     val trustedWebsites: List<String> = emptyList(),
+    val titleBlockRules: List<TitleBlockRule> = emptyList(),
     val blockingEnabled: Boolean = true,
     val blockedToday: Int = 0,
 )
@@ -48,6 +63,7 @@ val KEY_BLOCKLIST_KEYWORDS = stringPreferencesKey("blocklist_keywords_json")
 val KEY_WHITELIST_KEYWORDS = stringPreferencesKey("whitelist_keywords_json")
 val KEY_BLOCKED_WEBSITES = stringPreferencesKey("blocked_websites_json")
 val KEY_TRUSTED_WEBSITES = stringPreferencesKey("trusted_websites_json")
+val KEY_TITLE_BLOCK_RULES = stringPreferencesKey("title_block_rules_json")
 val KEY_BLOCKING_ENABLED = booleanPreferencesKey("blocking_enabled")
 val KEY_BLOCKED_TODAY = intPreferencesKey("blocked_today")
 
@@ -123,6 +139,41 @@ private fun stringsToJson(list: List<String>): String {
     return arr.toString()
 }
 
+private fun titleRulesToJson(list: List<TitleBlockRule>): String {
+    val arr = JSONArray()
+    list.forEach { r ->
+        val o = JSONObject()
+        o.put("id", r.id)
+        o.put("v", r.value)
+        o.put("m", r.mode.name)
+        o.put("e", r.enabled)
+        arr.put(o)
+    }
+    return arr.toString()
+}
+
+private fun titleRulesFromJson(json: String?): List<TitleBlockRule> {
+    val text = json ?: ""
+    if (text.isBlank()) return emptyList()
+    return try {
+        val arr = JSONArray(text)
+        buildList {
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val id = o.optString("id").trim()
+                val v = o.optString("v").trim().lowercase()
+                if (id.isEmpty() || v.isEmpty()) continue
+                val mode = runCatching {
+                    TitleMatchMode.valueOf(o.optString("m"))
+                }.getOrDefault(TitleMatchMode.CONTAINS)
+                add(TitleBlockRule(id, v, mode, o.optBoolean("e", true)))
+            }
+        }
+    } catch (e: JSONException) {
+        emptyList()
+    }
+}
+
 private fun stringsFromJson(json: String?): List<String> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
@@ -148,6 +199,7 @@ fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
                 whitelistKeywords = stringsFromJson(prefs[KEY_WHITELIST_KEYWORDS]),
                 blockedWebsites = websitesFromJson(prefs[KEY_BLOCKED_WEBSITES]),
                 trustedWebsites = stringsFromJson(prefs[KEY_TRUSTED_WEBSITES]),
+                titleBlockRules = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES]),
                 blockingEnabled = prefs[KEY_BLOCKING_ENABLED] ?: true,
                 blockedToday = prefs[KEY_BLOCKED_TODAY] ?: 0,
             )
@@ -280,6 +332,48 @@ suspend fun Context.resetUserBlockingPrefs() {
         prefs.remove(KEY_WHITELIST_KEYWORDS)
         prefs.remove(KEY_BLOCKED_WEBSITES)
         prefs.remove(KEY_TRUSTED_WEBSITES)
+        prefs.remove(KEY_TITLE_BLOCK_RULES)
+    }
+}
+
+suspend fun Context.addTitleBlockRule(value: String, mode: TitleMatchMode) {
+    val normalized = value.trim().lowercase()
+    if (normalized.isEmpty()) return
+    blockingDataStore.edit { prefs ->
+        val list = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES])
+        if (list.none { it.value == normalized && it.mode == mode }) {
+            val id = UUID.randomUUID().toString()
+            prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(list + TitleBlockRule(id, normalized, mode))
+        }
+    }
+}
+
+suspend fun Context.updateTitleBlockRule(id: String, value: String, mode: TitleMatchMode) {
+    val normalized = value.trim().lowercase()
+    if (normalized.isEmpty()) return
+    blockingDataStore.edit { prefs ->
+        val list = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES])
+        val updated = list.map {
+            if (it.id == id) TitleBlockRule(id, normalized, mode, it.enabled) else it
+        }
+        prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(updated)
+    }
+}
+
+suspend fun Context.deleteTitleBlockRule(id: String) {
+    blockingDataStore.edit { prefs ->
+        val list = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES])
+        prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(list.filter { it.id != id })
+    }
+}
+
+suspend fun Context.toggleTitleBlockRule(id: String, enabled: Boolean) {
+    blockingDataStore.edit { prefs ->
+        val list = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES])
+        val updated = list.map {
+            if (it.id == id) it.copy(enabled = enabled) else it
+        }
+        prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(updated)
     }
 }
 

@@ -37,6 +37,7 @@ import com.safeme.app.ui.screens.home.HomeScreen
 import com.safeme.app.ui.screens.keywords.KeywordManagerScreen
 import com.safeme.app.ui.screens.profile.ProfileScreen
 import com.safeme.app.ui.screens.schedule.ScheduleScreen
+import com.safeme.app.ui.screens.titleblock.TitleBlockScreen
 import com.safeme.app.ui.screens.vpn.DnsVpnScreen
 import com.safeme.app.ui.theme.LocalAppColors
 
@@ -108,6 +109,7 @@ fun MainScreen() {
                     onOpenWebsites = {
                         navController.navigate("keywords?type=websites&tab=blocked")
                     },
+                    onOpenTitleBlock = { navController.navigate("titleblock") },
                 )
             }
             composable("blockscreen") {
@@ -165,6 +167,9 @@ fun MainScreen() {
             composable("crash") { PlaceholderScreen(R.string.prof_crash_title) }
             composable("relay") { PlaceholderScreen(R.string.prof_relay_title) }
             composable("about") { PlaceholderScreen(R.string.prof_about_title) }
+            composable("titleblock") {
+                TitleBlockScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }

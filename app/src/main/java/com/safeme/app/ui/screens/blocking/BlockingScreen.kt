@@ -58,6 +58,7 @@ fun BlockingScreen(
     onOpenVpn: () -> Unit = {},
     onOpenKeywords: () -> Unit = {},
     onOpenWebsites: () -> Unit = {},
+    onOpenTitleBlock: () -> Unit = {},
     viewModel: BlockingViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -99,6 +100,7 @@ fun BlockingScreen(
             MoreGrid(
                 onOpenBlockScreen = onOpenBlockScreen,
                 onVpn = onOpenVpn,
+                onOpenTitleBlock = onOpenTitleBlock,
                 onComingSoon = { viewModel.showToast(comingSoonToast) }
             )
             Spacer(Modifier.size(16.dp))
@@ -454,6 +456,7 @@ private enum class IconVariant {
 private fun MoreGrid(
     onOpenBlockScreen: () -> Unit,
     onVpn: () -> Unit,
+    onOpenTitleBlock: () -> Unit,
     onComingSoon: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -499,7 +502,7 @@ private fun MoreGrid(
                 variant = IconVariant.Amber,
                 title = stringResource(R.string.blk_card_titleblock),
                 sub = stringResource(R.string.blk_card_titleblock_sub),
-                onClick = onComingSoon,
+                onClick = onOpenTitleBlock,
                 modifier = Modifier.weight(1f)
             )
             // The SafeSearch card was removed; keep the last row balanced so the

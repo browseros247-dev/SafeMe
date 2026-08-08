@@ -73,7 +73,13 @@ fun MainScreen() {
         NavHost(
             navController = navController,
             startDestination = "home",
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            // Every screen applies its own statusBarsPadding(), so consuming
+            // the Scaffold's top inset here too would double-pad and push all
+            // content down by a full status-bar height (leaving a dead strip at
+            // the top and pushing the bottom of each screen off-screen). Only
+            // the bottom padding (bottom bar / gesture inset) comes from the
+            // Scaffold.
+            modifier = Modifier.fillMaxSize().padding(bottom = innerPadding.calculateBottomPadding()),
             enterTransition = { slideInHorizontally(animationSpec = tween(250), initialOffsetX = { it }) + fadeIn(animationSpec = tween(250)) },
             exitTransition = { fadeOut(animationSpec = tween(200)) },
             popEnterTransition = { slideInHorizontally(animationSpec = tween(250), initialOffsetX = { -it }) + fadeIn(animationSpec = tween(250)) },

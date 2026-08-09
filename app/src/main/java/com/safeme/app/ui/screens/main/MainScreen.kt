@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.safeme.app.R
 import com.safeme.app.ui.components.BottomNavBar
+import com.safeme.app.ui.screens.antitamper.AccessibilityProtectionScreen
 import com.safeme.app.ui.screens.antitamper.AntiTamperScreen
 import com.safeme.app.ui.screens.blocking.BlockingScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
@@ -121,7 +122,13 @@ fun MainScreen() {
                 DnsVpnScreen(onBack = { navController.popBackStack() })
             }
             composable("antitamper") {
-                AntiTamperScreen(onBack = { navController.popBackStack() })
+                AntiTamperScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenAccessibilityProtection = { navController.navigate("selfprotect") },
+                )
+            }
+            composable("selfprotect") {
+                AccessibilityProtectionScreen(onBack = { navController.popBackStack() })
             }
             composable("focus") {
                 FocusScreen(

@@ -1,7 +1,5 @@
 package com.safeme.app.ui.screens.antitamper
 
-import android.content.Intent
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -52,6 +50,7 @@ import com.safeme.app.ui.theme.LocalAppColors
 @Composable
 fun AntiTamperScreen(
     onBack: () -> Unit,
+    onOpenAccessibilityProtection: () -> Unit = {},
     viewModel: AntiTamperViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -95,14 +94,7 @@ fun AntiTamperScreen(
                     },
                 )
                 Spacer(Modifier.height(14.dp))
-                ProtectBtn(onClick = {
-                    runCatching {
-                        context.startActivity(
-                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }
-                })
+                ProtectBtn(onClick = onOpenAccessibilityProtection)
                 Spacer(Modifier.height(12.dp))
                 Note()
                 Spacer(Modifier.height(16.dp))
@@ -235,7 +227,11 @@ private fun PreventUninstallCard(
     }
 }
 
-/** Full-width "Protect Another App's Accessibility Service" row. */
+/**
+ * Full-width "Protect Another App's Accessibility Service" row. Navigates to
+ * the in-app Accessibility Protection screen (matching the prototype); it
+ * never jumps straight into the system accessibility settings.
+ */
 @Composable
 private fun ProtectBtn(onClick: () -> Unit) {
     val colors = LocalAppColors.current

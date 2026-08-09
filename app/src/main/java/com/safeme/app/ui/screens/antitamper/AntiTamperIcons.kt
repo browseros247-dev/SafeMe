@@ -69,6 +69,26 @@ val AtShieldPlusIcon: ImageVector by lazy {
     }.build()
 }
 
+/** Shield with check (Accessibility Protection status card). */
+val AtShieldCheckIcon: ImageVector by lazy {
+    iconBuilder("AtShieldCheck").apply {
+        strokePath {
+            moveTo(12f, 2f)
+            lineTo(19f, 5f)
+            verticalLineTo(10f)
+            curveToRelative(0f, 4.5f, -3f, 7.5f, -7f, 9f)
+            curveToRelative(-4f, -1.5f, -7f, -4.5f, -7f, -9f)
+            verticalLineTo(6f)
+            close()
+        }
+        strokePath {
+            moveTo(9f, 12f)
+            lineTo(11f, 14f)
+            lineTo(15f, 10f)
+        }
+    }.build()
+}
+
 /** Chevron-right from the prototype protect-btn. */
 val AtChevronRightIcon: ImageVector by lazy {
     iconBuilder("AtChevronRight").apply {

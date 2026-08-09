@@ -52,9 +52,32 @@ object ProtectedSystemPages {
         "servicedetails",
     )
 
+    /**
+     * Package-installer packages that host the uninstall confirmation dialog
+     * on stock Android (UninstallerActivity). The PU guards may gate ONLY that
+     * dialog surface — install/update screens in these packages stay untouched.
+     */
+    private val UNINSTALLER_PACKAGES = setOf(
+        "com.android.packageinstaller",
+        "com.google.android.packageinstaller",
+    )
+
     /** True for AOSP or OEM settings-app packages. */
     fun isSettingsPackage(packageName: String): Boolean {
         return packageName in SETTINGS_PACKAGES
+    }
+
+    /** True for the package-installer packages that show the uninstall dialog. */
+    fun isUninstallerPackage(packageName: String): Boolean {
+        return packageName in UNINSTALLER_PACKAGES
+    }
+
+    /**
+     * The full Prevent-Uninstall guard surface: settings-family packages plus
+     * the package-installer packages hosting the uninstall confirmation.
+     */
+    fun isPuSurface(packageName: String): Boolean {
+        return isSettingsPackage(packageName) || isUninstallerPackage(packageName)
     }
 
     /**
@@ -68,16 +91,6 @@ object ProtectedSystemPages {
         val lower = className.lowercase(Locale.ROOT)
         if (lower.contains("uninstalleractivity")) return false
         return A11Y_MANAGE_CLASS_MARKERS.any { lower.contains(it) }
-    }
-
-    /** True when normalized page text contains our accessibility description prefix. */
-    fun pageTextMatchesOurService(
-        pageTextNormalized: String,
-        serviceDescriptionNormalized: String,
-    ): Boolean {
-        if (serviceDescriptionNormalized.length < 8) return false
-        val fingerprint = serviceDescriptionNormalized.take(40)
-        return pageTextNormalized.contains(fingerprint)
     }
 
     /** Normalize free-form page/description text: lowercase, spaces stripped. */

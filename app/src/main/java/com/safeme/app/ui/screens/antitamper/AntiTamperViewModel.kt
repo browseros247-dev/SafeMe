@@ -68,6 +68,10 @@ class AntiTamperViewModel(application: Application) : AndroidViewModel(applicati
                 try {
                     app.setPreventUninstallEnabled(adminActive)
                     _uiState.value = _uiState.value.copy(enabled = adminActive)
+                    if (adminActive) {
+                        // Activation was confirmed on the system page — confirm it here.
+                        _toasts.tryEmit(app.getString(R.string.at_toast_activated))
+                    }
                 } catch (t: Throwable) {
                     _toasts.tryEmit(app.getString(R.string.kw_toast_error))
                 }
@@ -84,9 +88,12 @@ class AntiTamperViewModel(application: Application) : AndroidViewModel(applicati
     fun deactivate() {
         viewModelScope.launch {
             try {
-                DeviceAdminUtils.removeActive(app)
-                _uiState.value = _uiState.value.copy(adminActive = false)
+                // Turn the PU guards off BEFORE revoking Device Admin: any
+                // system/OEM confirmation dialog that appears must never be
+                // covered by our own gate while the flag is still propagating.
                 app.setPreventUninstallEnabled(false)
+                DeviceAdminUtils.removeActive(app)
+                _uiState.value = _uiState.value.copy(adminActive = false, enabled = false)
                 _toasts.tryEmit(app.getString(R.string.at_toast_deactivated))
             } catch (t: Throwable) {
                 _toasts.tryEmit(app.getString(R.string.kw_toast_error))

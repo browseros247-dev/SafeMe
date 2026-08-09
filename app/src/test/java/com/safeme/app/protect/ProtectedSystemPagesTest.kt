@@ -15,8 +15,11 @@ class ProtectedSystemPagesTest {
     }
 
     @Test
-    fun settingsSubpackageIsRecognized() {
-        assertTrue(ProtectedSystemPages.isSettingsPackage("com.android.settings.foo"))
+    fun settingsSubpackageIsNotRecognized() {
+        // M2 fix: isSettingsPackage is an exact allowlist match (all AOSP
+        // Settings sub-pages share the single com.android.settings package;
+        // the old ".settings" substring fallback was removed as too broad).
+        assertFalse(ProtectedSystemPages.isSettingsPackage("com.android.settings.foo"))
     }
 
     @Test
@@ -88,28 +91,27 @@ class ProtectedSystemPagesTest {
         )
     }
 
-    // ---- pageTextMatchesOurService ----
+    // ---- isPuSurface / isUninstallerPackage ----
 
     @Test
-    fun pageTextContainingDescriptionPrefixMatches() {
-        val description = "SafeMe uses accessibility services to detect and block " +
-            "content that distracts you while the app is active."
-        val normalized = ProtectedSystemPages.normalize(description)
-        val pageText = ProtectedSystemPages.normalize(
-            "SafeMe uses accessibility services to detect and block content that " +
-                "distracts you while the app is active. SafeMe also uses it to protect " +
-                "itself from being disabled or uninstalled."
-        )
-        assertTrue(ProtectedSystemPages.pageTextMatchesOurService(pageText, normalized))
+    fun settingsPackageIsPuSurface() {
+        assertTrue(ProtectedSystemPages.isPuSurface("com.android.settings"))
+        assertTrue(ProtectedSystemPages.isPuSurface("com.miui.securitycenter"))
     }
 
     @Test
-    fun unrelatedPageTextDoesNotMatch() {
-        val description = "SafeMe uses accessibility services to detect and block " +
-            "content that distracts you while the app is active."
-        val normalized = ProtectedSystemPages.normalize(description)
-        val pageText = ProtectedSystemPages.normalize("Some other app accessibility service")
-        assertFalse(ProtectedSystemPages.pageTextMatchesOurService(pageText, normalized))
+    fun packageinstallerIsPuSurface() {
+        assertTrue(ProtectedSystemPages.isPuSurface("com.android.packageinstaller"))
+        assertTrue(ProtectedSystemPages.isPuSurface("com.google.android.packageinstaller"))
+        assertTrue(ProtectedSystemPages.isUninstallerPackage("com.android.packageinstaller"))
+    }
+
+    @Test
+    fun unrelatedPackageIsNotPuSurface() {
+        assertFalse(ProtectedSystemPages.isPuSurface("com.other.app"))
+        assertFalse(ProtectedSystemPages.isPuSurface("com.android.chrome"))
+        assertFalse(ProtectedSystemPages.isPuSurface("com.android.systemui"))
+        assertFalse(ProtectedSystemPages.isPuSurface(""))
     }
 
     // ---- detailOnlyFingerprint ----

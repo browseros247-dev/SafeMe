@@ -19,6 +19,7 @@ import com.safeme.app.data.TitleMatchMode
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.normalizeDomain
 import com.safeme.app.data.preventUninstallPrefs
+import com.safeme.app.protect.DeviceAdminUtils
 import com.safeme.app.protect.ProtectedSystemPages
 import com.safeme.app.protect.UninstallBlockers
 import kotlinx.coroutines.CoroutineScope
@@ -153,7 +154,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
      *  2. All OTHER a11y-management screens (lists, other apps' detail pages)
      *     — never blocked, only self-healed.
      *  3. SafeMe's own App Info / Device Admin deactivation / force-stop /
-     *     uninstall-confirmation pages — blocked with the PU gate.
+     *     uninstall-confirmation pages — blocked with the PU gate. The stock
+     *     uninstall confirmation (packageinstaller UninstallerActivity) is
+     *     included in the guard surface.
      *
      * Every branch is fail-open: on any error the event is NOT blocked
      * (a false positive on a legitimate Settings page is worse than a false
@@ -164,7 +167,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private fun handlePreventUninstall(event: AccessibilityEvent, pkg: String): Boolean {
         return try {
             if (pkg == "com.android.systemui") return false
-            if (!ProtectedSystemPages.isSettingsPackage(pkg)) return false
+            if (!ProtectedSystemPages.isPuSurface(pkg)) return false
 
             val cls = runCatching { event.className?.toString() }.getOrDefault("").orEmpty()
             // [H2 fix] Removed SubSettings catch-all — only actual a11y management
@@ -191,7 +194,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
             val key = "$pkg|pu"
             val now = SystemClock.elapsedRealtime()
             if (lastBlockKey == key && now - lastPuBlockAt < COOLDOWN_MS) return true
-            if (!isOurUninstallTargetPage(event, pkg, cls)) return false
+            if (!isOurUninstallTargetPage(event, pkg, cls)) {
+                Log.d(TAG, "PU: not a target (pkg=$pkg cls=$cls)")
+                return false
+            }
+            Log.d(TAG, "PU: blocking page (pkg=$pkg cls=$cls)")
 
             lastBlockKey = key
             lastPuBlockAt = now
@@ -220,14 +227,76 @@ class SafeMeAccessibilityService : AccessibilityService() {
             if (marker.length < 8) return false // fail open: can't distinguish detail from list
             if (eventTextNormalized(event).contains(marker)) return true
 
+            // Android 16 renders the detail page in a generic SubSettings
+            // container and does NOT expose the description to the tree. The
+            // detail-only "shortcut" row ("<label> shortcut") carries our
+            // service label — the list row shows the label without it.
+            val label = getString(R.string.accessibility_service_label)
+            if (label.isNotBlank()) {
+                val labelLower = label.lowercase(Locale.ROOT)
+                val shortcutLower = "shortcut"
+                if (collectTexts(event).any {
+                        val t = it.lowercase(Locale.ROOT)
+                        t.contains(labelLower) && t.contains(shortcutLower)
+                    }
+                ) {
+                    return true
+                }
+            }
+
             val now = SystemClock.elapsedRealtime()
             if (now - lastA11yPageProbeMs < A11Y_PAGE_PROBE_THROTTLE_MS) return false
             lastA11yPageProbeMs = now
-            val root = rootInActiveWindow ?: return false
-            root.findAccessibilityNodeInfosByText(marker.take(30))?.isNotEmpty() == true
+            // findAccessibilityNodeInfosByText matches the RAW node text (spaces
+            // intact), so the normalized [marker] can never match. Probe with the
+            // spaced detail-only suffix instead — it appears on the detail page
+            // (full description) but never on the list row (summary only).
+            val spacedProbe = if (description.startsWith(summary)) {
+                description.removePrefix(summary).trim()
+            } else {
+                description.drop(40).trim()
+            }
+            if (spacedProbe.length < 8) return false
+            return nodeTreeContainsText(spacedProbe.take(30))
         } catch (t: Throwable) {
             Log.w(TAG, "isOurA11yServiceDetailPage failed — assuming not our page", t)
             false
+        }
+    }
+
+    /**
+     * Bounded node-tree substring search. Every node obtained from the active
+     * window is recycled afterwards (required on API 26–32, a no-op on 33+).
+     */
+    private fun nodeTreeContainsText(needle: String): Boolean {
+        if (needle.isBlank()) return false
+        val root = rootInActiveWindow ?: return false
+        val nodes = try {
+            root.findAccessibilityNodeInfosByText(needle)
+        } catch (t: Throwable) {
+            recycle(root)
+            return false
+        }
+        return try {
+            nodes != null && nodes.isNotEmpty()
+        } finally {
+            if (nodes != null) nodes.forEach { recycle(it) }
+            recycle(root)
+        }
+    }
+
+    /**
+     * Nodes obtained from the active-window tree hold Binder references on
+     * API 26–32 and must be recycled; leaking them across a long service
+     * session can exhaust the framework's node pool. No-op on API 33+.
+     */
+    @Suppress("DEPRECATION")
+    private fun recycle(node: AccessibilityNodeInfo) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            try {
+                node.recycle()
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -287,11 +356,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             val lowerText = collectTexts(event).joinToString(" ").lowercase(Locale.ROOT)
             val appNameInText = lowerText.contains(appNameLower)
             val appNameInNodeTree = if (appName.isNotEmpty() && !appNameInText) {
-                runCatching {
-                    rootInActiveWindow
-                        ?.findAccessibilityNodeInfosByText(appName)
-                        ?.isNotEmpty() == true
-                }.getOrDefault(false)
+                runCatching { nodeTreeContainsText(appName) }.getOrDefault(false)
             } else {
                 false
             }
@@ -299,6 +364,44 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
             // [H1 fix] Removed redundant `|| appNameInNodeTree` — appIsOnPage
             // already includes it via the definition above.
+
+            // Never cover a11y-management content for OUR service. Any page
+            // whose texts contain our SERVICE LABEL (distinct from the app
+            // name) is the service's list row or detail page — on Android 16
+            // the detail page is hosted in a generic SubSettings container
+            // whose class carries no a11y marker and whose description text is
+            // NOT exposed to the tree, so the description probes fail there.
+            // The label is the only reliable signal; covering the page would
+            // make Android auto-disable the service (the a11y kill vector).
+            val serviceLabelLower = getString(R.string.accessibility_service_label)
+                .lowercase(Locale.ROOT)
+            if (serviceLabelLower.isNotBlank() && lowerText.contains(serviceLabelLower)) {
+                // Best-effort eviction of the DETAIL page: it also shows the
+                // detail-only "shortcut" row, which the list row lacks. Never
+                // blocks either way; eviction is throttled and fail-open.
+                if (lowerText.contains("shortcut")) {
+                    evictFromOurA11yServicePage()
+                }
+                return false
+            }
+
+            // The stock uninstall confirmation lives in the packageinstaller
+            // package (UninstallerActivity). Only that dialog surface may be
+            // gated there — its install/update screens must never be blocked.
+            if (ProtectedSystemPages.isUninstallerPackage(pkg)) {
+                // The uninstall confirmation is reported either as the
+                // UninstallerActivity class or as a generic AlertDialog window
+                // (observed on Android 16). Both surfaces are gated on the
+                // "uninstall" text so install/update/permission dialogs in the
+                // packageinstaller are never blocked.
+                val isUninstallSurface = lowerClass.contains("uninstalleractivity") ||
+                    lowerClass.contains("alertdialog")
+                val hasUninstallText = lowerText.contains("uninstall")
+                val matched = isUninstallSurface && appIsOnPage && hasUninstallText
+                Log.d(TAG, "PU: packageinstaller pkg=$pkg cls=$lowerClass appIsOnPage=$appIsOnPage hasUninstallText=$hasUninstallText matched=$matched")
+                return matched
+            }
+
             if (lowerClass.contains("uninstalleractivity")) {
                 if (appIsOnPage) return true
             }
@@ -308,12 +411,27 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // Never block our own a11y detail page (the eviction path handles it).
             if (isOurA11yServiceDetailPage(event)) return false
 
+            // DeviceAdminAdd hosts BOTH the activation flow (admin NOT active)
+            // and the deactivation flow (admin active). The activation page
+            // must never be blocked — its text matches the "device admin" and
+            // "uninstall" markers ("device administrator", our own ADD
+            // explanation), so a stale PU flag would lock the user out of
+            // turning the feature on. Only deactivation is a tamper surface.
+            val adminActive = DeviceAdminUtils.isActive(applicationContext)
+            if (lowerClass.contains("deviceadminadd") && !adminActive) return false
+
             val isAppInfoClass = UninstallBlockers.APP_INFO_CLASS_MARKERS.any { lowerClass.contains(it) }
             val hasUninstallKeyword =
                 UninstallBlockers.UNINSTALL_KEYWORDS.any { lowerText.contains(it) }
             if (isAppInfoClass || hasUninstallKeyword) return true
 
-            if (UninstallBlockers.DEVICE_ADMIN_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
+            // The Device-admin texts can also appear on the administrators LIST
+            // page — block it only while our admin is actually active.
+            if (adminActive &&
+                UninstallBlockers.DEVICE_ADMIN_TEXTS_TO_MATCH.any { lowerText.contains(it) }
+            ) {
+                return true
+            }
 
             if (UninstallBlockers.FORCE_STOP_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
 
@@ -351,8 +469,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         }
         if (out.isEmpty() && Build.VERSION.SDK_INT >= 33) {
             try {
-                rootInActiveWindow?.window?.title?.toString()
-                    ?.takeIf { it.isNotBlank() }?.let { out.add(it) }
+                val root = rootInActiveWindow ?: return out.distinct()
+                try {
+                    root.window?.title?.toString()
+                        ?.takeIf { it.isNotBlank() }?.let { out.add(it) }
+                } finally {
+                    recycle(root)
+                }
             } catch (_: Throwable) {
             }
         }
@@ -367,7 +490,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
         }
         try {
             val root = rootInActiveWindow ?: return out.distinct()
-            walk(root, out, 0)
+            try {
+                walk(root, out, 0)
+            } finally {
+                recycle(root)
+            }
         } catch (_: Throwable) {
         }
         return out.distinct()
@@ -391,7 +518,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
             } catch (_: Throwable) {
                 null
             } ?: continue
-            walk(child, out, depth + 1)
+            try {
+                walk(child, out, depth + 1)
+            } finally {
+                recycle(child)
+            }
         }
     }
 

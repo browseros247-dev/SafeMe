@@ -56,6 +56,7 @@ import com.safeme.app.ui.theme.LocalAppColors
 fun BlockingScreen(
     onOpenBlockScreen: () -> Unit = {},
     onOpenVpn: () -> Unit = {},
+    onOpenAntiTamper: () -> Unit = {},
     onOpenKeywords: () -> Unit = {},
     onOpenWebsites: () -> Unit = {},
     onOpenTitleBlock: () -> Unit = {},
@@ -101,6 +102,7 @@ fun BlockingScreen(
                 onOpenBlockScreen = onOpenBlockScreen,
                 onVpn = onOpenVpn,
                 onOpenTitleBlock = onOpenTitleBlock,
+                onOpenAntiTamper = onOpenAntiTamper,
                 onComingSoon = { viewModel.showToast(comingSoonToast) }
             )
             Spacer(Modifier.size(16.dp))
@@ -456,6 +458,7 @@ private fun MoreGrid(
     onOpenBlockScreen: () -> Unit,
     onVpn: () -> Unit,
     onOpenTitleBlock: () -> Unit,
+    onOpenAntiTamper: () -> Unit,
     onComingSoon: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -491,7 +494,7 @@ private fun MoreGrid(
                 variant = IconVariant.Red,
                 title = stringResource(R.string.blk_card_antitamper),
                 sub = stringResource(R.string.blk_card_antitamper_sub),
-                onClick = onComingSoon,
+                onClick = onOpenAntiTamper,
                 modifier = Modifier.weight(1f)
             )
         }

@@ -15,6 +15,9 @@ import androidx.lifecycle.lifecycleScope
 import com.safeme.app.data.incrementBlockedToday
 import com.safeme.app.ui.screens.blockscreen.BlockOverlay
 import com.safeme.app.ui.theme.SafeMeApp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import com.safeme.app.R
 import kotlinx.coroutines.launch
 
 /**
@@ -95,12 +98,17 @@ private fun BlockGate(
     onClose: () -> Unit,
 ) {
     var whyOn by remember { mutableStateOf(true) }
-    val msg = remember(pkg, matched, type) {
+    // [L1 fix] locale is captured as a remember key so the PU gate message
+    // updates when the system locale changes mid-display.
+    val locale = LocalConfiguration.current.locales[0]
+    val puGateMessage = stringResource(R.string.pu_gate_message)
+    val msg = remember(pkg, matched, type, locale) {
         when (type) {
             "website" ->
                 if (matched.isNotEmpty()) "Website blocked by SafeMe: $matched" else "This site is blocked by SafeMe"
             "title" ->
                 if (matched.isNotEmpty()) "Settings page blocked by SafeMe: $matched" else "Settings page blocked by SafeMe"
+            "pu" -> puGateMessage
             else ->
                 if (matched.isNotEmpty()) "Keyword blocked by SafeMe: $matched" else "Blocked by SafeMe"
         }

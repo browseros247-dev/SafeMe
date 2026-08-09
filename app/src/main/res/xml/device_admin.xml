@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      Intentionally empty: SafeMe claims no admin capabilities (no WipeData,
+      no ResetPassword, no DisableCamera). Being an active Device Admin is the
+      only legal anti-uninstall mechanism on stock Android — it replaces the
+      "Uninstall" button with "Disable", which routes through the Device Admin
+      deactivation screen that the accessibility service blocks.
+    -->
+    <uses-policies />
+</device-admin>

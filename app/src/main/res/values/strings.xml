@@ -29,7 +29,8 @@
     <string name="nav_profile">Profile</string>
 
     <string name="accessibility_service_label">SafeMe Accessibility</string>
-    <string name="accessibility_service_description">SafeMe uses accessibility services to detect and block content that distracts you while the app is active.</string>
+    <string name="accessibility_service_summary">SafeMe uses accessibility services to detect and block content that distracts you while the app is active.</string>
+    <string name="accessibility_service_description">SafeMe uses accessibility services to detect and block content that distracts you while the app is active. SafeMe also uses it to protect itself from being disabled or uninstalled while Prevent Uninstall is on, and to block the settings pages that manage it.</string>
 
     <string name="bs_title">Block Screen</string>
     <string name="bs_header_sub">Customize the full-screen gate shown when content is blocked.</string>
@@ -394,4 +395,25 @@
     <string name="kw_toast_whitelist_added">Keyword added to whitelist</string>
     <string name="kw_toast_trusted_added">Website added to trusted</string>
     <string name="kw_toast_error">Couldn\'t save. Please try again.</string>
+
+    <string name="pu_notif_channel">Prevent Uninstall</string>
+    <string name="pu_disabled_notif_title">SafeMe protection was disabled</string>
+    <string name="pu_disabled_notif_text">Tap to re-activate Prevent Uninstall.</string>
+    <string name="pu_admin_explanation">SafeMe needs Device Admin so it can\'t be uninstalled while Prevent Uninstall is on.</string>
+    <string name="pu_gate_message">Prevent Uninstall is active — SafeMe can\'t be removed while protection is on.</string>
+    <string name="pu_evicted_toast">Prevent Uninstall protects this page — going home.</string>
+
+    <string name="at_title">Anti-Tamper</string>
+    <string name="at_subtitle">Protects SafeMe from being disabled, uninstalled, or bypassed.</string>
+    <string name="at_card_title">Prevent Uninstall</string>
+    <string name="at_card_sub">Prevents uninstall · blocks our app-info page</string>
+    <string name="at_activate">Activate</string>
+    <string name="at_active">Active</string>
+    <string name="at_card_btn_active">Active · Deactivate</string>
+    <string name="at_deactivate">Deactivate</string>
+    <string name="at_note">Self-healing observer loop + WRITE_SECURE_SETTINGS re-enable keeps protection running.</string>
+    <string name="at_protect_btn_title">Protect Another App\'s Accessibility Service</string>
+    <string name="at_toast_activating">Activating Prevent Uninstall…</string>
+    <string name="at_toast_activated">Prevent Uninstall activated</string>
+    <string name="at_toast_deactivated">Prevent Uninstall deactivated</string>
 </resources>

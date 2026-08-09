@@ -103,6 +103,7 @@ fun MainScreen() {
                 BlockingScreen(
                     onOpenBlockScreen = { navController.navigate("blockscreen") },
                     onOpenVpn = { navController.navigate("vpn") },
+                    onOpenAntiTamper = { navController.navigate("antitamper") },
                     onOpenKeywords = {
                         navController.navigate("keywords?type=keywords&tab=blocklist")
                     },
@@ -117,6 +118,9 @@ fun MainScreen() {
             }
             composable("vpn") {
                 DnsVpnScreen(onBack = { navController.popBackStack() })
+            }
+            composable("antitamper") {
+                com.safeme.app.ui.screens.antitamper.AntiTamperScreen(onBack = { navController.popBackStack() })
             }
             composable("focus") {
                 FocusScreen(

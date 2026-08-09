@@ -2,23 +2,31 @@ package com.safeme.app.service
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Toast
 import com.safeme.app.BlockGateActivity
+import com.safeme.app.R
 import com.safeme.app.data.BlockingPrefsState
 import com.safeme.app.data.BundledKeywords
 import com.safeme.app.data.TitleBlockRule
 import com.safeme.app.data.TitleMatchMode
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.normalizeDomain
+import com.safeme.app.data.preventUninstallPrefs
+import com.safeme.app.protect.ProtectedSystemPages
+import com.safeme.app.protect.UninstallBlockers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * Core blocking engine.
@@ -46,6 +54,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private var cachedState: BlockingPrefsState? = null
 
     @Volatile
+    private var cachedPuEnabled: Boolean = false
+
+    @Volatile
     private var lastBlockKey: String? = null
 
     @Volatile
@@ -54,6 +65,22 @@ class SafeMeAccessibilityService : AccessibilityService() {
     @Volatile
     private var titleScopeWarned: Boolean = false
 
+    @Volatile
+    private var lastA11yPageProbeMs: Long = 0L
+
+    @Volatile
+    private var lastA11yPageKickMs: Long = 0L
+
+    @Volatile
+    private var lastPuKickToastMs: Long = 0L
+
+    /** Separate cooldown tracker for PU blocks — [M1 fix] prevents PU cooldown from suppressing keyword blocks. */
+    @Volatile
+    private var lastPuBlockAt: Long = 0L
+
+    /** Stored runnable for the eviction toast — [M3 fix] allows cancellation on service destroy. */
+    private var pendingToastRunnable: Runnable? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceScope.launch {
@@ -61,6 +88,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 blockingPrefs().collect { cachedState = it }
             } catch (t: Throwable) {
                 cachedState = BlockingPrefsState()
+            }
+        }
+        serviceScope.launch {
+            try {
+                preventUninstallPrefs().collect { cachedPuEnabled = it.preventUninstallEnabled }
+            } catch (t: Throwable) {
+                cachedPuEnabled = false
             }
         }
     }
@@ -81,6 +115,12 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
 
+        // Prevent Uninstall guards are independent of the master blocking
+        // switch: they gate only on the PU DataStore flag.
+        if (cachedPuEnabled) {
+            if (handlePreventUninstall(event, pkg)) return
+        }
+
         val state = cachedState ?: return
         if (!state.blockingEnabled) return
 
@@ -97,6 +137,201 @@ class SafeMeAccessibilityService : AccessibilityService() {
         lastBlockKey = key
         lastBlockAt = now
         launchGate(pkg, match)
+    }
+
+    /**
+     * Prevent Uninstall (anti-tamper) guards, scoped to SafeMe only.
+     *
+     * While the feature is ON it protects exactly three surfaces, all of them
+     * identified by SafeMe's own package/app-name/service-description on a
+     * settings-family window:
+     *
+     *  1. Our accessibility-service DETAIL page — evicted via HOME + delayed
+     *     toast. NEVER covered by [BlockGateActivity]: Android auto-disables
+     *     an accessibility service whose window obscures a11y-management
+     *     screens, so covering our own page would kill the engine.
+     *  2. All OTHER a11y-management screens (lists, other apps' detail pages)
+     *     — never blocked, only self-healed.
+     *  3. SafeMe's own App Info / Device Admin deactivation / force-stop /
+     *     uninstall-confirmation pages — blocked with the PU gate.
+     *
+     * Every branch is fail-open: on any error the event is NOT blocked
+     * (a false positive on a legitimate Settings page is worse than a false
+     * negative).
+     *
+     * @return true when the event was consumed by a PU guard.
+     */
+    private fun handlePreventUninstall(event: AccessibilityEvent, pkg: String): Boolean {
+        return try {
+            if (pkg == "com.android.systemui") return false
+            if (!ProtectedSystemPages.isSettingsPackage(pkg)) return false
+
+            val cls = runCatching { event.className?.toString() }.getOrDefault("").orEmpty()
+            // [H2 fix] Removed SubSettings catch-all — only actual a11y management
+            // markers should enter the a11y branch. SubSettings is the AOSP container
+            // for every Settings sub-page; catching all of them adds unnecessary
+            // throttled node-tree probes on non-a11y pages.
+            val a11yContext =
+                ProtectedSystemPages.isAccessibilityManagementScreen(pkg, cls)
+
+            // 1. Our own a11y detail page → evict (never cover).
+            if (a11yContext) {
+                if (isOurA11yServiceDetailPage(event)) {
+                    evictFromOurA11yServicePage()
+                    return true
+                }
+                // Any other a11y-management screen is left untouched.
+                return false
+            }
+
+            // 2. App Info / Device Admin / force-stop / uninstall pages for OUR app.
+            val appName = getString(R.string.app_name)
+            // [M1 fix] PU blocks use a separate cooldown key so they don't
+            // suppress keyword blocking during the cooldown window.
+            val key = "$pkg|pu"
+            val now = SystemClock.elapsedRealtime()
+            if (lastBlockKey == key && now - lastPuBlockAt < COOLDOWN_MS) return true
+            if (!isOurUninstallTargetPage(event, pkg, cls)) return false
+
+            lastBlockKey = key
+            lastPuBlockAt = now
+            launchGate(pkg, MatchResult(appName, "pu"))
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "handlePreventUninstall failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * True when the visible settings window is SafeMe's OWN accessibility
+     * service DETAIL page. Layer 1 is a cheap scan of the event text; layer 2
+     * is a bounded node-tree probe (throttled — it is the only expensive step
+     * and a stream of events must cost nothing).
+     */
+    private fun isOurA11yServiceDetailPage(event: AccessibilityEvent): Boolean {
+        return try {
+            val description = getString(R.string.accessibility_service_description)
+            val summary = getString(R.string.accessibility_service_summary)
+            val marker = ProtectedSystemPages.detailOnlyFingerprint(
+                ProtectedSystemPages.normalize(description),
+                ProtectedSystemPages.normalize(summary)
+            )
+            if (marker.length < 8) return false // fail open: can't distinguish detail from list
+            if (eventTextNormalized(event).contains(marker)) return true
+
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastA11yPageProbeMs < A11Y_PAGE_PROBE_THROTTLE_MS) return false
+            lastA11yPageProbeMs = now
+            val root = rootInActiveWindow ?: return false
+            root.findAccessibilityNodeInfosByText(marker.take(30))?.isNotEmpty() == true
+        } catch (t: Throwable) {
+            Log.w(TAG, "isOurA11yServiceDetailPage failed — assuming not our page", t)
+            false
+        }
+    }
+
+    /**
+     * Evict our own a11y detail page: HOME + delayed toast. Delayed so the
+     * toast lands over the launcher, never over the a11y screen (a toast is
+     * still one of our windows — keep the zero-obscure discipline). Throttled.
+     */
+    private fun evictFromOurA11yServicePage() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastA11yPageKickMs < A11Y_PAGE_KICK_THROTTLE_MS) return
+        lastA11yPageKickMs = now
+        try {
+            performGlobalAction(GLOBAL_ACTION_HOME)
+        } catch (t: Throwable) {
+            Log.w(TAG, "PU: HOME global action failed", t)
+        }
+        if (now - lastPuKickToastMs < PU_KICK_TOAST_THROTTLE_MS) return
+        lastPuKickToastMs = now
+        // [M3 fix] Store the Runnable so it can be cancelled on service destroy.
+        try {
+            pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
+            val runnable = Runnable {
+                try {
+                    Toast.makeText(
+                        applicationContext,
+                        getString(R.string.pu_evicted_toast),
+                        Toast.LENGTH_LONG
+                    ).show()
+                } catch (t: Throwable) {
+                    Log.w(TAG, "PU: eviction toast failed", t)
+                }
+            }
+            pendingToastRunnable = runnable
+            Handler(Looper.getMainLooper()).postDelayed(runnable, PU_KICK_TOAST_DELAY_MS)
+        } catch (t: Throwable) {
+            Log.w(TAG, "PU: failed to schedule eviction toast", t)
+        }
+    }
+
+    /**
+     * Port of the reference app-info / device-admin / force-stop detection,
+     * scoped to SafeMe. Every branch requires our app name on the page (event
+     * text OR node tree); a page that is not about SafeMe is never blocked.
+     */
+    private fun isOurUninstallTargetPage(
+        event: AccessibilityEvent,
+        pkg: String,
+        cls: String,
+    ): Boolean {
+        return try {
+            val lowerClass = cls.lowercase(Locale.ROOT)
+            val appName = getString(R.string.app_name)
+            if (appName.isBlank()) return false
+            val appNameLower = appName.lowercase(Locale.ROOT)
+
+            val lowerText = collectTexts(event).joinToString(" ").lowercase(Locale.ROOT)
+            val appNameInText = lowerText.contains(appNameLower)
+            val appNameInNodeTree = if (appName.isNotEmpty() && !appNameInText) {
+                runCatching {
+                    rootInActiveWindow
+                        ?.findAccessibilityNodeInfosByText(appName)
+                        ?.isNotEmpty() == true
+                }.getOrDefault(false)
+            } else {
+                false
+            }
+            val appIsOnPage = appNameInText || appNameInNodeTree
+
+            // [H1 fix] Removed redundant `|| appNameInNodeTree` — appIsOnPage
+            // already includes it via the definition above.
+            if (lowerClass.contains("uninstalleractivity")) {
+                if (appIsOnPage) return true
+            }
+
+            if (!appIsOnPage) return false
+
+            // Never block our own a11y detail page (the eviction path handles it).
+            if (isOurA11yServiceDetailPage(event)) return false
+
+            val isAppInfoClass = UninstallBlockers.APP_INFO_CLASS_MARKERS.any { lowerClass.contains(it) }
+            val hasUninstallKeyword =
+                UninstallBlockers.UNINSTALL_KEYWORDS.any { lowerText.contains(it) }
+            if (isAppInfoClass || hasUninstallKeyword) return true
+
+            if (UninstallBlockers.DEVICE_ADMIN_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
+
+            if (UninstallBlockers.FORCE_STOP_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
+
+            false
+        } catch (t: Throwable) {
+            Log.w(TAG, "isOurUninstallTargetPage failed — fail open", t)
+            false
+        }
+    }
+
+    /** Normalized (lowercased, spaces stripped) concatenation of the event text. */
+    private fun eventTextNormalized(event: AccessibilityEvent): String {
+        val sb = StringBuilder()
+        try {
+            event.text?.forEach { sb.append(it) }
+        } catch (_: Throwable) {
+        }
+        return ProtectedSystemPages.normalize(sb.toString())
     }
 
     /**
@@ -258,7 +493,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
         event: AccessibilityEvent,
         state: BlockingPrefsState,
     ): MatchResult? {
-        if (!isSettingsPackage(pkg)) {
+        // [H3 fix] Delegate to the shared ProtectedSystemPages implementation
+        // so title-blocking and PU guards use the same OEM-aware package list.
+        if (!ProtectedSystemPages.isSettingsPackage(pkg)) {
             // Warn once per service session when a Settings-looking package is seen
             // but isn't allowlisted. On OEM forks that ship Settings under a
             // different package this is the only diagnostic that title blocking
@@ -269,7 +506,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 Log.w(
                     TAG,
                     "Title rules configured, but Settings package \"$pkg\" is not in " +
-                        "allowlist $SETTINGS_PACKAGES; title blocking won't fire on this device's Settings"
+                        "ProtectedSystemPages allowlist; title blocking won't fire on this device's Settings"
                 )
             }
             return null
@@ -295,11 +532,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        // [M3 fix] Cancel any pending eviction toast before destroying.
+        pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
+        pendingToastRunnable = null
         serviceScope.cancel()
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
+        // [M3 fix] Cancel any pending eviction toast before destroying.
+        pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
+        pendingToastRunnable = null
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -310,17 +553,19 @@ class SafeMeAccessibilityService : AccessibilityService() {
     )
 
     private companion object {
-        // Known Settings packages. AOSP uses com.android.settings; some OEM
-        // forks route Settings sub-pages through a different package and would
-        // need to be added here for title blocking to fire on those devices.
-        val SETTINGS_PACKAGES = setOf("com.android.settings")
         const val TAG = "SafeMeA11y"
         const val COOLDOWN_MS = 4_000L
         const val MAX_DEPTH = 12
         const val MAX_STRINGS = 200
+        const val A11Y_PAGE_PROBE_THROTTLE_MS = 10_000L
+        const val A11Y_PAGE_KICK_THROTTLE_MS = 15_000L
+        const val PU_KICK_TOAST_THROTTLE_MS = 60_000L
+        const val PU_KICK_TOAST_DELAY_MS = 700L
     }
 
-    private fun isSettingsPackage(pkg: String): Boolean = pkg in SETTINGS_PACKAGES
+    // [H3 fix] Removed private isSettingsPackage + SETTINGS_PACKAGES — now
+    // delegates to ProtectedSystemPages.isSettingsPackage for a single source
+    // of truth across PU guards and title-blocking.
 
     private fun looksLikeSettingsPackage(pkg: String): Boolean =
         pkg.contains("settings", ignoreCase = true)

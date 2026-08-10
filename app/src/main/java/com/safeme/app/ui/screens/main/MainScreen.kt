@@ -37,7 +37,9 @@ import com.safeme.app.ui.screens.applock.AppLockScreen
 import com.safeme.app.ui.screens.blocking.BlockingScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
 import com.safeme.app.ui.screens.focus.FocusScreen
+import com.safeme.app.ui.screens.history.HistoryScreen
 import com.safeme.app.ui.screens.home.HomeScreen
+import com.safeme.app.ui.screens.home.QuickActionsEditScreen
 import com.safeme.app.ui.screens.keywords.KeywordManagerScreen
 import com.safeme.app.ui.screens.profile.ProfileScreen
 import com.safeme.app.ui.screens.schedule.ScheduleEditScreen
@@ -99,6 +101,12 @@ fun MainScreen() {
                     onNewSchedule = { navController.navigate("scheduleedit") },
                     onBackup = { navController.navigate("backup") },
                     onHistory = { navController.navigate("history") },
+                    onOpenWebsites = {
+                        navController.navigate("keywords?type=websites&tab=blocked")
+                    },
+                    onOpenVpn = { navController.navigate("vpn") },
+                    onOpenAppLock = { navController.navigate("applock") },
+                    onEditQuickActions = { navController.navigate("quickactions") },
                     onOpenAccessibility = {
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
@@ -192,7 +200,12 @@ fun MainScreen() {
                 )
             }
             composable("backup") { PlaceholderScreen(R.string.home_backup_title) }
-            composable("history") { PlaceholderScreen(R.string.home_history_title) }
+            composable("history") {
+                HistoryScreen(onBack = { navController.popBackStack() })
+            }
+            composable("quickactions") {
+                QuickActionsEditScreen(onBack = { navController.popBackStack() })
+            }
             composable("focusactive") { PlaceholderScreen(R.string.foc_active_title) }
             composable("focuswhitelist") { PlaceholderScreen(R.string.foc_whitelist_placeholder) }
             composable("permissions") { PlaceholderScreen(R.string.prof_permissions_title) }

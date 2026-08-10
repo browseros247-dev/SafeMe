@@ -14,7 +14,10 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.safeme.app.MainActivity
 import com.safeme.app.R
+import com.safeme.app.data.ACTIVITY_A11Y
+import com.safeme.app.data.addActivity
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.runBlocking
 
 /**
  * A11yProtectionGuard — watches for protected accessibility services being
@@ -130,10 +133,34 @@ class A11yProtectionGuard {
         }
         if (anyDisabled || anyListedButUnbound) {
             A11yProtectionUtils.selfHealAllAsync(ctx)
+            logProtectedServiceDisabled(ctx)
             // If we can't write, the heal will no-op — tell the user (1/hour).
             if (!A11yProtectionUtils.isWriteSecureSettingsGranted(ctx)) {
                 notifyProtectedServiceDisabled(ctx)
             }
+        }
+    }
+
+    /**
+     * Activity-feed event for a protected accessibility service going down.
+     * The store dedupes consecutive repeats, so the 30s poll stays quiet.
+     */
+    private fun logProtectedServiceDisabled(context: Context) {
+        try {
+            val appCtx = context.applicationContext
+            Thread {
+                try {
+                    runBlocking {
+                        appCtx.addActivity(
+                            ACTIVITY_A11Y,
+                            "Accessibility service disabled",
+                            "Protected services need attention"
+                        )
+                    }
+                } catch (_: Throwable) {
+                }
+            }.start()
+        } catch (_: Throwable) {
         }
     }
 

@@ -55,7 +55,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
+import com.safeme.app.data.ActivityEntry
+import com.safeme.app.data.QuickActionType
+import com.safeme.app.data.formatActivityTime
 import com.safeme.app.ui.components.ToastHost
+import com.safeme.app.ui.screens.history.dotColor
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.ui.theme.SerifFamily
 
@@ -71,10 +75,15 @@ fun HomeScreen(
     onNewSchedule: () -> Unit = {},
     onBackup: () -> Unit = {},
     onHistory: () -> Unit = {},
+    onOpenWebsites: () -> Unit = {},
+    onOpenVpn: () -> Unit = {},
+    onOpenAppLock: () -> Unit = {},
+    onEditQuickActions: () -> Unit = {},
     onOpenAccessibility: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val quickActions by viewModel.quickActions.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val colors = LocalAppColors.current
 
@@ -98,9 +107,19 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            HomeHeaderRow(greeting = state.greeting, dateLine = state.dateLine)
+            HomeHeaderRow(
+                greeting = state.greeting,
+                dateLine = state.dateLine,
+                pillText = stringResource(state.pillTextRes),
+                pillGreen = state.pillGreen
+            )
             Spacer(Modifier.height(16.dp))
-            HeroCard(onReviewShield = onReviewShield)
+            HeroCard(
+                progress = state.heroProgress,
+                titleRes = state.heroTitleRes,
+                subtitle = state.heroSubtitle,
+                onReviewShield = onReviewShield
+            )
             if (!state.a11yEnabled) {
                 Spacer(Modifier.height(12.dp))
                 A11yBanner(onOpenAccessibility = onOpenAccessibility)
@@ -110,17 +129,21 @@ fun HomeScreen(
                 enabled = state.masterProtection,
                 onToggle = viewModel::toggleMasterProtection
             )
-            val allActionsToast = stringResource(R.string.home_toast_all)
             SectionTitle(
                 title = stringResource(R.string.home_quick_actions),
-                moreText = stringResource(R.string.home_all),
-                onMore = { viewModel.showToast(allActionsToast) }
+                moreText = stringResource(R.string.home_edit),
+                onMore = onEditQuickActions
             )
             QuickActionsGrid(
+                actions = quickActions,
                 onStartFocus = onStartFocus,
                 onAddKeyword = onAddKeyword,
                 onNewSchedule = onNewSchedule,
-                onBackup = onBackup
+                onBackup = onBackup,
+                onWebsites = onOpenWebsites,
+                onVpn = onOpenVpn,
+                onAppLock = onOpenAppLock,
+                onHistory = onHistory
             )
             SectionTitle(title = stringResource(R.string.home_today))
             StatsRow(
@@ -133,7 +156,7 @@ fun HomeScreen(
                 moreText = stringResource(R.string.home_history),
                 onMore = onHistory
             )
-            FeedCard()
+            FeedCard(entries = state.feed)
             Spacer(Modifier.height(16.dp))
         }
         ToastHost(
@@ -146,7 +169,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeaderRow(greeting: String, dateLine: String) {
+private fun HomeHeaderRow(greeting: String, dateLine: String, pillText: String, pillGreen: Boolean) {
     val colors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -188,17 +211,26 @@ private fun HomeHeaderRow(greeting: String, dateLine: String) {
             )
         }
         Spacer(Modifier.width(10.dp))
-        Pill(
-            text = stringResource(R.string.home_protected),
-            dotColor = colors.success,
-            bg = colors.successBg,
-            contentColor = colors.success
-        )
+        if (pillGreen) {
+            Pill(
+                text = pillText,
+                dotColor = colors.success,
+                bg = colors.successBg,
+                contentColor = colors.success
+            )
+        } else {
+            Pill(
+                text = pillText,
+                dotColor = colors.warning,
+                bg = colors.warningBg,
+                contentColor = colors.warning
+            )
+        }
     }
 }
 
 @Composable
-private fun HeroCard(onReviewShield: () -> Unit) {
+private fun HeroCard(progress: Float, titleRes: Int, subtitle: String, onReviewShield: () -> Unit) {
     val colors = LocalAppColors.current
     Box(
         modifier = Modifier
@@ -226,7 +258,7 @@ private fun HeroCard(onReviewShield: () -> Unit) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = stringResource(R.string.home_hero_title),
+                text = stringResource(titleRes),
                 fontFamily = SerifFamily,
                 fontSize = 27.sp,
                 lineHeight = 31.sp,
@@ -235,7 +267,7 @@ private fun HeroCard(onReviewShield: () -> Unit) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.home_hero_subtitle),
+                text = subtitle,
                 fontSize = 13.sp,
                 color = Color.White.copy(alpha = 0.92f)
             )
@@ -244,7 +276,7 @@ private fun HeroCard(onReviewShield: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                HeroRing(progress = 0.8f)
+                HeroRing(progress = progress)
                 Box(
                     modifier = Modifier
                         .height(52.dp)
@@ -474,48 +506,107 @@ private fun SectionTitle(title: String, moreText: String? = null, onMore: () -> 
 
 @Composable
 private fun QuickActionsGrid(
+    actions: List<QuickActionType>,
     onStartFocus: () -> Unit,
     onAddKeyword: () -> Unit,
     onNewSchedule: () -> Unit,
-    onBackup: () -> Unit
+    onBackup: () -> Unit,
+    onWebsites: () -> Unit,
+    onVpn: () -> Unit,
+    onAppLock: () -> Unit,
+    onHistory: () -> Unit
 ) {
+    val colors = LocalAppColors.current
+    if (actions.isEmpty()) {
+        Text(
+            text = stringResource(R.string.home_quick_actions_empty),
+            fontSize = 12.5.sp,
+            lineHeight = 18.sp,
+            color = colors.ink2
+        )
+        return
+    }
     Column {
-        Row {
-            QuickActionCard(
-                icon = HomeClockIcon,
-                title = stringResource(R.string.home_start_focus),
-                sub = stringResource(R.string.home_start_focus_sub),
-                onClick = onStartFocus,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(10.dp))
-            QuickActionCard(
-                icon = HomeHashtagIcon,
-                title = stringResource(R.string.home_add_keyword),
-                sub = stringResource(R.string.home_add_keyword_sub),
-                onClick = onAddKeyword,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Row {
-            QuickActionCard(
-                icon = HomeCalendarIcon,
-                title = stringResource(R.string.home_new_schedule),
-                sub = stringResource(R.string.home_new_schedule_sub),
-                onClick = onNewSchedule,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(10.dp))
-            QuickActionCard(
-                icon = HomeDownloadIcon,
-                title = stringResource(R.string.home_backup),
-                sub = stringResource(R.string.home_backup_sub),
-                onClick = onBackup,
-                modifier = Modifier.weight(1f)
-            )
+        actions.chunked(2).forEachIndexed { rowIndex, rowActions ->
+            if (rowIndex > 0) Spacer(Modifier.height(10.dp))
+            Row {
+                rowActions.forEachIndexed { index, action ->
+                    if (index > 0) Spacer(Modifier.width(10.dp))
+                    QuickActionCard(
+                        icon = action.icon(),
+                        title = stringResource(action.titleRes()),
+                        sub = stringResource(action.subRes()),
+                        onClick = action.onClick(
+                            onStartFocus,
+                            onAddKeyword,
+                            onNewSchedule,
+                            onBackup,
+                            onWebsites,
+                            onVpn,
+                            onAppLock,
+                            onHistory
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                // Odd count: keep the last cell the same width as its sibling.
+                if (rowActions.size == 1) Spacer(Modifier.width(10.dp).weight(1f))
+            }
         }
     }
+}
+
+internal fun QuickActionType.icon() = when (this) {
+    QuickActionType.FOCUS -> HomeClockIcon
+    QuickActionType.KEYWORD -> HomeHashtagIcon
+    QuickActionType.SCHEDULE -> HomeCalendarIcon
+    QuickActionType.BACKUP -> HomeDownloadIcon
+    QuickActionType.WEBSITES -> HomeGlobeIcon
+    QuickActionType.VPN -> HomeShieldIcon
+    QuickActionType.APPLOCK -> HomeLockIcon
+    QuickActionType.HISTORY -> HomeHistoryIcon
+}
+
+internal fun QuickActionType.titleRes() = when (this) {
+    QuickActionType.FOCUS -> R.string.home_start_focus
+    QuickActionType.KEYWORD -> R.string.home_add_keyword
+    QuickActionType.SCHEDULE -> R.string.home_new_schedule
+    QuickActionType.BACKUP -> R.string.home_backup
+    QuickActionType.WEBSITES -> R.string.home_websites
+    QuickActionType.VPN -> R.string.home_vpn
+    QuickActionType.APPLOCK -> R.string.home_app_lock
+    QuickActionType.HISTORY -> R.string.home_history
+}
+
+internal fun QuickActionType.subRes() = when (this) {
+    QuickActionType.FOCUS -> R.string.home_start_focus_sub
+    QuickActionType.KEYWORD -> R.string.home_add_keyword_sub
+    QuickActionType.SCHEDULE -> R.string.home_new_schedule_sub
+    QuickActionType.BACKUP -> R.string.home_backup_sub
+    QuickActionType.WEBSITES -> R.string.home_websites_sub
+    QuickActionType.VPN -> R.string.home_vpn_sub
+    QuickActionType.APPLOCK -> R.string.home_app_lock_sub
+    QuickActionType.HISTORY -> R.string.home_history_sub
+}
+
+private fun QuickActionType.onClick(
+    onStartFocus: () -> Unit,
+    onAddKeyword: () -> Unit,
+    onNewSchedule: () -> Unit,
+    onBackup: () -> Unit,
+    onWebsites: () -> Unit,
+    onVpn: () -> Unit,
+    onAppLock: () -> Unit,
+    onHistory: () -> Unit
+): () -> Unit = when (this) {
+    QuickActionType.FOCUS -> onStartFocus
+    QuickActionType.KEYWORD -> onAddKeyword
+    QuickActionType.SCHEDULE -> onNewSchedule
+    QuickActionType.BACKUP -> onBackup
+    QuickActionType.WEBSITES -> onWebsites
+    QuickActionType.VPN -> onVpn
+    QuickActionType.APPLOCK -> onAppLock
+    QuickActionType.HISTORY -> onHistory
 }
 
 @Composable
@@ -613,7 +704,7 @@ private fun StatCard(value: String, label: String, color: Color, modifier: Modif
 }
 
 @Composable
-private fun FeedCard() {
+private fun FeedCard(entries: List<ActivityEntry>) {
     val colors = LocalAppColors.current
     Column(
         modifier = Modifier
@@ -621,26 +712,25 @@ private fun FeedCard() {
             .cardShape()
             .padding(horizontal = 22.dp)
     ) {
-        FeedRow(
-            dotColor = colors.brand,
-            title = stringResource(R.string.home_feed_1_t),
-            sub = stringResource(R.string.home_feed_1_s),
-            time = stringResource(R.string.home_feed_1_tm)
-        )
-        HorizontalDivider(color = colors.line)
-        FeedRow(
-            dotColor = colors.success,
-            title = stringResource(R.string.home_feed_2_t),
-            sub = stringResource(R.string.home_feed_2_s),
-            time = stringResource(R.string.home_feed_2_tm)
-        )
-        HorizontalDivider(color = colors.line)
-        FeedRow(
-            dotColor = colors.warning,
-            title = stringResource(R.string.home_feed_3_t),
-            sub = stringResource(R.string.home_feed_3_s),
-            time = stringResource(R.string.home_feed_3_tm)
-        )
+        if (entries.isEmpty()) {
+            Text(
+                text = stringResource(R.string.home_feed_empty),
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp,
+                color = colors.ink2,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        } else {
+            entries.forEachIndexed { index, entry ->
+                if (index > 0) HorizontalDivider(color = colors.line)
+                FeedRow(
+                    dotColor = dotColor(entry.type),
+                    title = entry.title,
+                    sub = entry.sub,
+                    time = formatActivityTime(entry.timeMillis)
+                )
+            }
+        }
     }
 }
 

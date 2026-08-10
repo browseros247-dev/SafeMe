@@ -1,11 +1,17 @@
 package com.safeme.app.protect
 
 import android.content.Context
+import com.safeme.app.data.ACTIVITY_SCHEDULE
 import com.safeme.app.data.ScheduleBlock
+import com.safeme.app.data.addActivity
 import com.safeme.app.data.schedulePrefs
 import com.safeme.app.service.SafeMeAccessibilityService
 import com.safeme.app.service.SafeMeVpnService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Process-wide coordinator for Schedule-Based App Blocking.
@@ -21,6 +27,8 @@ import kotlinx.coroutines.flow.first
  * changes (so a no-op re-evaluation never tears down a healthy tunnel).
  */
 object ScheduleEngine {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Volatile
     private var internetBlockedPackages: Set<String> = emptySet()
@@ -104,8 +112,28 @@ object ScheduleEngine {
             // Re-arm the next boundary alarm.
             val next = ScheduleEvaluator.nextBoundary(schedules, nowMillis)
             ScheduleAlarmReceiver.scheduleBoundary(context, next)
+
+            // Activity feed: log when a block actually turns ON (deduped by
+            // the store, so re-applies and the safety ticker stay quiet).
+            val launchOn = active.launchBlockAll || active.launchBlockedPackages.isNotEmpty()
+            val internetOn = active.internetBlockAll || active.internetBlockedPackages.isNotEmpty()
+            if (launchChanged && launchOn) {
+                logScheduleEvent(context, "Launch blocking active", "Scheduled apps can't open")
+            }
+            if (internetChanged && internetOn) {
+                logScheduleEvent(context, "Internet blocking active", "Scheduled apps can't reach the web")
+            }
         } catch (t: Throwable) {
             // Coordinator failures must never crash callers (App, receiver).
+        }
+    }
+
+    private fun logScheduleEvent(context: Context, title: String, sub: String) {
+        scope.launch {
+            try {
+                context.applicationContext.addActivity(ACTIVITY_SCHEDULE, title, sub)
+            } catch (_: Throwable) {
+            }
         }
     }
 }

@@ -92,10 +92,17 @@
     <string name="home_user_name">Alex</string>
     <string name="home_header_greeting">%1$s, %2$s</string>
     <string name="home_protected">Protected</string>
+    <string name="home_paused">Paused</string>
+    <string name="home_attention">Attention</string>
 
     <string name="home_shield_tag">Shield status</string>
     <string name="home_hero_title">Fully protected</string>
-    <string name="home_hero_subtitle">8 of 10 layers active · 2 need attention</string>
+    <string name="home_hero_partial">Partially protected</string>
+    <string name="home_hero_paused">Protection paused</string>
+    <string name="home_hero_all_active">All %1$d layers active</string>
+    <string name="home_hero_layers_active">%1$d of %2$d layers active</string>
+    <string name="home_hero_attention">%1$d need attention</string>
+    <string name="home_hero_resume">Turn on master protection to resume</string>
     <string name="home_review_shield">Review shield</string>
 
     <string name="home_a11y_title">Accessibility service is off</string>
@@ -107,7 +114,7 @@
     <string name="home_master_sub">Master switch — blocks across all layers</string>
 
     <string name="home_quick_actions">Quick actions</string>
-    <string name="home_all">All</string>
+    <string name="home_edit">Edit</string>
     <string name="home_start_focus">Start Focus</string>
     <string name="home_start_focus_sub">Stop Me session</string>
     <string name="home_add_keyword">Add keyword</string>
@@ -116,6 +123,21 @@
     <string name="home_new_schedule_sub">Recurring window</string>
     <string name="home_backup">Backup</string>
     <string name="home_backup_sub">Export to JSON</string>
+    <string name="home_websites">Websites</string>
+    <string name="home_websites_sub">Block sites</string>
+    <string name="home_vpn">VPN</string>
+    <string name="home_vpn_sub">Internet filtering</string>
+    <string name="home_app_lock">App lock</string>
+    <string name="home_app_lock_sub">Protect apps</string>
+    <string name="home_history_sub">View activity</string>
+    <string name="home_quick_actions_empty">No quick actions yet — tap Edit to add some</string>
+    <string name="home_quick_actions_edit_title">Edit Quick Actions</string>
+    <string name="home_quick_actions_edit_sub">Choose which shortcuts appear on the Home screen</string>
+    <string name="home_qa_on_screen">On Home screen</string>
+    <string name="home_qa_add_more">Add more</string>
+    <string name="home_qa_add">Add</string>
+    <string name="home_qa_empty">Nothing on the Home screen yet</string>
+    <string name="home_qa_reset">Restore default actions</string>
 
     <string name="home_today">Today</string>
     <string name="home_stat_blocked">Blocked</string>
@@ -124,19 +146,10 @@
 
     <string name="home_recent_activity">Recent activity</string>
     <string name="home_history">History</string>
-    <string name="home_feed_1_t">Blocked TikTok</string>
-    <string name="home_feed_1_s">Opened during study window · close-gate shown</string>
-    <string name="home_feed_1_tm">9:38 PM</string>
-    <string name="home_feed_2_t">Focus session complete</string>
-    <string name="home_feed_2_s">45 min · 32 blocks · whitelist untouched</string>
-    <string name="home_feed_2_tm">8:15 PM</string>
-    <string name="home_feed_3_t">Permission revoked</string>
-    <string name="home_feed_3_s">Accessibility off · onboarding re-opened</string>
-    <string name="home_feed_3_tm">11:02 AM</string>
+    <string name="home_feed_empty">No activity yet — blocks, schedules and protection changes will show up here</string>
 
     <string name="home_toast_on">On</string>
     <string name="home_toast_off">Off</string>
-    <string name="home_toast_all">All actions, everywhere</string>
 
     <string name="home_scheduleedit_title">New Schedule</string>
     <string name="home_backup_title">Backup</string>

@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
+    // Real org.json for unit tests (the Android stub throws "not mocked").
+    testImplementation(libs.json.test)
     androidTestImplementation(libs.junit)
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.1")

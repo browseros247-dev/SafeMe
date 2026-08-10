@@ -128,6 +128,132 @@ internal val HomeDownloadIcon: ImageVector by lazy {
     }.build()
 }
 
+internal val HomeGlobeIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "HomeGlobe",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(12f, 3f)
+            arcToRelative(9f, 9f, 0f, false, false, 0f, 18f)
+            arcToRelative(9f, 9f, 0f, false, false, 0f, -18f)
+            moveTo(3f, 12f)
+            horizontalLineTo(21f)
+            moveTo(12f, 3f)
+            arcToRelative(15f, 15f, 0f, false, true, 0f, 18f)
+            arcToRelative(15f, 15f, 0f, false, true, 0f, -18f)
+        }
+    }.build()
+}
+
+internal val HomeShieldIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "HomeShield",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(12f, 3f)
+            lineTo(20f, 6f)
+            verticalLineTo(12f)
+            arcToRelative(8f, 8f, 0f, false, true, -8f, 6f)
+            arcToRelative(8f, 8f, 0f, false, true, -8f, -6f)
+            verticalLineTo(6f)
+            close()
+            moveTo(9f, 12f)
+            lineTo(11f, 14f)
+            lineTo(15f, 10f)
+        }
+    }.build()
+}
+
+internal val HomeLockIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "HomeLock",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(6f, 10f)
+            verticalLineTo(7f)
+            arcToRelative(6f, 6f, 0f, false, true, 12f, 0f)
+            verticalLineTo(10f)
+            moveTo(5f, 10f)
+            horizontalLineTo(19f)
+            arcToRelative(2f, 2f, 0f, false, true, 2f, 2f)
+            verticalLineTo(19f)
+            arcToRelative(2f, 2f, 0f, false, true, -2f, 2f)
+            horizontalLineTo(5f)
+            arcToRelative(2f, 2f, 0f, false, true, -2f, -2f)
+            verticalLineTo(12f)
+            arcToRelative(2f, 2f, 0f, false, true, 2f, -2f)
+            close()
+            moveTo(12f, 14f)
+            verticalLineTo(17f)
+        }
+    }.build()
+}
+
+internal val HomeHistoryIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "HomeHistory",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(3f, 12f)
+            arcToRelative(9f, 9f, 0f, false, true, 9f, -9f)
+            arcToRelative(9f, 9f, 0f, false, true, 9f, 9f)
+            arcToRelative(9f, 9f, 0f, false, true, -9f, 9f)
+            arcToRelative(9f, 9f, 0f, false, true, -8.2f, -5.5f)
+            moveTo(3f, 12f)
+            verticalLineTo(7f)
+            moveTo(3f, 12f)
+            horizontalLineTo(8f)
+            moveTo(12f, 7f)
+            verticalLineTo(12f)
+            lineTo(15f, 14f)
+        }
+    }.build()
+}
+
 internal val HomeAccessibilityIcon: ImageVector by lazy {
     ImageVector.Builder(
         name = "HomeAccessibility",

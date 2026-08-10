@@ -16,9 +16,11 @@ import android.system.Os
 import android.util.Log
 import com.safeme.app.MainActivity
 import com.safeme.app.R
+import com.safeme.app.data.ACTIVITY_VPN
 import com.safeme.app.data.DnsVpnSettings
 import com.safeme.app.data.NOTIF_CUSTOM
 import com.safeme.app.data.NOTIF_HIDE
+import com.safeme.app.data.addActivity
 import com.safeme.app.data.dnsVpnSettings
 import com.safeme.app.data.setVpnEnabled
 import com.safeme.app.vpn.DnsPreset
@@ -138,6 +140,10 @@ class SafeMeVpnService : VpnService() {
      */
     @Volatile
     private var destroyed = false
+
+    /** Last activity-log state (active vs stopped) so restarts don't spam the feed. */
+    @Volatile
+    private var lastLoggedVpnActive: Boolean? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -346,6 +352,7 @@ class SafeMeVpnService : VpnService() {
         }
         isActive = true
         VpnStatusStore.setActive(true)
+        logVpnTransition("VPN active", "Internet filtering is on")
         // A successful establish is a fresh attempt: reset the anti-storm
         // window so a user-initiated restart (preset/whitelist change) is
         // never gated by a stale stamp from an earlier watchdog cycle — the
@@ -466,9 +473,33 @@ class SafeMeVpnService : VpnService() {
         Log.d("SafeMeVpn", "stopTunnel called")
         watchdogThread?.interrupt()
         watchdogThread = null
+        // Only report a user-visible stop when the tunnel was actually up
+        // (startTunnel calls stopTunnel() as a reset on a cold start).
+        val wasActive = isActive
         closeInterface()
+        if (wasActive) {
+            logVpnTransition("VPN stopped", "Internet filtering is off")
+        }
         isActive = false
         VpnStatusStore.setActive(false)
+    }
+
+    /**
+     * Appends a VPN state event to the activity log, deduped so restarts and
+     * re-arms only appear once per real on/off transition.
+     */
+    private fun logVpnTransition(title: String, sub: String) {
+        val active = title.startsWith("VPN active")
+        if (lastLoggedVpnActive == active) return
+        lastLoggedVpnActive = active
+        try {
+            commandExecutor.execute {
+                runCatching {
+                    runBlocking { applicationContext.addActivity(ACTIVITY_VPN, title, sub) }
+                }
+            }
+        } catch (_: Throwable) {
+        }
     }
 
     override fun onRevoke() {

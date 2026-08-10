@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
+import com.safeme.app.data.ACTIVITY_BLOCK
+import com.safeme.app.data.addActivity
 import com.safeme.app.data.incrementBlockedToday
 import com.safeme.app.ui.screens.blockscreen.BlockOverlay
 import com.safeme.app.ui.theme.SafeMeApp
@@ -37,20 +39,21 @@ class BlockGateActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val pkg = intent.getStringExtra(EXTRA_PACKAGE).orEmpty()
+        val matched = intent.getStringExtra(EXTRA_MATCHED).orEmpty()
+        val type = intent.getStringExtra(EXTRA_TYPE).orEmpty()
+        val redirect = intent.getStringExtra(EXTRA_REDIRECT).orEmpty()
+
         if (savedInstanceState == null) {
             lifecycleScope.launch {
                 try {
                     incrementBlockedToday()
+                    addBlockActivity(pkg, matched, type)
                 } catch (t: Throwable) {
                     // Persistence failure must never crash the gate.
                 }
             }
         }
-
-        val pkg = intent.getStringExtra(EXTRA_PACKAGE).orEmpty()
-        val matched = intent.getStringExtra(EXTRA_MATCHED).orEmpty()
-        val type = intent.getStringExtra(EXTRA_TYPE).orEmpty()
-        val redirect = intent.getStringExtra(EXTRA_REDIRECT).orEmpty()
 
         setContent {
             SafeMeApp {
@@ -63,6 +66,28 @@ class BlockGateActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private suspend fun addBlockActivity(pkg: String, matched: String, type: String) {
+        val label = runCatching {
+            packageManager.getApplicationLabel(
+                packageManager.getApplicationInfo(pkg, 0)
+            ).toString()
+        }.getOrDefault(pkg.ifBlank { "an app" })
+        val title = when (type) {
+            "website" -> "Website blocked"
+            "title" -> "Settings page blocked"
+            "schedule" -> "Blocked $label"
+            "pu" -> "Uninstall blocked"
+            else -> if (matched.isNotEmpty()) "Keyword blocked" else "Blocked $label"
+        }
+        val sub = when {
+            matched.isNotEmpty() -> matched
+            type == "schedule" -> "Launch blocked by schedule"
+            type == "pu" -> "Prevent Uninstall is on"
+            else -> "Blocked by SafeMe"
+        }
+        addActivity(ACTIVITY_BLOCK, title, sub)
     }
 
     private fun closeGate(redirect: String) {

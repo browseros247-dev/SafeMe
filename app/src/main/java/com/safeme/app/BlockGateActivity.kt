@@ -102,6 +102,7 @@ private fun BlockGate(
     // updates when the system locale changes mid-display.
     val locale = LocalConfiguration.current.locales[0]
     val puGateMessage = stringResource(R.string.pu_gate_message)
+    val scheduleGateMessage = stringResource(R.string.schedule_gate_message)
     val msg = remember(pkg, matched, type, locale) {
         when (type) {
             "website" ->
@@ -109,6 +110,7 @@ private fun BlockGate(
             "title" ->
                 if (matched.isNotEmpty()) "Settings page blocked by SafeMe: $matched" else "Settings page blocked by SafeMe"
             "pu" -> puGateMessage
+            "schedule" -> scheduleGateMessage
             else ->
                 if (matched.isNotEmpty()) "Keyword blocked by SafeMe: $matched" else "Blocked by SafeMe"
         }

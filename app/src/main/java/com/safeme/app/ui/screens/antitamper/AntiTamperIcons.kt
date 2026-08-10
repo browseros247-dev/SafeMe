@@ -89,6 +89,36 @@ val AtShieldCheckIcon: ImageVector by lazy {
     }.build()
 }
 
+/** Magnifier (service picker search). */
+val AtSearchIcon: ImageVector by lazy {
+    iconBuilder("AtSearch").apply {
+        strokePath {
+            moveTo(11f, 19f)
+            curveToRelative(4.42f, 0f, 8f, -3.58f, 8f, -8f)
+            reflectiveCurveToRelative(-3.58f, -8f, -8f, -8f)
+            reflectiveCurveToRelative(-8f, 3.58f, -8f, 8f)
+            reflectiveCurveToRelative(3.58f, 8f, 8f, 8f)
+            close()
+        }
+        strokePath {
+            moveTo(21f, 21f)
+            lineTo(16.65f, 16.65f)
+        }
+    }.build()
+}
+
+/** X (remove a protected service). */
+val AtXIcon: ImageVector by lazy {
+    iconBuilder("AtX").apply {
+        strokePath {
+            moveTo(18f, 6f)
+            lineTo(6f, 18f)
+            moveTo(6f, 6f)
+            lineTo(18f, 18f)
+        }
+    }.build()
+}
+
 /** Chevron-right from the prototype protect-btn. */
 val AtChevronRightIcon: ImageVector by lazy {
     iconBuilder("AtChevronRight").apply {

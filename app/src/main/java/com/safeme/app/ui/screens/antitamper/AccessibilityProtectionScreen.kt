@@ -1,7 +1,8 @@
 package com.safeme.app.ui.screens.antitamper
 
-import android.content.Intent
-import android.provider.Settings
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,43 +36,51 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
+import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.screens.blockscreen.InfoIcon
 import com.safeme.app.ui.screens.permissions.ChevronIcon
 import com.safeme.app.ui.theme.LocalAppColors
-import com.safeme.app.ui.util.isAccessibilityEnabled
 
 /**
  * Accessibility Protection — the prototype's "self-protect" screen.
  *
- * Shows whether SafeMe's own Accessibility Service is running (the engine
- * behind content blocking and the Prevent Uninstall guards) and offers the
- * system path to enable it when it is off. The status refreshes whenever the
- * screen regains focus, so a toggle made in system settings is reflected
- * immediately.
+ * The master on/off toggle is the feature's control: when ON the guard
+ * watches SafeMe's own Accessibility Service and every selected third-party
+ * service, restoring them (or notifying) when they are disabled or stopped.
+ * The screen shows the live WRITE_SECURE_SETTINGS grant state (what the
+ * auto-restore path actually needs) and the list of protected services with
+ * their live enabled state.
  */
 @Composable
 fun AccessibilityProtectionScreen(
     onBack: () -> Unit,
+    onOpenServicePicker: () -> Unit = {},
+    viewModel: AccessibilityProtectionViewModel = viewModel(),
 ) {
+    val state by viewModel.uiState.collectAsState()
     val colors = LocalAppColors.current
-    val context = LocalContext.current
-    var enabled by remember { mutableStateOf(isAccessibilityEnabled(context)) }
 
+    // Live state refreshes whenever the screen regains focus, so a toggle
+    // made in system settings is reflected immediately.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                enabled = isAccessibilityEnabled(context)
+                viewModel.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -97,22 +106,23 @@ fun AccessibilityProtectionScreen(
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
             ) {
-                ServiceStatusCard(
-                    enabled = enabled,
-                    onEnable = {
-                        runCatching {
-                            context.startActivity(
-                                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
-                    },
+                MasterCard(
+                    enabled = state.protectionEnabled,
+                    onToggle = { viewModel.setEnabled(!state.protectionEnabled) },
                 )
+                Spacer(Modifier.height(12.dp))
+                PermissionCard(
+                    granted = state.writeSecureGranted,
+                    onRecheck = { viewModel.recheckPermission() },
+                )
+                Spacer(Modifier.height(16.dp))
+                ProtectAnotherServiceCard(onClick = onOpenServicePicker)
                 Spacer(Modifier.height(12.dp))
                 Note()
                 Spacer(Modifier.height(16.dp))
             }
         }
+        ToastHost(flow = viewModel.toasts)
     }
 }
 
@@ -164,11 +174,11 @@ private fun Header(
     }
 }
 
-/** Live status card for SafeMe's own Accessibility Service. */
+/** Master on/off toggle — the feature's control. */
 @Composable
-private fun ServiceStatusCard(
+private fun MasterCard(
     enabled: Boolean,
-    onEnable: () -> Unit,
+    onToggle: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     Column(
@@ -177,75 +187,202 @@ private fun ServiceStatusCard(
             .cardShape(radius = 20.dp)
             .padding(16.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(if (enabled) colors.successBg else colors.dangerBg),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = AtShieldCheckIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = if (enabled) colors.success else colors.danger,
-                )
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.ap_card_title),
-                    fontSize = 13.sp,
+                    text = stringResource(R.string.ap_master_title),
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.ink,
                 )
                 Text(
-                    text = stringResource(R.string.ap_card_sub),
+                    text = stringResource(R.string.ap_master_sub),
                     fontSize = 12.5.sp,
                     lineHeight = 18.sp,
                     color = colors.ink2,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            Spacer(Modifier.size(12.dp))
+            MasterSwitch(checked = enabled, onToggle = onToggle)
+        }
+    }
+}
+
+/** WRITE_SECURE_SETTINGS grant state + one-time ADB setup instructions. */
+@Composable
+private fun PermissionCard(
+    granted: Boolean,
+    onRecheck: () -> Unit,
+) {
+    val colors = LocalAppColors.current
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShape(radius = 20.dp)
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.ap_perm_title),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.ink,
+                )
+                Text(
+                    text = stringResource(
+                        if (granted) R.string.ap_perm_granted else R.string.ap_perm_missing,
+                    ),
+                    fontSize = 12.5.sp,
+                    lineHeight = 18.sp,
+                    color = colors.ink2,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            Spacer(Modifier.size(12.dp))
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(if (enabled) colors.successBg else colors.dangerBg)
+                    .background(if (granted) colors.successBg else colors.warningBg)
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = stringResource(
-                        if (enabled) R.string.ap_status_enabled else R.string.ap_status_disabled,
+                        if (granted) R.string.ap_perm_pill_granted else R.string.ap_perm_pill_missing,
                     ),
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (enabled) colors.success else colors.danger,
+                    color = if (granted) colors.success else colors.warning,
                 )
             }
         }
-        if (!enabled) {
+        if (!granted) {
             Spacer(Modifier.height(12.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(colors.brandSoft)
-                    .clickable(onClick = onEnable)
+                    .clickable { expanded = !expanded }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = stringResource(R.string.ap_enable_action),
-                    fontSize = 13.5.sp,
+                    text = stringResource(
+                        if (expanded) R.string.ap_perm_hide else R.string.ap_perm_show,
+                    ),
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.brandDark,
                 )
             }
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.surface.copy(alpha = 0.6f))
+                        .border(1.dp, colors.line, RoundedCornerShape(12.dp))
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ap_perm_step_1),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = colors.ink2,
+                    )
+                    Text(
+                        text = stringResource(R.string.ap_perm_step_2),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = colors.ink2,
+                    )
+                    Text(
+                        text = stringResource(R.string.ap_perm_command, "com.safeme.app"),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.brandDark,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.brandSoft)
+                            .clickable(onClick = onRecheck)
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ap_perm_recheck),
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.brandDark,
+                        )
+                    }
+                }
+            }
         }
+    }
+}
+
+/**
+ * Full-width "Protect Another App's Accessibility Service" card. Opens the
+ * eligible-apps list so the user can add third-party services to protection.
+ * Mirrors the Anti-Tamper screen's protect button design.
+ */
+@Composable
+private fun ProtectAnotherServiceCard(onClick: () -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(colors.brandSoft)
+            .border(1.dp, colors.brand.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .shadow(
+                    elevation = 6.dp,
+                    shape = RoundedCornerShape(13.dp),
+                    ambientColor = colors.brand.copy(alpha = 0.32f),
+                    spotColor = colors.brand.copy(alpha = 0.32f),
+                )
+                .clip(RoundedCornerShape(13.dp))
+                .background(colors.brand),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = AtShieldPlusIcon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color.White,
+            )
+        }
+        Text(
+            text = stringResource(R.string.ap_add_service),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 20.sp,
+            color = colors.brandDark,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = AtChevronRightIcon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = colors.brand,
+        )
     }
 }
 
@@ -268,6 +405,39 @@ private fun Note() {
             fontSize = 12.sp,
             lineHeight = 18.sp,
             color = colors.ink2,
+        )
+    }
+}
+
+/** Replica of the Blocking screen's animated switch. */
+@Composable
+private fun MasterSwitch(checked: Boolean, onToggle: () -> Unit) {
+    val colors = LocalAppColors.current
+    val bg by animateColorAsState(
+        targetValue = if (checked) colors.brand else colors.swOff,
+        animationSpec = tween(200),
+        label = "switchBg",
+    )
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 21.dp else 0.dp,
+        animationSpec = tween(200),
+        label = "switchThumb",
+    )
+    Box(
+        modifier = Modifier
+            .size(width = 52.dp, height = 31.dp)
+            .clip(CircleShape)
+            .background(bg)
+            .semantics { role = Role.Switch }
+            .clickable(role = Role.Switch, onClick = onToggle),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = 3.dp + thumbOffset)
+                .size(25.dp)
+                .shadow(2.dp, CircleShape)
+                .background(Color.White, CircleShape),
         )
     }
 }

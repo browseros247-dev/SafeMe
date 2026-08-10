@@ -1,5 +1,7 @@
 package com.safeme.app.ui.screens.schedule
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +29,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -35,6 +39,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -44,23 +50,40 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.ui.components.ToastHost
+import com.safeme.app.ui.screens.home.HomeAccessibilityIcon
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.ui.theme.SerifFamily
 
 private val HeroAccent = Color(0xFFE8A07E)
 private val HeroPillDot = Color(0xFF7CE0B3)
+private val HeroPillDotOff = Color(0xFFFFB4AB)
 
 @Composable
 fun ScheduleScreen(
     onNewSchedule: () -> Unit = {},
-    onEditSchedule: () -> Unit = {},
+    onEditSchedule: (String) -> Unit = {},
     viewModel: ScheduleViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val colors = LocalAppColors.current
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Re-check the accessibility service every time the tab regains focus, so
+    // the warning clears as soon as the user enables it (and any prior
+    // dismissal is forgotten so a future disable re-arms the banner).
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         Column(
@@ -76,8 +99,18 @@ fun ScheduleScreen(
             )
             HeroCard(
                 count = state.heroCount,
+                pill = state.heroPill,
                 nextBoundary = state.nextBoundary
             )
+            if (state.showA11yWarning) {
+                Spacer(Modifier.height(12.dp))
+                A11yWarningBanner(
+                    onEnable = {
+                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    },
+                    onDismiss = viewModel::dismissA11yWarning
+                )
+            }
             SectionTitle(text = stringResource(R.string.sch_your_schedules))
             ScheduleList(
                 cards = state.cards,
@@ -135,7 +168,7 @@ private fun SubHeader(title: String, onNew: () -> Unit) {
 }
 
 @Composable
-private fun HeroCard(count: String, nextBoundary: String) {
+private fun HeroCard(count: String, pill: String, nextBoundary: String) {
     val colors = LocalAppColors.current
     Box(
         modifier = Modifier
@@ -190,8 +223,8 @@ private fun HeroCard(count: String, nextBoundary: String) {
             )
             Spacer(Modifier.size(14.dp))
             HeroPill(
-                text = stringResource(R.string.sch_hero_pill),
-                dotColor = HeroPillDot
+                text = pill,
+                dotColor = if (pill == stringResource(R.string.sch_hero_pill_on)) HeroPillDot else HeroPillDotOff
             )
         }
     }
@@ -243,10 +276,83 @@ private fun HeroPill(text: String, dotColor: Color) {
 }
 
 @Composable
+private fun A11yWarningBanner(onEnable: () -> Unit, onDismiss: () -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShape(radius = 20.dp)
+            .background(colors.dangerBg)
+            .border(1.dp, colors.danger, RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(colors.dangerBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = HomeAccessibilityIcon,
+                contentDescription = null,
+                tint = colors.danger,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.sch_warn_a11y_title),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.ink
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = stringResource(R.string.sch_warn_a11y_sub),
+                fontSize = 12.5.sp,
+                lineHeight = 17.sp,
+                color = colors.ink2
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .height(38.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(colors.brandSoft)
+                .clickable(onClick = onEnable)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.sch_warn_a11y_enable),
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.brandDark
+            )
+        }
+        Spacer(Modifier.width(4.dp))
+        Icon(
+            imageVector = SchCloseIcon,
+            contentDescription = stringResource(R.string.sch_warn_a11y_dismiss),
+            tint = colors.ink3,
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onDismiss)
+                .padding(3.dp)
+        )
+    }
+}
+
+@Composable
 private fun ScheduleList(
     cards: List<ScheduleCard>,
-    onToggle: (Int) -> Unit,
-    onEdit: () -> Unit,
+    onToggle: (String) -> Unit,
+    onEdit: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -261,7 +367,7 @@ private fun ScheduleList(
             ScheduleCard(
                 card = card,
                 onToggle = { onToggle(card.id) },
-                onEdit = onEdit
+                onEdit = { onEdit(card.id) }
             )
         }
     }

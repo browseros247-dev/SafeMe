@@ -330,7 +330,7 @@ private fun QaGrid(
                 tint = colors.warning,
                 title = stringResource(R.string.prof_applock_title),
                 sub = stringResource(R.string.prof_applock_sub),
-                onClick = onToast,
+                onClick = { onOpen("applock") },
                 modifier = Modifier.weight(1f)
             )
             QaCard(

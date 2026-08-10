@@ -19,8 +19,11 @@ import com.safeme.app.data.TitleMatchMode
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.normalizeDomain
 import com.safeme.app.data.preventUninstallPrefs
+import com.safeme.app.protect.A11yProtectionGuard
+import com.safeme.app.protect.A11yProtectionUtils
 import com.safeme.app.protect.DeviceAdminUtils
 import com.safeme.app.protect.ProtectedSystemPages
+import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.protect.UninstallBlockers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,8 +85,19 @@ class SafeMeAccessibilityService : AccessibilityService() {
     /** Stored runnable for the eviction toast — [M3 fix] allows cancellation on service destroy. */
     private var pendingToastRunnable: Runnable? = null
 
+    /** Separate cooldown tracker for schedule blocks — never suppresses keyword/PU blocks. */
+    @Volatile
+    private var lastScheduleBlockKey: String? = null
+
+    @Volatile
+    private var lastScheduleBlockAt: Long = 0L
+
+    @Volatile
+    private var lastScheduleRecheckMs: Long = 0L
+
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = this
         serviceScope.launch {
             try {
                 blockingPrefs().collect { cachedState = it }
@@ -98,6 +112,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 cachedPuEnabled = false
             }
         }
+        // Re-arm the accessibility-protection guard + self-heal (background;
+        // no-op when the protection toggle is off).
+        A11yProtectionUtils.selfHealAllAsync(this)
+        A11yProtectionGuard.getInstance().ensureWatching(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -120,6 +138,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // switch: they gate only on the PU DataStore flag.
         if (cachedPuEnabled) {
             if (handlePreventUninstall(event, pkg)) return
+        }
+
+        // Schedule-Based App Blocking: launch/UI blocking is independent of the
+        // keyword engine and the master blocking switch.
+        if (isScheduleBlocked(pkg)) {
+            launchScheduleGate(pkg)
+            return
         }
 
         val state = cachedState ?: return
@@ -658,6 +683,58 @@ class SafeMeAccessibilityService : AccessibilityService() {
         startActivity(intent)
     }
 
+    /**
+     * True when [pkg] is launch-blocked by an active schedule. With a
+     * "block everything" schedule active, critical system surfaces stay
+     * reachable so the user is never locked out of the launcher/Settings.
+     */
+    private fun isScheduleBlocked(pkg: String): Boolean {
+        if (!ScheduleEngine.isLaunchBlocked(pkg)) return false
+        if (ScheduleEngine.isLaunchBlockAllActive() && pkg in SCHEDULE_SYSTEM_EXEMPT) return false
+        return true
+    }
+
+    private fun launchScheduleGate(pkg: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastScheduleBlockKey == pkg && now - lastScheduleBlockAt < SCHEDULE_COOLDOWN_MS) return
+        lastScheduleBlockKey = pkg
+        lastScheduleBlockAt = now
+        val intent = Intent(this, BlockGateActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+            )
+            putExtra(BlockGateActivity.EXTRA_PACKAGE, pkg)
+            putExtra(BlockGateActivity.EXTRA_MATCHED, "")
+            putExtra(BlockGateActivity.EXTRA_TYPE, "schedule")
+        }
+        startActivity(intent)
+    }
+
+    /**
+     * Re-checks the current foreground window against the schedule sets.
+     * Called by [ScheduleEngine] when the active launch-block set changes, so
+     * a block that starts while the app is already open still takes effect.
+     * Throttled.
+     */
+    private fun recheckScheduleBlock() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastScheduleRecheckMs < SCHEDULE_RECHECK_THROTTLE_MS) return
+        lastScheduleRecheckMs = now
+        try {
+            val root = rootInActiveWindow ?: return
+            try {
+                val pkg = root.packageName?.toString() ?: return
+                val ownPackage = applicationContext.packageName ?: return
+                if (pkg == ownPackage) return
+                if (isScheduleBlocked(pkg)) launchScheduleGate(pkg)
+            } finally {
+                recycle(root)
+            }
+        } catch (_: Throwable) {
+        }
+    }
+
     override fun onInterrupt() {
         // No-op.
     }
@@ -666,6 +743,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // [M3 fix] Cancel any pending eviction toast before destroying.
         pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
         pendingToastRunnable = null
+        if (instance === this) instance = null
+        // Re-arm on the shared heal executor (survives serviceScope.cancel())
+        // — an unbind may be the precursor to the service being disabled.
+        A11yProtectionUtils.selfHealAllAsync(this)
         serviceScope.cancel()
         return super.onUnbind(intent)
     }
@@ -674,6 +755,8 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // [M3 fix] Cancel any pending eviction toast before destroying.
         pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
         pendingToastRunnable = null
+        if (instance === this) instance = null
+        A11yProtectionUtils.selfHealAllAsync(this)
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -683,7 +766,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val type: String,
     )
 
-    private companion object {
+    companion object {
         const val TAG = "SafeMeA11y"
         const val COOLDOWN_MS = 4_000L
         const val MAX_DEPTH = 12
@@ -692,6 +775,43 @@ class SafeMeAccessibilityService : AccessibilityService() {
         const val A11Y_PAGE_KICK_THROTTLE_MS = 15_000L
         const val PU_KICK_TOAST_THROTTLE_MS = 60_000L
         const val PU_KICK_TOAST_DELAY_MS = 700L
+        const val SCHEDULE_COOLDOWN_MS = 4_000L
+        const val SCHEDULE_RECHECK_THROTTLE_MS = 5_000L
+
+        @Volatile
+        private var instance: SafeMeAccessibilityService? = null
+
+        /**
+         * Pokes the live service to re-check the current foreground window.
+         * Called by [ScheduleEngine] when the active launch-block set changes.
+         */
+        fun onScheduleSetsChanged() {
+            val service = instance ?: return
+            try {
+                Handler(Looper.getMainLooper()).post {
+                    runCatching { service.recheckScheduleBlock() }
+                }
+            } catch (_: Throwable) {
+            }
+        }
+
+        /**
+         * Surfaces that must stay reachable during a "block everything"
+         * schedule so the user is never locked out of the device.
+         */
+        private val SCHEDULE_SYSTEM_EXEMPT = setOf(
+            "com.android.systemui",
+            "com.android.settings",
+            "com.android.launcher3",
+            "com.google.android.apps.nexuslauncher",
+            "com.android.packageinstaller",
+            "com.android.permissioncontroller",
+            "com.google.android.permissioncontroller",
+            "com.android.documentsui",
+            "com.android.providers.media",
+            "com.android.phone",
+            "com.android.server.telecom",
+        )
     }
 
     // [H3 fix] Removed private isSettingsPackage + SETTINGS_PACKAGES — now

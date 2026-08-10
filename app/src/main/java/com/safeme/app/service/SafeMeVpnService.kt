@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
@@ -74,6 +75,45 @@ class SafeMeVpnService : VpnService() {
 
         @Volatile
         var isActive = false
+
+        /**
+         * Packages whose internet must be blocked right now (per-app-block
+         * tunnel mode). Managed by [com.safeme.app.protect.ScheduleEngine].
+         */
+        @Volatile
+        var scheduledBlockApps: Set<String> = emptySet()
+
+        /**
+         * True when a "block everything" schedule is internet-blocking: the
+         * whole device's traffic is routed into the TUN and black-holed,
+         * except SafeMe itself and the VPN whitelist.
+         */
+        @Volatile
+        var scheduledBlockAll: Boolean = false
+
+        /**
+         * Applies the current scheduled internet-block set. Updates the
+         * service-side state, then:
+         *  - tunnel already running → restarts it so it rebuilds in the mode
+         *    matching the new set (per-app block / block-all / DNS-filter);
+         *  - tunnel not running but a block is now active → STARTS the tunnel
+         *    (consent is sticky once granted, so this works whenever the user
+         *    has ever accepted the VPN; without consent there is nothing we
+         *    can do silently, so the start is skipped);
+         *  - nothing active → leaves the tunnel as-is.
+         */
+        fun applyScheduledBlocks(packages: Set<String>, blockAll: Boolean, context: Context) {
+            scheduledBlockApps = packages
+            scheduledBlockAll = blockAll
+            val intent = Intent(context, SafeMeVpnService::class.java)
+            when {
+                isActive || VpnStatusStore.active.value -> intent.setAction(ACTION_RESTART)
+                (scheduledBlockAll || scheduledBlockApps.isNotEmpty()) &&
+                    VpnService.prepare(context) == null -> intent.setAction(ACTION_START)
+                else -> return
+            }
+            runCatching { context.startService(intent) }
+        }
     }
 
     private val commandExecutor: ExecutorService = Executors.newSingleThreadExecutor { r ->
@@ -110,14 +150,25 @@ class SafeMeVpnService : VpnService() {
                 // foreground notification would linger with no tunnel behind it.
                 dispatchCommand {
                     stopTunnel()
-                    stopSelf()
+                    // Scheduled internet blocks are independent of the cosmetic
+                    // switch — re-arm the tunnel in block mode instead of
+                    // letting the restriction silently lapse.
+                    if (hasScheduledInternetBlock()) {
+                        startTunnel()
+                    } else {
+                        stopSelf()
+                    }
                 }
             }
             ACTION_STOP_PERSIST -> {
                 dispatchCommand {
                     stopTunnel()
                     runBlocking { setVpnEnabled(false) }
-                    stopSelf()
+                    if (hasScheduledInternetBlock()) {
+                        startTunnel()
+                    } else {
+                        stopSelf()
+                    }
                 }
             }
             ACTION_UPDATE_NOTIF -> {
@@ -166,7 +217,10 @@ class SafeMeVpnService : VpnService() {
             stopTunnel()
 
             val vpnSettings = runBlocking { dnsVpnSettings().first() }
-            if (!vpnSettings.enabled) {
+            // The tunnel runs when the VPN feature is on OR a schedule is
+            // internet-blocking right now (mirrors the reference: scheduled
+            // blocks keep enforcement even when the cosmetic switch is off).
+            if (!vpnSettings.enabled && !hasScheduledInternetBlock()) {
                 stopSelf()
                 return
             }
@@ -186,6 +240,9 @@ class SafeMeVpnService : VpnService() {
             stopSelf()
         }
     }
+
+    private fun hasScheduledInternetBlock(): Boolean =
+        scheduledBlockAll || scheduledBlockApps.isNotEmpty()
 
     /**
      * Reference-style DNS-filtering tunnel: advertise the family-safe resolver
@@ -224,15 +281,43 @@ class SafeMeVpnService : VpnService() {
                 }
             }
 
-            // Whitelisted apps (and the app itself) bypass the VPN entirely.
-            runCatching { builder.addDisallowedApplication(packageName) }
-            vpnSettings.whitelist.forEach { pkg ->
-                runCatching { builder.addDisallowedApplication(pkg) }
+            // PER_APP_BLOCK mode: active when a schedule targets specific apps
+            // or the whole device. Only the targeted apps' traffic enters the
+            // TUN (addRoute + addAllowedApplication) and, since nothing is
+            // ever forwarded from the TUN, it is black-holed — those apps get
+            // no internet while every other app keeps working. allowBypass()
+            // must NOT be called here: it would let targeted apps circumvent
+            // the block (same pattern as the reference / NetGuard).
+            val perAppBlockMode = scheduledBlockAll || scheduledBlockApps.isNotEmpty()
+            if (perAppBlockMode) {
+                runCatching { builder.addRoute("0.0.0.0", 0) }
+                runCatching { builder.addRoute("::", 0) }
+                if (scheduledBlockAll) {
+                    // Block everything except SafeMe + the VPN whitelist.
+                    runCatching { builder.addDisallowedApplication(packageName) }
+                    vpnSettings.whitelist.forEach { pkg ->
+                        runCatching { builder.addDisallowedApplication(pkg) }
+                    }
+                } else {
+                    // Block only the targeted apps; SafeMe and whitelisted apps
+                    // are not in the allowed list, so they bypass automatically.
+                    scheduledBlockApps.forEach { pkg ->
+                        runCatching { builder.addAllowedApplication(pkg) }
+                    }
+                }
+            } else {
+                // DNS_FILTER mode (normal): whitelisted apps (and the app
+                // itself) bypass the VPN entirely; everyone else uses the
+                // family-safe resolver.
+                runCatching { builder.addDisallowedApplication(packageName) }
+                vpnSettings.whitelist.forEach { pkg ->
+                    runCatching { builder.addDisallowedApplication(pkg) }
+                }
+                // Apps that explicitly request it may bypass the VPN (some
+                // system services require this). DNS filtering still applies
+                // to all other apps.
+                builder.allowBypass()
             }
-
-            // Apps that explicitly request it may bypass the VPN (some system
-            // services require this). DNS filtering still applies to all other apps.
-            builder.allowBypass()
 
             builder.establish()
         } catch (_: Exception) {
@@ -276,7 +361,9 @@ class SafeMeVpnService : VpnService() {
         try {
             stopTunnel()
             val vpnSettings = runBlocking { dnsVpnSettings().first() }
-            if (!vpnSettings.enabled) {
+            // A scheduled internet block keeps the tunnel alive even when the
+            // cosmetic VPN switch is off (mirrors startTunnel's guard).
+            if (!vpnSettings.enabled && !hasScheduledInternetBlock()) {
                 stopSelf()
                 return
             }

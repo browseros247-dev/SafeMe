@@ -70,6 +70,80 @@ internal val SchClockIcon: ImageVector by lazy {
     }.build()
 }
 
+internal val SchSearchIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "SchSearch",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(11f, 11f)
+            arcToRelative(7f, 7f, 0f, false, true, 14f, 0f)
+            arcToRelative(7f, 7f, 0f, false, true, -14f, 0f)
+            moveTo(21f, 21f)
+            lineToRelative(-4.3f, -4.3f)
+        }
+    }.build()
+}
+
+internal val SchCheckIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "SchCheck",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 3f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(5f, 12f)
+            lineToRelative(5f, 5f)
+            lineToRelative(10f, -11f)
+        }
+    }.build()
+}
+
+internal val SchNameIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "SchName",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(4f, 6f)
+            horizontalLineTo(20f)
+            moveTo(4f, 12f)
+            horizontalLineTo(20f)
+            moveTo(4f, 18f)
+            horizontalLineTo(12f)
+        }
+    }.build()
+}
+
 internal val SchInfoIcon: ImageVector by lazy {
     ImageVector.Builder(
         name = "SchInfo",
@@ -95,6 +169,31 @@ internal val SchInfoIcon: ImageVector by lazy {
             horizontalLineTo(12f)
             verticalLineToRelative(4f)
             horizontalLineTo(13f)
+        }
+    }.build()
+}
+
+/** Small × for dismissing the a11y warning banner. */
+internal val SchCloseIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "SchClose",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(6f, 6f)
+            lineTo(18f, 18f)
+            moveTo(18f, 6f)
+            lineTo(6f, 18f)
         }
     }.build()
 }

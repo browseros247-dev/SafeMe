@@ -32,12 +32,15 @@ import com.safeme.app.R
 import com.safeme.app.ui.components.BottomNavBar
 import com.safeme.app.ui.screens.antitamper.AccessibilityProtectionScreen
 import com.safeme.app.ui.screens.antitamper.AntiTamperScreen
+import com.safeme.app.ui.screens.antitamper.ServicePickerScreen
+import com.safeme.app.ui.screens.applock.AppLockScreen
 import com.safeme.app.ui.screens.blocking.BlockingScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
 import com.safeme.app.ui.screens.focus.FocusScreen
 import com.safeme.app.ui.screens.home.HomeScreen
 import com.safeme.app.ui.screens.keywords.KeywordManagerScreen
 import com.safeme.app.ui.screens.profile.ProfileScreen
+import com.safeme.app.ui.screens.schedule.ScheduleEditScreen
 import com.safeme.app.ui.screens.schedule.ScheduleScreen
 import com.safeme.app.ui.screens.titleblock.TitleBlockScreen
 import com.safeme.app.ui.screens.vpn.DnsVpnScreen
@@ -128,7 +131,13 @@ fun MainScreen() {
                 )
             }
             composable("selfprotect") {
-                AccessibilityProtectionScreen(onBack = { navController.popBackStack() })
+                AccessibilityProtectionScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenServicePicker = { navController.navigate("servicepicker") },
+                )
+            }
+            composable("servicepicker") {
+                ServicePickerScreen(onBack = { navController.popBackStack() })
             }
             composable("focus") {
                 FocusScreen(
@@ -139,7 +148,7 @@ fun MainScreen() {
             composable("schedule") {
                 ScheduleScreen(
                     onNewSchedule = { navController.navigate("scheduleedit") },
-                    onEditSchedule = { navController.navigate("scheduleedit") }
+                    onEditSchedule = { id -> navController.navigate("scheduleedit?editId=$id") }
                 )
             }
             composable("profile") {
@@ -152,9 +161,13 @@ fun MainScreen() {
                             "crash" -> navController.navigate("crash")
                             "relay" -> navController.navigate("relay")
                             "about" -> navController.navigate("about")
+                            "applock" -> navController.navigate("applock")
                         }
                     }
                 )
+            }
+            composable("applock") {
+                AppLockScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = "keywords?type={type}&tab={tab}",
@@ -169,7 +182,15 @@ fun MainScreen() {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("scheduleedit") { PlaceholderScreen(R.string.home_scheduleedit_title) }
+            composable(
+                route = "scheduleedit?editId={editId}",
+                arguments = listOf(navArgument("editId") { nullable = true }),
+            ) { entry ->
+                ScheduleEditScreen(
+                    editId = entry.arguments?.getString("editId"),
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable("backup") { PlaceholderScreen(R.string.home_backup_title) }
             composable("history") { PlaceholderScreen(R.string.home_history_title) }
             composable("focusactive") { PlaceholderScreen(R.string.foc_active_title) }

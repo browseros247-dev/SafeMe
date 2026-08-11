@@ -21,6 +21,7 @@
     <string name="perm_required_toast">Grant the required permissions to continue</string>
     <string name="perm_skipped_toast">Skipped — you can grant it later from Profile</string>
     <string name="perm_welcome_toast">Welcome to SafeMe — you\'re protected</string>
+    <string name="perm_all_granted_toast">All permissions granted — you\'re fully protected</string>
 
     <string name="nav_home">Home</string>
     <string name="nav_block">Block</string>

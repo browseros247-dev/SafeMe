@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -505,6 +506,7 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, placehol
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 15.sp, color = colors.ink),
+                cursorBrush = SolidColor(colors.ink),
             )
         }
     }

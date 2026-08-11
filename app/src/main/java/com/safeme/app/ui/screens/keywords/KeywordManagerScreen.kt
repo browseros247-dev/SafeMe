@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -447,6 +448,7 @@ private fun SearchField(placeholder: String, value: String, onValueChange: (Stri
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = TextStyle(fontSize = 14.sp, color = colors.ink),
+                cursorBrush = SolidColor(colors.ink),
             )
         }
     }

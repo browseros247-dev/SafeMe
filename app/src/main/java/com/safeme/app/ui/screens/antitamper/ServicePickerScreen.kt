@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -184,6 +185,7 @@ private fun SearchField(
                 color = colors.ink,
             ),
             singleLine = true,
+            cursorBrush = SolidColor(colors.ink),
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 10.dp, vertical = 13.dp),

@@ -160,7 +160,9 @@ fun PermissionScreen(
                                 .height(52.dp)
                                 .then(
                                     if (granted) {
-                                        Modifier.background(colors.brandSoft, CircleShape)
+                                        Modifier
+                                            .background(colors.brandSoft, CircleShape)
+                                            .clickable(onClick = onGrant)
                                     } else {
                                         Modifier
                                             .blurredShadow(

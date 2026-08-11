@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -244,6 +245,7 @@ fun VpnAppsSheet(
                         fontSize = 15.sp,
                         color = colors.ink
                     ),
+                    cursorBrush = SolidColor(colors.ink),
                     modifier = Modifier.weight(1f),
                     decorationBox = { innerTextField ->
                         if (query.isEmpty()) {

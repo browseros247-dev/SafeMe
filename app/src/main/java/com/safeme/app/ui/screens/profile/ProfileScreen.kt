@@ -565,15 +565,6 @@ private fun SupportList(
         )
         HorizontalDivider(color = colors.line)
         ListRow(
-            icon = ProfAntennaIcon,
-            background = colors.iconDarkBg,
-            tint = colors.iconDarkFg,
-            title = stringResource(R.string.prof_relay_title),
-            sub = stringResource(R.string.prof_relay_sub),
-            onClick = { onOpen("relay") }
-        )
-        HorizontalDivider(color = colors.line)
-        ListRow(
             icon = ProfInfoIcon,
             background = colors.brandSoft,
             tint = colors.brandDark,

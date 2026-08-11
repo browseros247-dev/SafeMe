@@ -289,8 +289,7 @@ fun VpnAppsSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(320.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) { app, checked, _, onToggleApp ->
+                ) { app, checked, onToggleApp ->
                     AppRow(
                         app = app,
                         checked = checked,

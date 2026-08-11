@@ -118,7 +118,7 @@
     <string name="app_cat_video_music">Video &amp; Music</string>
     <string name="app_cat_messaging">Messaging</string>
     <string name="app_cat_shopping">Shopping</string>
-    <string name="app_cat_shipping_payment">Shipping &amp; Payment</string>
+    <string name="app_cat_payment">Payment</string>
     <string name="app_cat_games">Games</string>
     <string name="app_cat_news_prod">News &amp; Productivity</string>
     <string name="app_cat_other">Other</string>

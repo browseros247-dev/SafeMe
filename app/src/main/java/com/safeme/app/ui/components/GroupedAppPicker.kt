@@ -1,15 +1,18 @@
 package com.safeme.app.ui.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,35 +23,49 @@ import com.safeme.app.ui.theme.LocalAppColors
 
 /**
  * Shared App Picker list used by every picker in the app (schedule apps, VPN
- * whitelist). Categories render in the fixed [AppCatalog.CATEGORY_ORDER] with
- * the same sticky header style everywhere — see [AppCategoryHeader]. The row
- * rendering stays screen-specific via [row] so each picker keeps its own
- * design language; only the grouping/presentation is shared.
+ * whitelist). Matches the prototype's grouped picker: each category renders as
+ * an uppercase label above its own rounded bordered box of rows (`.app-group`:
+ * `.group-label` + `.list`), with 16dp between groups. The row rendering stays
+ * screen-specific via [row] so each picker keeps its own design language; only
+ * the grouping/presentation is shared.
  *
  * [groups] comes from `AppCatalog.groupApps(...)`, which handles search
  * filtering and hides empty categories.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GroupedAppPickerList(
     groups: List<Pair<AppCategory, List<InstalledApp>>>,
     selected: Set<String>,
     onToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
-    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
-    row: @Composable (app: InstalledApp, checked: Boolean, isLastInGroup: Boolean, onToggle: () -> Unit) -> Unit,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(16.dp),
+    row: @Composable (app: InstalledApp, checked: Boolean, onToggle: () -> Unit) -> Unit,
 ) {
+    val colors = LocalAppColors.current
     LazyColumn(
         modifier = modifier,
         verticalArrangement = verticalArrangement,
     ) {
-        groups.forEachIndexed { groupIndex, (category, apps) ->
-            stickyHeader(key = "header-${category.name}") {
-                AppCategoryHeader(category = category, first = groupIndex == 0)
-            }
-            items(apps, key = { "app-${it.packageName}" }) { app ->
-                row(app, app.packageName in selected, app == apps.last()) {
-                    onToggle(app.packageName)
+        groups.forEach { (category, apps) ->
+            item(key = "group-${category.name}") {
+                Column {
+                    AppCategoryHeader(category = category)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(colors.surface)
+                            .border(1.dp, colors.line, RoundedCornerShape(20.dp)),
+                    ) {
+                        apps.forEachIndexed { appIndex, app ->
+                            row(app, app.packageName in selected) {
+                                onToggle(app.packageName)
+                            }
+                            if (appIndex < apps.lastIndex) {
+                                HorizontalDivider(color = colors.line)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -56,12 +73,13 @@ fun GroupedAppPickerList(
 }
 
 /**
- * Prototype `.group-label`: uppercase, 11.5sp/800, ink-3, 16dp between groups,
- * 2dp horizontal inset (matching the prototype's `margin: 16px 2px 8px` and the
- * app's other `GroupLabel`s).
+ * Prototype `.app-group .group-label`: uppercase, 11.5sp/800, ink-3, 2dp
+ * horizontal inset (the prototype's `margin: 0 2px 8px`), 8dp below the label.
+ * The 16dp gap between groups comes from the picker list's vertical
+ * arrangement (`.app-group + .app-group { margin-top: 16px }`).
  */
 @Composable
-fun AppCategoryHeader(category: AppCategory, first: Boolean) {
+fun AppCategoryHeader(category: AppCategory) {
     val colors = LocalAppColors.current
     Text(
         text = stringResource(category.labelRes).uppercase(),
@@ -71,10 +89,6 @@ fun AppCategoryHeader(category: AppCategory, first: Boolean) {
         color = colors.ink3,
         modifier = Modifier
             .fillMaxWidth()
-            // Solid surface so sticky headers never show scrolled content behind them.
-            .background(colors.surface)
-            .padding(start = 2.dp, end = 2.dp, top = if (first) 8.dp else 16.dp, bottom = 8.dp),
+            .padding(start = 2.dp, end = 2.dp, bottom = 8.dp),
     )
 }
-
-

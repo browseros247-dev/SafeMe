@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -354,16 +355,13 @@ private fun ScheduleList(
     onToggle: (String) -> Unit,
     onEdit: (String) -> Unit,
 ) {
+    // Prototype `#schedList`: transparent column, 12px gap, each card is its
+    // own bordered box.
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .cardShape(radius = 20.dp)
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val colors = LocalAppColors.current
-        cards.forEachIndexed { index, card ->
-            if (index > 0) {
-                HorizontalDivider(color = colors.line)
-            }
+        cards.forEach { card ->
             ScheduleCard(
                 card = card,
                 onToggle = { onToggle(card.id) },
@@ -380,7 +378,13 @@ private fun ScheduleCard(
     onEdit: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShape(radius = 20.dp)
+            .padding(16.dp)
+    ) {
+        // Prototype `.sched-head`: icon · title/subtitle · switch.
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconBox(
                 icon = SchCalendarIcon,
@@ -395,7 +399,8 @@ private fun ScheduleCard(
                 Text(
                     text = card.name,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 19.5.sp,
+                    fontWeight = FontWeight.Bold,
                     color = colors.ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -410,35 +415,59 @@ private fun ScheduleCard(
             MasterSwitch(checked = card.enabled, onToggle = onToggle)
         }
         Spacer(Modifier.size(14.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = SchClockIcon,
-                contentDescription = null,
-                tint = colors.brand,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.size(8.dp))
-            Text(
-                text = card.time,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = colors.brandDark
-            )
+        // Prototype `.sched-body`: bordered box (radius 14, 14dp padding) that
+        // holds the time row and the summary pills.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.background, RoundedCornerShape(14.dp))
+                .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+                .padding(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = SchClockIcon,
+                    contentDescription = null,
+                    tint = colors.brand,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.size(10.dp))
+                Text(
+                    text = card.time,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = colors.brandDark,
+                    style = TextStyle(fontFeatureSettings = "tnum")
+                )
+            }
+            // Prototype `.sched-pills`: border-top + 12px padding separates the
+            // pills from the time row above.
+            Spacer(Modifier.size(12.dp))
+            HorizontalDivider(color = colors.line)
+            Spacer(Modifier.size(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextPill(text = card.mode, background = colors.successBg, contentColor = colors.success)
+                TextPill(text = card.apps, background = colors.brandSoft, contentColor = colors.brandDark)
+            }
         }
-        Spacer(Modifier.size(2.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextPill(text = card.mode, background = colors.successBg, contentColor = colors.success)
-            TextPill(text = card.apps, background = colors.iconAmberBg, contentColor = colors.warning)
-        }
-        Spacer(Modifier.size(2.dp))
+        Spacer(Modifier.size(14.dp))
+        // Prototype `.sched-foot`: next boundary + edit, space-between.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
+            Icon(
+                imageVector = SchCalendarIcon,
+                contentDescription = null,
+                tint = colors.ink3,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(Modifier.size(6.dp))
             Text(
                 text = card.next,
                 fontSize = 12.sp,
                 color = colors.ink2,
+                style = TextStyle(fontFeatureSettings = "tnum"),
                 modifier = Modifier.weight(1f)
             )
             Box(

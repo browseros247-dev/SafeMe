@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,7 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,6 +98,9 @@ fun TimePickerSheet(
         sheetState = sheetState,
         containerColor = colors.surface,
         shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        // The custom GrabBar below is the sheet's only drag handle; suppress
+        // Material3's default one so the pill isn't duplicated.
+        dragHandle = {},
     ) {
         Column(
             modifier = Modifier
@@ -140,7 +144,10 @@ fun TimePickerSheet(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = colors.ink3,
-                    modifier = Modifier.padding(horizontal = 12.dp),
+                    // The colon's line box centers on the row while the 30sp value
+                    // boxes sit ~14dp lower, so nudge it down to align optically
+                    // with the hour/minute digits (measured at 2.75x density).
+                    modifier = Modifier.offset(y = 14.dp).padding(horizontal = 12.dp),
                 )
                 StepperColumn(
                     label = stringResource(R.string.sche_minutes),
@@ -242,6 +249,9 @@ private fun StepperColumn(
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
             color = colors.ink,
+            // Prototype `.time-val` uses text-align:center so the digit stays
+            // centered between the −/+ buttons for any width/value.
+            textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(min = 56.dp),
         )
         Spacer(Modifier.height(10.dp))
@@ -293,6 +303,8 @@ fun AppPickerSheet(
         sheetState = sheetState,
         containerColor = colors.surface,
         shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        // Custom GrabBar is the only drag handle; see TimePickerSheet.
+        dragHandle = {},
     ) {
         Column(
             modifier = Modifier
@@ -334,25 +346,21 @@ fun AppPickerSheet(
             } else {
                 // Bounded height so the list scrolls internally and the Done
                 // button stays visible above the fold on every screen size.
+                // Each category gets its own bordered box (rendered by
+                // GroupedAppPickerList), so no container styling is needed here.
                 GroupedAppPickerList(
                     groups = groups,
                     selected = selected,
                     onToggle = onToggle,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 380.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(colors.surface)
-                        .border(1.dp, colors.line, RoundedCornerShape(20.dp)),
-                ) { app, checked, isLastInGroup, onToggleApp ->
+                        .heightIn(max = 380.dp),
+                ) { app, checked, onToggleApp ->
                     AppRow(
                         app = app,
                         checked = checked,
                         onToggle = onToggleApp,
                     )
-                    if (!isLastInGroup) {
-                        HorizontalDivider(color = colors.line)
-                    }
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -394,7 +402,7 @@ private fun AppRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 13.dp),
     ) {
         Box(
             modifier = Modifier
@@ -418,15 +426,24 @@ private fun AppRow(
                 )
             }
         }
-        Text(
-            text = app.label,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = colors.ink,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = app.label,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = app.packageName,
+                fontSize = 12.sp,
+                color = colors.ink2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 1.dp),
+            )
+        }
         CheckBox(checked = checked)
     }
 }
@@ -497,7 +514,8 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, placehol
 private fun GrabBar() {
     val colors = LocalAppColors.current
     Box(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        // Prototype `.grab { margin: 6px auto 16px }`.
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(

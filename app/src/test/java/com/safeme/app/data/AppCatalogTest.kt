@@ -2,6 +2,7 @@ package com.safeme.app.data
 
 import android.content.pm.ApplicationInfo
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -19,8 +20,8 @@ class AppCatalogTest {
         assertEquals(AppCategory.VIDEO_MUSIC, cat("com.spotify.music"))
         assertEquals(AppCategory.MESSAGING, cat("com.whatsapp"))
         assertEquals(AppCategory.SHOPPING, cat("com.amazon.mshop.android.shopping"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.paypal.android.p2pmobile"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.doordash"))
+        assertEquals(AppCategory.SHOPPING, cat("com.doordash"))
+        assertEquals(AppCategory.PAYMENT, cat("com.paypal.android.p2pmobile"))
         assertEquals(AppCategory.GAMES, cat("com.supercell.clashofclans"))
         assertEquals(AppCategory.NEWS_PROD, cat("com.android.chrome"))
     }
@@ -61,18 +62,117 @@ class AppCatalogTest {
         assertEquals(AppCategory.SOCIAL, cat("com.zhiliaoapp.something", "TikTok"))
         assertEquals(AppCategory.GAMES, cat("com.random.pkg", "Clash of Clans"))
         assertEquals(AppCategory.NEWS_PROD, cat("com.random.pkg", "Gmail"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.random.pkg", "Cash App"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.random.pkg", "Uber Eats"))
+        assertEquals(AppCategory.PAYMENT, cat("com.random.pkg", "Cash App"))
+        assertEquals(AppCategory.PAYMENT, cat("com.random.pkg", "Chase Bank"))
+        assertEquals(AppCategory.PAYMENT, cat("com.random.pkg", "Google Wallet"))
+        assertEquals(AppCategory.SHOPPING, cat("com.random.pkg", "Uber Eats"))
+        assertEquals(AppCategory.SHOPPING, cat("com.random.pkg", "Instacart"))
     }
 
     @Test
-    fun shippingPaymentPrefixesWinOverGenericPrefixes() {
-        // PayPal must stay in Shipping & Payment, not fall under the broader
-        // label/social heuristics, and delivery apps must not land in Shopping.
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.paypal.android.p2pmobile", "PayPal"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.ubercab.eats", "Uber Eats"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.fedex", "FedEx"))
-        assertEquals(AppCategory.SHIPPING_PAYMENT, cat("com.squareup.cash", "Cash App"))
+    fun paymentAndShoppingPrefixesWinOverGenericPrefixes() {
+        // Money apps stay in Payment (never Shopping), and order/delivery apps
+        // stay in Shopping (never Payment or Other).
+        assertEquals(AppCategory.PAYMENT, cat("com.paypal.android.p2pmobile", "PayPal"))
+        assertEquals(AppCategory.PAYMENT, cat("com.squareup.cash", "Cash App"))
+        assertEquals(AppCategory.PAYMENT, cat("com.revolut.revolut", "Revolut"))
+        assertEquals(AppCategory.SHOPPING, cat("com.ubercab.eats", "Uber Eats"))
+        assertEquals(AppCategory.SHOPPING, cat("com.fedex", "FedEx"))
+        assertEquals(AppCategory.SHOPPING, cat("com.instacart", "Instacart"))
+    }
+
+    @Test
+    fun paymentAppsAreClassified() {
+        // Banking, wallets and fintech must all land in Payment.
+        val payments = listOf(
+            "com.chase.sig.android" to "Chase Mobile",
+            "com.infonow.bofa" to "Bank of America",
+            "com.wf.wellsfargomobile" to "Wells Fargo",
+            "com.citi.citimobile" to "Citi Mobile",
+            "com.konyl.capitalone" to "Capital One",
+            "com.usbank" to "U.S. Bank",
+            "com.tdbank" to "TD Bank",
+            "mobile.chimebank" to "Chime",
+            "com.sofi.app" to "SoFi",
+            "com.n26.android" to "N26",
+            "com.klarna.android" to "Klarna",
+            "com.affirm.android" to "Affirm",
+            "com.zellepay.zelle" to "Zelle",
+            "com.robinhood.android" to "Robinhood",
+            "com.coinbase.android" to "Coinbase",
+            "com.eg.android.AlipayGphone" to "Alipay",
+            "com.samsung.android.spay" to "Samsung Wallet",
+            "com.google.android.apps.walletnfcrel" to "Google Wallet",
+            "net.one97.paytm" to "Paytm",
+            "com.phonepe.app" to "PhonePe",
+            "transferwise" to "Wise",
+            "com.monzo" to "Monzo",
+            "co.banking.android" to "Starling Bank",
+            "com.starlingbank.android" to "Starling",
+            "com.remitly" to "Remitly",
+            "com.payoneer.android" to "Payoneer",
+        )
+        payments.forEach { (pkg, label) ->
+            assertEquals("$pkg should be Payment", AppCategory.PAYMENT, cat(pkg, label))
+        }
+        // Obscure banks are caught by the label keyword fallback.
+        assertEquals(AppCategory.PAYMENT, cat("com.unknown.bank.app", "MyLocal Bank"))
+        assertEquals(AppCategory.PAYMENT, cat("com.obscure.app", "Digital Wallet"))
+        assertEquals(AppCategory.PAYMENT, cat("com.obscure.app", "Instant Payment"))
+    }
+
+    @Test
+    fun shoppingAppsAreClassified() {
+        // Marketplaces, stores and delivery apps must all land in Shopping.
+        val shopping = listOf(
+            "com.amazon.mshop" to "Amazon Shopping",
+            "com.alibaba.aliexpresshd" to "AliExpress",
+            "com.shopee" to "Shopee",
+            "com.lazada.android" to "Lazada",
+            "com.myntra.android" to "Myntra",
+            "com.nykaa" to "Nykaa",
+            "com.meesho.supply" to "Meesho",
+            "com.target.ui" to "Target",
+            "com.bestbuy.android" to "Best Buy",
+            "com.thehomedepot" to "The Home Depot",
+            "com.costco" to "Costco",
+            "com.kroger" to "Kroger",
+            "com.ebay.mobile" to "eBay",
+            "com.etsy" to "Etsy",
+            "com.einnovation.temu" to "TEMU",
+            "com.walmart" to "Walmart",
+            "com.wayfair" to "Wayfair",
+            "com.swiggy" to "Swiggy",
+            "com.zomato" to "Zomato",
+            "com.doordash" to "DoorDash",
+            "com.ubercab.eats" to "Uber Eats",
+            "com.instacart" to "Instacart",
+            "com.fedex" to "FedEx",
+            "com.ups.mobile.android" to "UPS",
+            "com.dhl" to "DHL",
+            "com.usps" to "USPS",
+        )
+        shopping.forEach { (pkg, label) ->
+            assertEquals("$pkg should be Shopping", AppCategory.SHOPPING, cat(pkg, label))
+        }
+        // Generic labels fall back to keywords without being over-broad.
+        assertEquals(AppCategory.SHOPPING, cat("com.obscure.store.app", "Online Shopping"))
+        assertEquals(AppCategory.SHOPPING, cat("com.obscure.market.app", "Fresh Market"))
+        assertEquals(AppCategory.SHOPPING, cat("com.obscure.food.app", "Grocery Delivery"))
+    }
+
+    @Test
+    fun unrelatedAppsStayOutOfPaymentAndShopping() {
+        // No false positives: media, tools and games must not be miscategorized
+        // as Payment or Shopping.
+        val label = "Photoshop"
+        assertNotEquals(AppCategory.SHOPPING, cat("com.adobe.psmobile", label))
+        assertNotEquals(AppCategory.PAYMENT, cat("com.overkillsoftware.payday2", "Payday 2"))
+        assertNotEquals(AppCategory.SHOPPING, cat("com.android.vending", "Google Play Store"))
+        assertEquals(AppCategory.VIDEO_MUSIC, cat("com.google.android.youtube", "YouTube"))
+        assertEquals(AppCategory.MESSAGING, cat("com.whatsapp", "WhatsApp"))
+        assertEquals(AppCategory.NEWS_PROD, cat("com.microsoft.office", "Microsoft 365"))
+        assertEquals(AppCategory.OTHER, cat("com.obscure.startup.app", "Something else"))
     }
 
     @Test
@@ -89,7 +189,7 @@ class AppCatalogTest {
                 AppCategory.VIDEO_MUSIC,
                 AppCategory.MESSAGING,
                 AppCategory.SHOPPING,
-                AppCategory.SHIPPING_PAYMENT,
+                AppCategory.PAYMENT,
                 AppCategory.GAMES,
                 AppCategory.NEWS_PROD,
                 AppCategory.OTHER,

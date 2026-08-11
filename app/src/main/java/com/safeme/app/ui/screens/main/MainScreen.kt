@@ -34,6 +34,7 @@ import com.safeme.app.ui.screens.antitamper.AccessibilityProtectionScreen
 import com.safeme.app.ui.screens.antitamper.AntiTamperScreen
 import com.safeme.app.ui.screens.antitamper.ServicePickerScreen
 import com.safeme.app.ui.screens.applock.AppLockScreen
+import com.safeme.app.ui.screens.backup.BackupScreen
 import com.safeme.app.ui.screens.blocking.BlockingScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
 import com.safeme.app.ui.screens.focus.FocusScreen
@@ -199,7 +200,9 @@ fun MainScreen() {
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("backup") { PlaceholderScreen(R.string.home_backup_title) }
+            composable("backup") {
+                BackupScreen(onBack = { navController.popBackStack() })
+            }
             composable("history") {
                 HistoryScreen(onBack = { navController.popBackStack() })
             }

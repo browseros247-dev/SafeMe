@@ -186,6 +186,14 @@ suspend fun Context.toggleSchedule(id: String, enabled: Boolean) {
     }
 }
 
+/** Replaces all schedule configuration in one atomic edit (backup restore). */
+suspend fun Context.writeSchedulePrefs(state: SchedulePrefsState) {
+    scheduleDataStore.edit { prefs ->
+        prefs[KEY_SCHEDULES_JSON] = schedulesToJson(state.schedules)
+        prefs[KEY_A11Y_WARN_DISMISSED] = state.a11yWarningDismissed
+    }
+}
+
 /** Factory for new schedule ids — mirrors [addTitleBlockRule] in BlockingPrefs. */
 fun newScheduleId(): String = UUID.randomUUID().toString()
 

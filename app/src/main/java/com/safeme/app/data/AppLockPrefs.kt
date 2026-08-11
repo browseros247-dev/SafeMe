@@ -107,3 +107,15 @@ suspend fun Context.setAppLockAutoLock(delay: AutoLockDelay) {
         prefs[KEY_APP_LOCK_AUTO] = delay.storage
     }
 }
+
+/** Replaces all App Lock settings in one atomic edit (backup restore). */
+suspend fun Context.writeAppLockPrefs(state: AppLockPrefsState) {
+    appLockDataStore.edit { prefs ->
+        prefs[KEY_APP_LOCK_TYPE] = state.lockType.storage
+        prefs[KEY_APP_LOCK_HASH] = state.storedHash
+        prefs[KEY_APP_LOCK_LENGTH] = state.credentialLength
+        prefs[KEY_APP_LOCK_BIOMETRIC] = state.biometricEnabled
+        prefs[KEY_APP_LOCK_FORGOT] = state.forgotPasswordDisabled
+        prefs[KEY_APP_LOCK_AUTO] = state.autoLock.storage
+    }
+}

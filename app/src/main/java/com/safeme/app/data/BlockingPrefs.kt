@@ -67,7 +67,7 @@ val KEY_TITLE_BLOCK_RULES = stringPreferencesKey("title_block_rules_json")
 val KEY_BLOCKING_ENABLED = booleanPreferencesKey("blocking_enabled")
 val KEY_BLOCKED_TODAY = intPreferencesKey("blocked_today")
 
-private fun keywordsToJson(list: List<BlockedKeyword>): String {
+internal fun keywordsToJson(list: List<BlockedKeyword>): String {
     val arr = JSONArray()
     list.forEach { k ->
         val o = JSONObject()
@@ -78,7 +78,7 @@ private fun keywordsToJson(list: List<BlockedKeyword>): String {
     return arr.toString()
 }
 
-private fun keywordsFromJson(json: String?): List<BlockedKeyword> {
+internal fun keywordsFromJson(json: String?): List<BlockedKeyword> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
     return try {
@@ -100,7 +100,7 @@ private fun keywordsFromJson(json: String?): List<BlockedKeyword> {
     }
 }
 
-private fun websitesToJson(list: List<BlockedWebsite>): String {
+internal fun websitesToJson(list: List<BlockedWebsite>): String {
     val arr = JSONArray()
     list.forEach { w ->
         val o = JSONObject()
@@ -111,7 +111,7 @@ private fun websitesToJson(list: List<BlockedWebsite>): String {
     return arr.toString()
 }
 
-private fun websitesFromJson(json: String?): List<BlockedWebsite> {
+internal fun websitesFromJson(json: String?): List<BlockedWebsite> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
     return try {
@@ -133,13 +133,13 @@ private fun websitesFromJson(json: String?): List<BlockedWebsite> {
     }
 }
 
-private fun stringsToJson(list: List<String>): String {
+internal fun stringsToJson(list: List<String>): String {
     val arr = JSONArray()
     list.forEach { arr.put(it) }
     return arr.toString()
 }
 
-private fun titleRulesToJson(list: List<TitleBlockRule>): String {
+internal fun titleRulesToJson(list: List<TitleBlockRule>): String {
     val arr = JSONArray()
     list.forEach { r ->
         val o = JSONObject()
@@ -152,7 +152,7 @@ private fun titleRulesToJson(list: List<TitleBlockRule>): String {
     return arr.toString()
 }
 
-private fun titleRulesFromJson(json: String?): List<TitleBlockRule> {
+internal fun titleRulesFromJson(json: String?): List<TitleBlockRule> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
     return try {
@@ -174,7 +174,7 @@ private fun titleRulesFromJson(json: String?): List<TitleBlockRule> {
     }
 }
 
-private fun stringsFromJson(json: String?): List<String> {
+internal fun stringsFromJson(json: String?): List<String> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
     return try {
@@ -323,6 +323,21 @@ suspend fun Context.removeTrustedWebsite(domain: String) {
     blockingDataStore.edit { prefs ->
         val list = stringsFromJson(prefs[KEY_TRUSTED_WEBSITES])
         prefs[KEY_TRUSTED_WEBSITES] = stringsToJson(list.filter { it != domain })
+    }
+}
+
+/**
+ * Replaces all user blocking configuration in one atomic edit (backup restore).
+ * `blockedToday` is a transient daily counter and is intentionally untouched.
+ */
+suspend fun Context.writeBlockingPrefs(state: BlockingPrefsState) {
+    blockingDataStore.edit { prefs ->
+        prefs[KEY_BLOCKLIST_KEYWORDS] = keywordsToJson(state.blocklistKeywords)
+        prefs[KEY_WHITELIST_KEYWORDS] = stringsToJson(state.whitelistKeywords)
+        prefs[KEY_BLOCKED_WEBSITES] = websitesToJson(state.blockedWebsites)
+        prefs[KEY_TRUSTED_WEBSITES] = stringsToJson(state.trustedWebsites)
+        prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(state.titleBlockRules)
+        prefs[KEY_BLOCKING_ENABLED] = state.blockingEnabled
     }
 }
 

@@ -60,3 +60,11 @@ suspend fun Context.removeProtectedA11yComponent(flat: String) {
         prefs[KEY_A11Y_PROTECTED_COMPONENTS] = current - flat
     }
 }
+
+/** Replaces all Accessibility Protection settings in one atomic edit (backup restore). */
+suspend fun Context.writeA11yProtectionPrefs(state: A11yProtectionPrefsState) {
+    a11yProtectionDataStore.edit { prefs ->
+        prefs[KEY_A11Y_PROTECTION_ENABLED] = state.protectionEnabled
+        prefs[KEY_A11Y_PROTECTED_COMPONENTS] = state.protectedComponents
+    }
+}

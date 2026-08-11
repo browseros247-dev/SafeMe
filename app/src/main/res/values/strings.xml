@@ -165,6 +165,41 @@
     <string name="home_backup_title">Backup</string>
     <string name="home_history_title">History</string>
 
+    <!-- Backup &amp; Restore screen (JSONC export / import). -->
+    <string name="backup_screen_sub">Export / import your settings as a .jsonc file — atomic and versioned.</string>
+    <string name="backup_export_title">Export backup</string>
+    <string name="backup_export_sub">Save your settings to a .jsonc file</string>
+    <string name="backup_export_action">Export</string>
+    <string name="backup_exporting">Creating backup…</string>
+    <string name="backup_import_title">Restore from backup</string>
+    <string name="backup_import_sub">Pick a .jsonc backup and replace your current settings</string>
+    <string name="backup_import_action">Restore</string>
+    <string name="backup_restoring">Restoring…</string>
+    <string name="backup_whats_included">What\'s included</string>
+    <string name="backup_confirm_title">Restore this backup?</string>
+    <string name="backup_confirm_note">This will replace your current settings. Your data is validated before anything changes.</string>
+    <string name="backup_confirm_meta">Created %1$s · app %2$s · schema v%3$d</string>
+    <string name="backup_confirm_cancel">Cancel</string>
+    <string name="backup_confirm_restore">Restore</string>
+    <string name="backup_section_blocking">Blocking &amp; keywords</string>
+    <string name="backup_section_schedules">Schedules</string>
+    <string name="backup_section_vpn">VPN &amp; DNS</string>
+    <string name="backup_section_quick_actions">Quick Actions</string>
+    <string name="backup_section_app_lock">App Lock</string>
+    <string name="backup_section_prevent_uninstall">Prevent Uninstall</string>
+    <string name="backup_section_a11y">Accessibility Protection</string>
+    <string name="backup_toast_exported">Backup exported</string>
+    <string name="backup_toast_export_failed">Couldn\'t export backup</string>
+    <string name="backup_toast_restored">Backup restored</string>
+    <string name="backup_toast_import_failed">Couldn\'t read that file</string>
+    <string name="backup_err_not_json">This file isn\'t valid JSONC</string>
+    <string name="backup_err_not_safeme">This isn\'t a SafeMe backup file</string>
+    <string name="backup_err_version">This backup was made by a newer version of SafeMe</string>
+    <string name="backup_err_structure">This backup is missing required data</string>
+    <string name="backup_err_empty">This backup doesn\'t contain any settings</string>
+    <string name="backup_err_write">Restore failed — your settings were left unchanged</string>
+    <string name="backup_err_rollback">Restore failed and couldn\'t be fully undone — please re-check your settings</string>
+
     <string name="blk_title">Blocking</string>
     <string name="blk_help_toast">Blocking help</string>
     <string name="blk_shield_status">Blocking active</string>

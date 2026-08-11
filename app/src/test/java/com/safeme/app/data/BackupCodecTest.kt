@@ -1,0 +1,242 @@
+package com.safeme.app.data
+
+import com.safeme.app.vpn.DnsPreset
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** Unit tests for the JSONC backup codec: encode, decode and validation. */
+class BackupCodecTest {
+
+    private fun fullSnapshot() = BackupSnapshot(
+        appVersion = "0.1.0",
+        createdAt = "2026-08-11T07:45:00Z",
+        blocking = BlockingPrefsState(
+            blocklistKeywords = listOf(BlockedKeyword("instagram", BlockedCategory.SOCIAL_MEDIA)),
+            whitelistKeywords = listOf("work"),
+            blockedWebsites = listOf(BlockedWebsite("example.com", BlockedCategory.ADULT)),
+            trustedWebsites = listOf("safe.example.com"),
+            titleBlockRules = listOf(TitleBlockRule("id-1", "settings", TitleMatchMode.CONTAINS, true)),
+            blockingEnabled = true,
+        ),
+        schedules = SchedulePrefsState(
+            schedules = listOf(
+                ScheduleBlock(
+                    id = "s1", name = "Study", days = listOf(0, 2), startMinute = 540, endMinute = 1380,
+                    mode = ScheduleMode.BOTH, appPackages = listOf("com.instagram.android"), enabled = true,
+                )
+            ),
+            a11yWarningDismissed = true,
+        ),
+        vpn = DnsVpnSettings(
+            enabled = true, preset = DnsPreset.ADGUARD_FAMILY, customV4 = "1.1.1.1", customV6 = "",
+            whitelist = setOf("com.example.app"), notifMode = NOTIF_CUSTOM, notifCustom = "Filtering on",
+        ),
+        quickActions = listOf(QuickActionType.FOCUS, QuickActionType.VPN),
+        appLock = AppLockPrefsState(
+            lockType = LockType.PIN, storedHash = "salt:hash", credentialLength = 4,
+            biometricEnabled = true, forgotPasswordDisabled = false, autoLock = AutoLockDelay.AFTER_1M,
+        ),
+        preventUninstall = PreventUninstallPrefsState(preventUninstallEnabled = true),
+        a11yProtection = A11yProtectionPrefsState(
+            protectionEnabled = true, protectedComponents = setOf("com.pkg/com.pkg.Service"),
+        ),
+    )
+
+    private fun encode(snapshot: BackupSnapshot = fullSnapshot()): String =
+        BackupCodec.toJsonc(snapshot, appVersion = snapshot.appVersion, createdAt = snapshot.createdAt)
+
+    private fun decode(raw: String): BackupParseResult = BackupCodec.fromJsonc(raw)
+
+    private fun successOf(result: BackupParseResult): BackupSnapshot {
+        assertTrue("expected success but got $result", result is BackupParseResult.Success)
+        return (result as BackupParseResult.Success).snapshot
+    }
+
+    private fun errorOf(result: BackupParseResult): BackupError {
+        assertTrue("expected failure but got $result", result is BackupParseResult.Failure)
+        return (result as BackupParseResult.Failure).error
+    }
+
+    // ------------------------------------------------------------- roundtrip
+
+    @Test
+    fun fullRoundTripPreservesEverything() {
+        val original = fullSnapshot()
+        assertEquals(original, successOf(decode(encode(original))))
+    }
+
+    @Test
+    fun jsoncHeaderCommentsAndTrailingCommasAreAccepted() {
+        val raw = """
+            // SafeMe backup — JSONC
+            // Created 2026-08-11T07:45:00Z · app 0.1.0 · schema v1
+            {
+              "format": "safeme-backup",
+              "schemaVersion": 1,
+              "appVersion": "0.1.0",
+              "createdAt": "2026-08-11T07:45:00Z",
+              "blocking": {
+                "blocklistKeywords": [{"v": "instagram", "c": "SOCIAL_MEDIA"},],
+                "whitelistKeywords": ["work",],
+                "blockedWebsites": [],
+                "trustedWebsites": [],
+                "titleBlockRules": [],
+                "blockingEnabled": true,
+              },
+              "schedules": {
+                "schedules": [],
+                "a11yWarningDismissed": false,
+              },
+            }
+        """.trimIndent()
+        val snapshot = successOf(decode(raw))
+        assertEquals(1, snapshot.blocking?.blocklistKeywords?.size)
+        assertEquals(BlockedCategory.SOCIAL_MEDIA, snapshot.blocking?.blocklistKeywords?.first()?.category)
+        assertEquals(listOf(BackupSection.BLOCKING, BackupSection.SCHEDULES), snapshot.presentSections)
+    }
+
+    @Test
+    fun keywordsWithCommentLikeTextSurviveRoundTrip() {
+        val original = fullSnapshot().copy(
+            blocking = BlockingPrefsState(
+                blocklistKeywords = listOf(
+                    BlockedKeyword("https://example.com//path", BlockedCategory.CUSTOM),
+                    BlockedKeyword("a /* weird */ keyword", BlockedCategory.CUSTOM),
+                ),
+                blockingEnabled = true,
+            ),
+        )
+        assertEquals(original, successOf(decode(encode(original))))
+    }
+
+    @Test
+    fun partialSnapshotOmitsMissingSections() {
+        val original = BackupSnapshot(
+            appVersion = "0.1.0",
+            createdAt = "t",
+            blocking = BlockingPrefsState(blockingEnabled = false),
+        )
+        val decoded = successOf(decode(encode(original)))
+        assertEquals(listOf(BackupSection.BLOCKING), decoded.presentSections)
+        assertNull(decoded.schedules)
+        assertNull(decoded.vpn)
+    }
+
+    // ------------------------------------------------------------- failures
+
+    @Test
+    fun notJson_isRejected() {
+        assertEquals(BackupError.NOT_JSON, errorOf(decode("this is not json")))
+        assertEquals(BackupError.NOT_JSON, errorOf(decode("")))
+        assertEquals(BackupError.NOT_JSON, errorOf(decode("{\"format\": \"safeme-backup\", "))) // truncated
+    }
+
+    @Test
+    fun unclosedBlockComment_isRejected() {
+        // The comment swallows the closing brace → the file is truncated JSON.
+        assertEquals(BackupError.NOT_JSON, errorOf(decode("{\"format\": \"safeme-backup\" /* nope")))
+    }
+
+    @Test
+    fun wrongFormatMarker_isRejected() {
+        val raw = """{"format": "some-other-app", "schemaVersion": 1, "blocking": {}}"""
+        assertEquals(BackupError.NOT_SAFEME, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun missingFormatMarker_isRejected() {
+        val raw = """{"schemaVersion": 1, "blocking": {}}"""
+        assertEquals(BackupError.NOT_SAFEME, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun missingSchemaVersion_isInvalidStructure() {
+        val raw = """{"format": "safeme-backup", "blocking": {}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun newerSchemaVersion_isUnsupported() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 99, "blocking": {}}"""
+        assertEquals(BackupError.UNSUPPORTED_VERSION, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun olderSchemaVersion_isAccepted() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 0, "blocking": {"blockingEnabled": false}}"""
+        val snapshot = successOf(decode(raw))
+        assertEquals(0, snapshot.schemaVersion)
+    }
+
+    @Test
+    fun headerOnlyFile_isEmpty() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1}"""
+        assertEquals(BackupError.EMPTY, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun sectionOfWrongType_isInvalidStructure() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "blocking": "nope"}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun fieldOfWrongTypeInsideSection_isInvalidStructure() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "blocking": {"blockingEnabled": "true"}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun arrayOfWrongTypeInsideSection_isInvalidStructure() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "vpn": {"whitelist": "com.a"}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    // ------------------------------------------------------------- tolerance
+
+    @Test
+    fun unknownQuickActionIdsAreDropped() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "quickActions": ["focus", "bogus", "vpn"]}"""
+        val snapshot = successOf(decode(raw))
+        assertEquals(listOf(QuickActionType.FOCUS, QuickActionType.VPN), snapshot.quickActions)
+    }
+
+    @Test
+    fun unknownLockTypeFallsBackToOff() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "appLock": {"lockType": "retina-scan"}}"""
+        val snapshot = successOf(decode(raw))
+        assertEquals(LockType.OFF, snapshot.appLock?.lockType)
+    }
+
+    @Test
+    fun unknownVpnPresetFallsBackToDefault() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "vpn": {"preset": "nope"}}"""
+        val snapshot = successOf(decode(raw))
+        assertEquals(DnsPreset.CLOUDFLARE_FAMILY, snapshot.vpn?.preset)
+    }
+
+    @Test
+    fun badEntriesInsideCollectionsAreDroppedNotFatal() {
+        val raw = """
+            {"format": "safeme-backup", "schemaVersion": 1,
+             "blocking": {"blocklistKeywords": [
+                 {"v": "good", "c": "CUSTOM"},
+                 {"v": ""},
+                 {"c": "ADULT"},
+                 42
+             ]}}
+        """.trimIndent()
+        val snapshot = successOf(decode(raw))
+        assertEquals(listOf(BlockedKeyword("good", BlockedCategory.CUSTOM)), snapshot.blocking?.blocklistKeywords)
+    }
+
+    @Test
+    fun blankQuickActionsSectionStaysEmptyList() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "quickActions": []}"""
+        val snapshot = successOf(decode(raw))
+        assertEquals(emptyList<QuickActionType>(), snapshot.quickActions)
+        assertEquals(listOf(BackupSection.QUICK_ACTIONS), snapshot.presentSections)
+    }
+}

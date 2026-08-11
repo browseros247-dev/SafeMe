@@ -84,3 +84,16 @@ suspend fun Context.setVpnNotifMode(mode: String) {
 suspend fun Context.setVpnNotifCustom(message: String) {
     vpnDataStore.edit { it[KEY_VPN_NOTIF_CUSTOM] = message }
 }
+
+/** Replaces all VPN/DNS settings in one atomic edit (backup restore). */
+suspend fun Context.writeVpnSettings(settings: DnsVpnSettings) {
+    vpnDataStore.edit { prefs ->
+        prefs[KEY_VPN_ENABLED] = settings.enabled
+        prefs[KEY_VPN_PRESET] = settings.preset.name
+        prefs[KEY_VPN_CUSTOM_V4] = settings.customV4
+        prefs[KEY_VPN_CUSTOM_V6] = settings.customV6
+        prefs[KEY_VPN_WHITELIST] = settings.whitelist
+        prefs[KEY_VPN_NOTIF_MODE] = settings.notifMode.takeIf { it in VALID_NOTIF_MODES } ?: NOTIF_DEFAULT
+        prefs[KEY_VPN_NOTIF_CUSTOM] = settings.notifCustom
+    }
+}

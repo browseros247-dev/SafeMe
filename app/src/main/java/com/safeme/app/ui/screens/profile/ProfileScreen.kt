@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -80,7 +82,6 @@ fun ProfileScreen(
                 onOpen = onOpen,
                 onToast = viewModel::comingSoon
             )
-            PermissionsCard(onOpen = { onOpen("permissions") })
             TroubleshootCard(onOpen = { onOpen("troubleshoot") })
             GroupLabel(text = stringResource(R.string.prof_support))
             SupportList(
@@ -323,7 +324,11 @@ private fun QaGrid(
 ) {
     val colors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            // Match the prototype's grid: cards in a row stretch to equal height.
+            modifier = Modifier.height(IntrinsicSize.Min)
+        ) {
             QaCard(
                 icon = ProfLockIcon,
                 background = colors.iconAmberBg,
@@ -331,7 +336,7 @@ private fun QaGrid(
                 title = stringResource(R.string.prof_applock_title),
                 sub = stringResource(R.string.prof_applock_sub),
                 onClick = { onOpen("applock") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).fillMaxHeight()
             )
             QaCard(
                 icon = ProfPersonIcon,
@@ -341,10 +346,14 @@ private fun QaGrid(
                 sub = stringResource(R.string.prof_acc_sub),
                 onClick = onToast,
                 badge = stringResource(R.string.prof_acc_soon),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).fillMaxHeight()
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            // Match the prototype's grid: cards in a row stretch to equal height.
+            modifier = Modifier.height(IntrinsicSize.Min)
+        ) {
             QaCard(
                 icon = ProfDownloadIcon,
                 background = colors.iconGreenBg,
@@ -352,16 +361,16 @@ private fun QaGrid(
                 title = stringResource(R.string.prof_backup_title),
                 sub = stringResource(R.string.prof_backup_sub),
                 onClick = { onOpen("backup") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).fillMaxHeight()
             )
             QaCard(
-                icon = ProfShieldIcon,
-                background = colors.iconDarkBg,
-                tint = colors.iconDarkFg,
-                title = stringResource(R.string.prof_protected_title),
-                sub = stringResource(R.string.prof_protected_sub),
-                onClick = onToast,
-                modifier = Modifier.weight(1f)
+                icon = ProfShieldCheckIcon,
+                background = colors.iconGreenBg,
+                tint = colors.success,
+                title = stringResource(R.string.prof_permissions_title),
+                sub = stringResource(R.string.prof_permissions_sub),
+                onClick = { onOpen("permissions") },
+                modifier = Modifier.weight(1f).fillMaxHeight()
             )
         }
     }
@@ -431,20 +440,6 @@ private fun QaCard(
             }
         }
     }
-}
-
-@Composable
-private fun PermissionsCard(onOpen: () -> Unit) {
-    val colors = LocalAppColors.current
-    RowCard(
-        icon = ProfShieldCheckIcon,
-        background = colors.iconGreenBg,
-        tint = colors.success,
-        title = stringResource(R.string.prof_permissions_title),
-        sub = stringResource(R.string.prof_permissions_sub),
-        onClick = onOpen,
-        modifier = Modifier.padding(top = 14.dp)
-    )
 }
 
 @Composable
@@ -755,7 +750,7 @@ private fun TextPill(text: String, background: Color, contentColor: Color) {
 }
 
 @Composable
-private fun IconBox(
+internal fun IconBox(
     icon: ImageVector,
     background: Color,
     tint: Color,
@@ -781,7 +776,7 @@ private fun IconBox(
 }
 
 @Composable
-private fun Modifier.cardShape(radius: Dp = 20.dp): Modifier {
+internal fun Modifier.cardShape(radius: Dp = 20.dp): Modifier {
     val colors = LocalAppColors.current
     return this
         .shadow(

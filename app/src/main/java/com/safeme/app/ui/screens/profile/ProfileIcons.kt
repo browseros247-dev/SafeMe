@@ -391,3 +391,62 @@ internal val ProfChatIcon: ImageVector by lazy {
         }
     }.build()
 }
+
+internal val ProfLinkIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ProfLink",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(10f, 13f)
+            arcToRelative(5f, 5f, 0f, false, false, 7.5f, 0.5f)
+            lineToRelative(3f, -3f)
+            arcToRelative(5f, 5f, 0f, false, false, -7f, -7f)
+            lineToRelative(-1.7f, 1.7f)
+            moveTo(14f, 11f)
+            arcToRelative(5f, 5f, 0f, false, false, -7.5f, -0.5f)
+            lineToRelative(-3f, 3f)
+            arcToRelative(5f, 5f, 0f, false, false, 7f, 7f)
+            lineToRelative(1.7f, -1.7f)
+        }
+    }.build()
+}
+
+internal val ProfGlobeIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ProfGlobe",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(3f, 12f)
+            arcToRelative(9f, 9f, 0f, false, true, 18f, 0f)
+            arcToRelative(9f, 9f, 0f, false, true, -18f, 0f)
+            moveTo(12f, 3f)
+            arcToRelative(14f, 14f, 0f, false, false, 0f, 18f)
+            moveTo(12f, 3f)
+            arcToRelative(14f, 14f, 0f, false, true, 0f, 18f)
+            moveTo(3f, 12f)
+            horizontalLineTo(21f)
+        }
+    }.build()
+}

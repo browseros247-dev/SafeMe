@@ -398,6 +398,13 @@
     <string name="prof_relay_sub">ADB WRITE_SECURE_SETTINGS guide</string>
     <string name="prof_about_title">About</string>
     <string name="prof_about_sub">v1.0.76 · version info</string>
+    <string name="prof_about_version">Version 1.0.76 · package protect.yourself</string>
+    <string name="prof_about_deeplink_title">Deep link</string>
+    <string name="prof_about_deeplink_sub">open://protectyourself</string>
+    <string name="prof_about_website">Website</string>
+    <string name="prof_about_privacy">Privacy Policy</string>
+    <string name="prof_about_website_toast">Opening website…</string>
+    <string name="prof_about_privacy_toast">Opening privacy policy…</string>
     <string name="prof_contact_title">Contact Support</string>
     <string name="prof_contact_sub">We reply within a day</string>
     <string name="prof_contact_toast">Contact: support@safeme.app</string>

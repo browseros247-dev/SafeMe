@@ -42,6 +42,7 @@ import com.safeme.app.ui.screens.history.HistoryScreen
 import com.safeme.app.ui.screens.home.HomeScreen
 import com.safeme.app.ui.screens.home.QuickActionsEditScreen
 import com.safeme.app.ui.screens.keywords.KeywordManagerScreen
+import com.safeme.app.ui.screens.profile.AboutScreen
 import com.safeme.app.ui.screens.profile.ProfileScreen
 import com.safeme.app.ui.screens.schedule.ScheduleEditScreen
 import com.safeme.app.ui.screens.schedule.ScheduleScreen
@@ -215,7 +216,9 @@ fun MainScreen() {
             composable("troubleshoot") { PlaceholderScreen(R.string.prof_troubleshoot_title) }
             composable("crash") { PlaceholderScreen(R.string.prof_crash_title) }
             composable("relay") { PlaceholderScreen(R.string.prof_relay_title) }
-            composable("about") { PlaceholderScreen(R.string.prof_about_title) }
+            composable("about") {
+                AboutScreen(onBack = { navController.popBackStack() })
+            }
             composable("titleblock") {
                 TitleBlockScreen(onBack = { navController.popBackStack() })
             }

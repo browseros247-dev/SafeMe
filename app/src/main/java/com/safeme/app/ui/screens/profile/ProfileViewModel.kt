@@ -66,6 +66,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         _toasts.tryEmit(app.getString(R.string.prof_soon_toast))
     }
 
+    fun toast(message: String) {
+        _toasts.tryEmit(message)
+    }
+
     fun deleteAccount() {
         val app = getApplication<Application>()
         _toasts.tryEmit(app.getString(R.string.prof_delete_toast))

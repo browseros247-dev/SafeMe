@@ -398,7 +398,7 @@
     <string name="prof_relay_title">Reliable Accessibility</string>
     <string name="prof_relay_sub">ADB WRITE_SECURE_SETTINGS guide</string>
     <string name="prof_about_title">About</string>
-    <string name="prof_about_sub">v1.0.76 · version info</string>
+    <string name="prof_about_sub">v%1$s · version info</string>
     <string name="prof_about_version">Version %1$s · package %2$s</string>
     <string name="prof_about_deeplink_title">Deep link</string>
     <string name="prof_about_deeplink_sub">open://protectyourself</string>
@@ -416,7 +416,7 @@
     <string name="prof_delete_cancel">Cancel</string>
     <string name="prof_delete_confirm">Delete</string>
     <string name="prof_delete_toast">Account deletion requested</string>
-    <string name="prof_footer_1">SafeMe v1.0.76 · open://protectyourself</string>
+    <string name="prof_footer_1">SafeMe v%1$s · open://protectyourself</string>
     <string name="prof_footer_2">No ads · no trackers · no analytics</string>
     <string name="prof_soon_toast">Coming soon</string>
     <string name="vpn_back">Back</string>

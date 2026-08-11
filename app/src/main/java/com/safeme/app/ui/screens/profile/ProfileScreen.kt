@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -50,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.data.ThemePref
@@ -66,6 +70,16 @@ fun ProfileScreen(
     val colors = LocalAppColors.current
     val state by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val appVersion = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "unknown"
+    }
+    // Re-read permission state each time the screen resumes, so a permission
+    // changed in system settings is reflected without leaving the tab.
+    var resumeTick by remember { mutableStateOf(0) }
+    OnResumeEffect { resumeTick++ }
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         Column(
@@ -85,20 +99,22 @@ fun ProfileScreen(
             GroupLabel(text = stringResource(R.string.prof_protection))
             QaGrid(
                 onOpen = onOpen,
-                onToast = viewModel::comingSoon
+                onToast = viewModel::comingSoon,
+                resumeTick = resumeTick
             )
             TroubleshootCard(onOpen = { onOpen("troubleshoot") })
             GroupLabel(text = stringResource(R.string.prof_support))
             SupportList(
                 onOpen = onOpen,
-                onContact = viewModel::contact
+                onContact = viewModel::contact,
+                appVersion = appVersion
             )
             GroupLabel(
                 text = stringResource(R.string.prof_danger),
                 color = colors.danger
             )
             DeleteButton(onClick = { showDeleteDialog = true })
-            Footer()
+            Footer(appVersion = appVersion)
             Spacer(Modifier.size(16.dp))
         }
         ToastHost(
@@ -326,11 +342,13 @@ private fun SegmentedControl(
 private fun QaGrid(
     onOpen: (String) -> Unit,
     onToast: () -> Unit,
+    resumeTick: Int,
 ) {
     val colors = LocalAppColors.current
     val context = LocalContext.current
-    // Live permission status: notifications + battery + accessibility.
-    val grantedCount = run {
+    // Live permission status: notifications + battery + accessibility,
+    // recomputed on every screen resume.
+    val grantedCount = remember(resumeTick) {
         var count = 0
         if (hasNotificationsPermission(context)) count++
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -527,6 +545,7 @@ private fun RowCard(
 private fun SupportList(
     onOpen: (String) -> Unit,
     onContact: () -> Unit,
+    appVersion: String,
 ) {
     val colors = LocalAppColors.current
     Column(
@@ -559,7 +578,7 @@ private fun SupportList(
             background = colors.brandSoft,
             tint = colors.brandDark,
             title = stringResource(R.string.prof_about_title),
-            sub = stringResource(R.string.prof_about_sub),
+            sub = stringResource(R.string.prof_about_sub, appVersion),
             onClick = { onOpen("about") }
         )
         HorizontalDivider(color = colors.line)
@@ -719,7 +738,7 @@ private fun DeleteDialog(
 }
 
 @Composable
-private fun Footer() {
+private fun Footer(appVersion: String) {
     val colors = LocalAppColors.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -728,7 +747,7 @@ private fun Footer() {
             .padding(top = 16.dp)
     ) {
         Text(
-            text = stringResource(R.string.prof_footer_1),
+            text = stringResource(R.string.prof_footer_1, appVersion),
             fontSize = 11.5.sp,
             lineHeight = 18.4.sp,
             color = colors.ink3
@@ -739,6 +758,18 @@ private fun Footer() {
             lineHeight = 18.4.sp,
             color = colors.ink3
         )
+    }
+}
+
+@Composable
+private fun OnResumeEffect(onResume: () -> Unit) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) onResume()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 }
 

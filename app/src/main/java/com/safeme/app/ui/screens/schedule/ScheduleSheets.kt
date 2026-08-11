@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -49,6 +47,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.safeme.app.R
+import com.safeme.app.data.AppCatalog
+import com.safeme.app.data.InstalledApp
+import com.safeme.app.ui.components.GroupedAppPickerList
 import com.safeme.app.ui.theme.LocalAppColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -275,7 +276,7 @@ private fun StepButton(text: String, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppPickerSheet(
-    apps: List<ScheduleAppInfo>,
+    apps: List<InstalledApp>,
     selected: Set<String>,
     onToggle: (String) -> Unit,
     onDone: () -> Unit,
@@ -284,11 +285,8 @@ fun AppPickerSheet(
     val colors = LocalAppColors.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var query by remember { mutableStateOf("") }
-    val filtered = remember(apps, query) {
-        val q = query.trim().lowercase()
-        if (q.isEmpty()) apps
-        else apps.filter { it.label.lowercase().contains(q) || it.packageName.lowercase().contains(q) }
-    }
+    // Search-then-group: categories stay in fixed order, empty groups hidden.
+    val groups = remember(apps, query) { AppCatalog.groupApps(apps, query) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -322,7 +320,7 @@ fun AppPickerSheet(
                 placeholder = stringResource(R.string.sche_apps_search),
             )
             Spacer(Modifier.height(14.dp))
-            if (filtered.isEmpty()) {
+            if (groups.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
                     contentAlignment = Alignment.Center,
@@ -336,23 +334,24 @@ fun AppPickerSheet(
             } else {
                 // Bounded height so the list scrolls internally and the Done
                 // button stays visible above the fold on every screen size.
-                LazyColumn(
+                GroupedAppPickerList(
+                    groups = groups,
+                    selected = selected,
+                    onToggle = onToggle,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 380.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .background(colors.surface)
                         .border(1.dp, colors.line, RoundedCornerShape(20.dp)),
-                ) {
-                    items(filtered, key = { it.packageName }) { app ->
-                        AppRow(
-                            app = app,
-                            checked = app.packageName in selected,
-                            onToggle = { onToggle(app.packageName) },
-                        )
-                        if (app != filtered.last()) {
-                            HorizontalDivider(color = colors.line)
-                        }
+                ) { app, checked, isLastInGroup, onToggleApp ->
+                    AppRow(
+                        app = app,
+                        checked = checked,
+                        onToggle = onToggleApp,
+                    )
+                    if (!isLastInGroup) {
+                        HorizontalDivider(color = colors.line)
                     }
                 }
             }
@@ -368,7 +367,7 @@ fun AppPickerSheet(
 
 @Composable
 private fun AppRow(
-    app: ScheduleAppInfo,
+    app: InstalledApp,
     checked: Boolean,
     onToggle: () -> Unit,
 ) {

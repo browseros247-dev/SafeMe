@@ -1,12 +1,13 @@
 package com.safeme.app.ui.screens.schedule
 
 import android.app.Application
-import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.safeme.app.R
+import com.safeme.app.data.AppCatalog
+import com.safeme.app.data.InstalledApp
 import com.safeme.app.data.ScheduleBlock
 import com.safeme.app.data.ScheduleMode
 import com.safeme.app.data.addSchedule
@@ -26,11 +27,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class ScheduleAppInfo(
-    val packageName: String,
-    val label: String,
-)
-
 data class ScheduleEditUiState(
     val loading: Boolean = true,
     val editId: String? = null,
@@ -40,7 +36,7 @@ data class ScheduleEditUiState(
     val endMinute: Int = 23 * 60,
     val mode: ScheduleMode = ScheduleMode.BOTH,
     val selectedApps: Set<String> = emptySet(),
-    val installedApps: List<ScheduleAppInfo> = emptyList(),
+    val installedApps: List<InstalledApp> = emptyList(),
     val appsLoaded: Boolean = false,
 )
 
@@ -168,25 +164,7 @@ class ScheduleEditViewModel(
         _toasts.tryEmit(message)
     }
 
-    private fun enumerateApps(): List<ScheduleAppInfo> {
-        val app = getApplication<Application>()
-        val pm = app.packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val resolved = runCatching { pm.queryIntentActivities(intent, 0) }.getOrDefault(emptyList())
-        val ownPackage = app.packageName
-        val seen = HashSet<String>()
-        val result = mutableListOf<ScheduleAppInfo>()
-        for (ri in resolved) {
-            val pkg = ri.activityInfo?.packageName ?: continue
-            if (pkg == ownPackage) continue
-            if (!seen.add(pkg)) continue
-            val label = runCatching {
-                pm.getApplicationInfo(pkg, 0).loadLabel(pm).toString()
-            }.getOrElse { pkg }
-            result.add(ScheduleAppInfo(pkg, label))
-        }
-        return result.sortedBy { it.label.lowercase() }
-    }
+    private fun enumerateApps(): List<InstalledApp> = AppCatalog.load(getApplication())
 
     class Factory(
         private val app: Application,

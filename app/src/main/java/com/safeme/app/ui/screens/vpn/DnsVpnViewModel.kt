@@ -2,10 +2,11 @@ package com.safeme.app.ui.screens.vpn
 
 import android.app.Application
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.VpnService
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.safeme.app.data.AppCatalog
+import com.safeme.app.data.InstalledApp
 import com.safeme.app.data.NOTIF_DEFAULT
 import com.safeme.app.data.dnsVpnSettings
 import com.safeme.app.data.setVpnCustomDns
@@ -32,10 +33,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class AppInfo(
-    val packageName: String,
-    val label: String,
-)
 
 data class DnsVpnUiState(
     val loading: Boolean = true,
@@ -47,7 +44,7 @@ data class DnsVpnUiState(
     val notifMode: String = NOTIF_DEFAULT,
     val notifCustom: String = "",
     val running: Boolean = false,
-    val installedApps: List<AppInfo> = emptyList(),
+    val installedApps: List<InstalledApp> = emptyList(),
     val appsLoaded: Boolean = false,
 )
 
@@ -162,22 +159,7 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun enumerateApps(): List<AppInfo> {
-        val pm = getApplication<Application>().packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val resolved = runCatching { pm.queryIntentActivities(intent, 0) }.getOrDefault(emptyList())
-        val seen = HashSet<String>()
-        val result = mutableListOf<AppInfo>()
-        for (ri in resolved) {
-            val pkg = ri.activityInfo?.packageName ?: continue
-            if (!seen.add(pkg)) continue
-            val label = runCatching {
-                pm.getApplicationInfo(pkg, 0).loadLabel(pm).toString()
-            }.getOrElse { pkg }
-            result.add(AppInfo(pkg, label))
-        }
-        return result.sortedBy { it.label.lowercase() }
-    }
+    private fun enumerateApps(): List<InstalledApp> = AppCatalog.load(getApplication())
 
     fun toggle() {
         val state = _uiState.value

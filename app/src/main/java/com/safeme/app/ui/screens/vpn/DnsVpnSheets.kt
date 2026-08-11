@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -45,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.safeme.app.R
+import com.safeme.app.data.AppCatalog
+import com.safeme.app.data.InstalledApp
+import com.safeme.app.ui.components.GroupedAppPickerList
 import com.safeme.app.ui.components.blurredShadow
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.vpn.VpnValidation
@@ -195,7 +196,7 @@ fun CustomDnsSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VpnAppsSheet(
-    apps: List<AppInfo>,
+    apps: List<InstalledApp>,
     loading: Boolean = false,
     whitelist: Set<String>,
     onToggle: (String) -> Unit,
@@ -257,11 +258,9 @@ fun VpnAppsSheet(
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
-            val filtered = remember(apps, query) {
-                val q = query.trim().lowercase()
-                if (q.isEmpty()) apps else apps.filter { it.label.lowercase().contains(q) }
-            }
-            if (filtered.isEmpty()) {
+            // Search-then-group: categories stay in fixed order, empty groups hidden.
+            val groups = remember(apps, query) { AppCatalog.groupApps(apps, query) }
+            if (groups.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -283,19 +282,20 @@ fun VpnAppsSheet(
                     }
                 }
             } else {
-                LazyColumn(
+                GroupedAppPickerList(
+                    groups = groups,
+                    selected = whitelist,
+                    onToggle = onToggle,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(320.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(filtered, key = { it.packageName }) { app ->
-                        AppRow(
-                            app = app,
-                            checked = app.packageName in whitelist,
-                            onClick = { onToggle(app.packageName) }
-                        )
-                    }
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) { app, checked, _, onToggleApp ->
+                    AppRow(
+                        app = app,
+                        checked = checked,
+                        onClick = onToggleApp
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(18.dp))
@@ -305,7 +305,7 @@ fun VpnAppsSheet(
 }
 
 @Composable
-private fun AppRow(app: AppInfo, checked: Boolean, onClick: () -> Unit) {
+private fun AppRow(app: InstalledApp, checked: Boolean, onClick: () -> Unit) {
     val colors = LocalAppColors.current
     val context = LocalContext.current
     // Icon loading is slow (PackageManager + bitmap decode); do it off the main

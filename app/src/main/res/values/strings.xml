@@ -113,6 +113,16 @@
     <string name="home_master_title">Master protection</string>
     <string name="home_master_sub">Master switch — blocks across all layers</string>
 
+    <!-- App Picker category headers (prototype taxonomy, fixed order). -->
+    <string name="app_cat_social">Social</string>
+    <string name="app_cat_video_music">Video &amp; Music</string>
+    <string name="app_cat_messaging">Messaging</string>
+    <string name="app_cat_shopping">Shopping</string>
+    <string name="app_cat_shipping_payment">Shipping &amp; Payment</string>
+    <string name="app_cat_games">Games</string>
+    <string name="app_cat_news_prod">News &amp; Productivity</string>
+    <string name="app_cat_other">Other</string>
+
     <string name="home_quick_actions">Quick actions</string>
     <string name="home_edit">Edit</string>
     <string name="home_start_focus">Start Focus</string>

@@ -1,21 +1,26 @@
 package com.safeme.app
 
 import android.app.Application
+import com.safeme.app.data.ThemePref
 import com.safeme.app.data.a11yProtectionPrefs
 import com.safeme.app.data.appLockPrefs
 import com.safeme.app.data.schedulePrefs
+import com.safeme.app.data.themePref
 import com.safeme.app.protect.A11yProtectionGuard
 import com.safeme.app.protect.A11yProtectionStateHolder
 import com.safeme.app.protect.A11yProtectionUtils
 import com.safeme.app.protect.AppLockStateHolder
 import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.ui.screens.applock.AppLockGateController
+import com.safeme.app.ui.theme.ThemePrefHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Application entry point. Feeds the cached protection state from DataStore
@@ -26,9 +31,27 @@ class SafeMeApp : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** True while at least one schedule is enabled — gates the safety ticker. */
+    @Volatile
+    private var hasEnabledSchedules = false
+
     override fun onCreate() {
         super.onCreate()
         val app = this
+        // Read the theme pref synchronously before the first frame so the
+        // initial composition uses the stored theme (no light/dark flash),
+        // then keep the holder fed for live changes. A DataStore first read
+        // is a few ms; runBlocking here is the same "lock before first
+        // frame" pattern the App Lock gate already uses.
+        ThemePrefHolder.pref = runCatching {
+            runBlocking { app.themePref().first() }
+        }.getOrDefault(ThemePref.SYSTEM)
+        appScope.launch {
+            try {
+                app.themePref().collect { ThemePrefHolder.pref = it }
+            } catch (_: Throwable) {
+            }
+        }
         appScope.launch {
             try {
                 app.a11yProtectionPrefs().collect { state ->
@@ -62,6 +85,7 @@ class SafeMeApp : Application() {
         appScope.launch {
             try {
                 app.schedulePrefs().collect { state ->
+                    hasEnabledSchedules = state.schedules.any { it.enabled }
                     ScheduleEngine.apply(app, state.schedules)
                 }
             } catch (_: Throwable) {
@@ -71,7 +95,12 @@ class SafeMeApp : Application() {
             try {
                 while (true) {
                     delay(SAFETY_TICKER_MS)
-                    ScheduleEngine.reevaluate(app)
+                    // Tick only while a schedule is enabled. With none, there
+                    // is nothing that can drift, and a reevaluate would just
+                    // re-read DataStore from disk every minute for no effect.
+                    if (hasEnabledSchedules) {
+                        ScheduleEngine.reevaluate(app)
+                    }
                 }
             } catch (_: Throwable) {
             }

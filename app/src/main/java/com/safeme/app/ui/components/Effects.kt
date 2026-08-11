@@ -13,22 +13,31 @@ fun Modifier.blurredShadow(
     color: Color,
     blurRadius: Dp,
     offsetY: Dp,
-): Modifier = drawBehind {
-    val corner = cornerRadius.toPx()
-    val paint = Paint().apply {
-        this.color = color
-        isAntiAlias = true
-        asFrameworkPaint().maskFilter = BlurMaskFilter(blurRadius.toPx(), BlurMaskFilter.Blur.NORMAL)
-    }
-    drawIntoCanvas { canvas ->
-        canvas.drawRoundRect(
-            left = 0f,
-            top = offsetY.toPx(),
-            right = size.width,
-            bottom = size.height + offsetY.toPx(),
-            radiusX = corner,
-            radiusY = corner,
-            paint = paint,
-        )
+): Modifier {
+    // Paint is built lazily on the first draw (Density is only available in
+    // the DrawScope) and reused for every subsequent frame — the drawBehind
+    // lambda runs per frame, and allocating a Paint + BlurMaskFilter inside
+    // it would churn the GC on every redraw of shadowed cards. A fresh
+    // modifier instance (recomposition with changed params) rebuilds it.
+    var paint: Paint? = null
+    return drawBehind {
+        val p = paint ?: Paint().apply {
+            this.color = color
+            isAntiAlias = true
+            asFrameworkPaint().maskFilter =
+                BlurMaskFilter(blurRadius.toPx(), BlurMaskFilter.Blur.NORMAL)
+        }.also { paint = it }
+        val corner = cornerRadius.toPx()
+        drawIntoCanvas { canvas ->
+            canvas.drawRoundRect(
+                left = 0f,
+                top = offsetY.toPx(),
+                right = size.width,
+                bottom = size.height + offsetY.toPx(),
+                radiusX = corner,
+                radiusY = corner,
+                paint = p,
+            )
+        }
     }
 }

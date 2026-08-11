@@ -49,7 +49,10 @@ class A11yProtectionGuard {
     private val checkRunnable = object : Runnable {
         override fun run() {
             checkProtectedServices()
-            if (isWatching.get()) {
+            // Keep polling only while protection is on: checkProtectedServices()
+            // is a no-op once the toggle is off, so an off-state poll is pure
+            // wakeup waste. The ContentObserver still covers re-enable.
+            if (isWatching.get() && A11yProtectionStateHolder.protectionEnabled) {
                 handler.postDelayed(this, CHECK_INTERVAL_MS)
             }
         }
@@ -69,20 +72,27 @@ class A11yProtectionGuard {
     }
 
     fun startWatching(context: Context) {
-        if (isWatching.compareAndSet(false, true)) {
-            this.context = context.applicationContext
+        this.context = context.applicationContext
+        registerObserver(context.applicationContext)
+        // The poll is the OEM fallback; it only matters while protection is
+        // on. The collector sets the holder flag before calling this, so the
+        // gate is always in sync with the toggle.
+        if (A11yProtectionStateHolder.protectionEnabled &&
+            isWatching.compareAndSet(false, true)
+        ) {
             handler.postDelayed(checkRunnable, CHECK_INTERVAL_MS)
         }
-        registerObserver(context.applicationContext)
     }
 
     /** Re-arm the watcher (idempotent) — call from every heal entry point. */
     fun ensureWatching(context: Context) {
         this.context = context.applicationContext
-        if (isWatching.compareAndSet(false, true)) {
+        registerObserver(context.applicationContext)
+        if (A11yProtectionStateHolder.protectionEnabled &&
+            isWatching.compareAndSet(false, true)
+        ) {
             handler.postDelayed(checkRunnable, CHECK_INTERVAL_MS)
         }
-        registerObserver(context.applicationContext)
     }
 
     fun stopWatching() {

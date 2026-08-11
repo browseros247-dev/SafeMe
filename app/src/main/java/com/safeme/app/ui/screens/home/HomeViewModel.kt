@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -92,16 +93,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val prefs = combine(
-            app.blockingPrefs(),
-            app.appLockPrefs(),
-            app.a11yProtectionPrefs(),
-            app.preventUninstallPrefs(),
-            app.dnsVpnSettings(),
+            app.blockingPrefs().distinctUntilChanged(),
+            app.appLockPrefs().distinctUntilChanged(),
+            app.a11yProtectionPrefs().distinctUntilChanged(),
+            app.preventUninstallPrefs().distinctUntilChanged(),
+            app.dnsVpnSettings().distinctUntilChanged(),
         ) { blocking, appLock, a11yProt, pu, vpn ->
             PrefsSnapshot(blocking, appLock, a11yProt, pu, vpn)
         }
         viewModelScope.launch {
-            combine(prefs, app.schedulePrefs()) { snapshot, schedules ->
+            combine(prefs, app.schedulePrefs().distinctUntilChanged()) { snapshot, schedules ->
                 lastBlocking = snapshot.blocking
                 lastAppLock = snapshot.appLock
                 lastA11yProt = snapshot.a11yProt
@@ -113,7 +114,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         // Real activity feed (blocks, schedules, VPN/a11y changes).
         viewModelScope.launch {
-            app.activityLog().collect { entries ->
+            app.activityLog().distinctUntilChanged().collect { entries ->
                 _uiState.update { it.copy(feed = entries.take(3)) }
             }
         }

@@ -16,6 +16,16 @@ import androidx.core.view.WindowCompat
 import com.safeme.app.data.ThemePref
 import com.safeme.app.data.themePref
 
+/**
+ * Cached theme preference. Fed synchronously in [android.app.Application]
+ * startup so the first frame composes with the stored theme instead of
+ * flashing the SYSTEM default first, then kept in sync for live changes.
+ */
+object ThemePrefHolder {
+    @Volatile
+    var pref: ThemePref = ThemePref.SYSTEM
+}
+
 private val SafeMeColorScheme = lightColorScheme(
     primary = Brand,
     onPrimary = Surface,
@@ -70,7 +80,7 @@ fun SafeMeTheme(
 @Composable
 fun SafeMeApp(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val themePref by context.themePref().collectAsState(initial = ThemePref.SYSTEM)
+    val themePref by context.themePref().collectAsState(initial = ThemePrefHolder.pref)
     val darkTheme = when (themePref) {
         ThemePref.SYSTEM -> isSystemInDarkTheme()
         ThemePref.DARK -> true

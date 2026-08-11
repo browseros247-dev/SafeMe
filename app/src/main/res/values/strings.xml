@@ -162,7 +162,6 @@
     <string name="home_toast_on">On</string>
     <string name="home_toast_off">Off</string>
 
-    <string name="home_scheduleedit_title">New Schedule</string>
     <string name="home_backup_title">Backup</string>
     <string name="home_history_title">History</string>
 
@@ -305,7 +304,6 @@
         <item quantity="one">%1$d app selected</item>
         <item quantity="other">%1$d apps selected</item>
     </plurals>
-    <string name="sche_apps_sub_edit">Tap Choose to change apps</string>
     <string name="sche_apps_sub_none">No apps — schedule blocks everything</string>
     <string name="sche_apps_sub_list">%1$s…</string>
     <string name="sche_choose">Choose</string>
@@ -385,8 +383,6 @@
     <string name="prof_acc_soon">Coming soon</string>
     <string name="prof_backup_title">Backup &amp; Restore</string>
     <string name="prof_backup_sub">Export / import · atomic · versioned</string>
-    <string name="prof_protected_title">Protected Services</string>
-    <string name="prof_protected_sub">Third-party accessibility registry</string>
     <string name="prof_permissions_title">Permissions</string>
     <string name="prof_permissions_sub">%1$d of 3 granted · finish setup</string>
     <string name="prof_support">Support</string>
@@ -395,8 +391,6 @@
     <string name="prof_crash_title">Crash Logs</string>
     <string name="prof_crash_sub">Diagnostics · export · clear</string>
     <string name="prof_crash_badge">2</string>
-    <string name="prof_relay_title">Reliable Accessibility</string>
-    <string name="prof_relay_sub">ADB WRITE_SECURE_SETTINGS guide</string>
     <string name="prof_about_title">About</string>
     <string name="prof_about_sub">v%1$s · version info</string>
     <string name="prof_about_version">Version %1$s · package %2$s</string>

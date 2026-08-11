@@ -170,7 +170,6 @@ fun MainScreen() {
                             "backup" -> navController.navigate("backup")
                             "troubleshoot" -> navController.navigate("troubleshoot")
                             "crash" -> navController.navigate("crash")
-                            "relay" -> navController.navigate("relay")
                             "about" -> navController.navigate("about")
                             "applock" -> navController.navigate("applock")
                         }
@@ -218,7 +217,6 @@ fun MainScreen() {
             }
             composable("troubleshoot") { PlaceholderScreen(R.string.prof_troubleshoot_title) }
             composable("crash") { PlaceholderScreen(R.string.prof_crash_title) }
-            composable("relay") { PlaceholderScreen(R.string.prof_relay_title) }
             composable("about") {
                 AboutScreen(onBack = { navController.popBackStack() })
             }

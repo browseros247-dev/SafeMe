@@ -303,40 +303,6 @@ internal val ProfCrashIcon: ImageVector by lazy {
     }.build()
 }
 
-internal val ProfAntennaIcon: ImageVector by lazy {
-    ImageVector.Builder(
-        name = "ProfAntenna",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f
-    ).apply {
-        val stroke = SolidColor(Color.Black)
-        path(
-            fill = null,
-            stroke = stroke,
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round
-        ) {
-            moveTo(15f, 4f)
-            arcToRelative(1f, 1f, 0f, false, true, 2f, 0f)
-            arcToRelative(1f, 1f, 0f, false, true, -2f, 0f)
-            moveTo(18f, 19f)
-            lineTo(19f, 12f)
-            lineTo(13f, 13f)
-            moveTo(5f, 8f)
-            lineTo(8f, 5f)
-            lineTo(13.5f, 8f)
-            lineTo(11.14f, 11.5f)
-            moveTo(4.24f, 14.5f)
-            arcToRelative(5f, 5f, 0f, false, true, 6.88f, 6f)
-            moveTo(13.76f, 17.5f)
-            arcToRelative(5f, 5f, 0f, false, true, -6.88f, -6f)
-        }
-    }.build()
-}
-
 internal val ProfInfoIcon: ImageVector by lazy {
     ImageVector.Builder(
         name = "ProfInfo",

@@ -101,7 +101,6 @@ val LocalAppColors = staticCompositionLocalOf { LightAppColors }
 val Brand = Color(0xFFD97757)
 val BrandDark = Color(0xFFB45A3B)
 val BrandSoft = Color(0xFFFBEFE8)
-val BrandMist = Color(0xFFFDF8F4)
 
 val Ink = Color(0xFF1F1A16)
 val Ink2 = Color(0xFF6B625A)
@@ -112,16 +111,4 @@ val Surface = Color(0xFFFFFFFF)
 val Line = Color(0xFFEAE3DB)
 
 val Success = Color(0xFF2E7D5B)
-val Warning = Color(0xFFC0822B)
 val Danger = Color(0xFFC4453C)
-
-val IconGreenBg = Color(0xFFE6F4EA)
-val IconAmberBg = Color(0xFFF7EDDD)
-val IconDarkBg = Color(0xFF3A2C1F)
-val IconDarkFg = Color(0xFFE8B78F)
-
-val CardDark1 = Color(0xFF171310)
-val CardDark2 = Color(0xFF2A211B)
-val PreviewLabel = Color(0xFF9A8D80)
-val PreviewMsg = Color(0xFFC9BEB3)
-val SwOff = Color(0xFFDDD5CC)

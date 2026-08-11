@@ -23,11 +23,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,6 +114,12 @@ private fun AboutHeader(onBack: () -> Unit) {
 @Composable
 private fun AboutIdentityCard() {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
+    val appVersion = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "unknown"
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -136,7 +144,7 @@ private fun AboutIdentityCard() {
             )
         }
         Text(
-            text = stringResource(R.string.prof_about_version),
+            text = stringResource(R.string.prof_about_version, appVersion, context.packageName),
             fontSize = 13.sp,
             color = colors.ink2,
             modifier = Modifier.padding(top = 6.dp)

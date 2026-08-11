@@ -388,7 +388,7 @@
     <string name="prof_protected_title">Protected Services</string>
     <string name="prof_protected_sub">Third-party accessibility registry</string>
     <string name="prof_permissions_title">Permissions</string>
-    <string name="prof_permissions_sub">0 of 4 granted · finish setup</string>
+    <string name="prof_permissions_sub">%1$d of 3 granted · finish setup</string>
     <string name="prof_support">Support</string>
     <string name="prof_troubleshoot_title">Troubleshooting</string>
     <string name="prof_troubleshoot_sub">Background autostart · enable it manually</string>
@@ -399,7 +399,7 @@
     <string name="prof_relay_sub">ADB WRITE_SECURE_SETTINGS guide</string>
     <string name="prof_about_title">About</string>
     <string name="prof_about_sub">v1.0.76 · version info</string>
-    <string name="prof_about_version">Version 1.0.76 · package protect.yourself</string>
+    <string name="prof_about_version">Version %1$s · package %2$s</string>
     <string name="prof_about_deeplink_title">Deep link</string>
     <string name="prof_about_deeplink_sub">open://protectyourself</string>
     <string name="prof_about_website">Website</string>

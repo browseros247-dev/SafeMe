@@ -1,5 +1,7 @@
 package com.safeme.app.ui.screens.profile
 
+import android.content.Context
+import android.os.PowerManager
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -38,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,6 +54,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.data.ThemePref
 import com.safeme.app.ui.components.ToastHost
+import com.safeme.app.ui.screens.permissions.hasNotificationsPermission
+import com.safeme.app.ui.util.isAccessibilityEnabled
 import com.safeme.app.ui.theme.LocalAppColors
 
 @Composable
@@ -323,6 +328,16 @@ private fun QaGrid(
     onToast: () -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
+    // Live permission status: notifications + battery + accessibility.
+    val grantedCount = run {
+        var count = 0
+        if (hasNotificationsPermission(context)) count++
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isIgnoringBatteryOptimizations(context.packageName)) count++
+        if (isAccessibilityEnabled(context)) count++
+        count
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -368,7 +383,7 @@ private fun QaGrid(
                 background = colors.iconGreenBg,
                 tint = colors.success,
                 title = stringResource(R.string.prof_permissions_title),
-                sub = stringResource(R.string.prof_permissions_sub),
+                sub = stringResource(R.string.prof_permissions_sub, grantedCount),
                 onClick = { onOpen("permissions") },
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )

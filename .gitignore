@@ -13,8 +13,6 @@ build/
 .tmp-gradle
 
 # Reference project checked out alongside the app (own git repo)
-/protect_yourself/
-
 # Debug artifacts (screenshots, UI dumps, temp prefs)
 # graphify tool cache stamp (graphify-out itself is tracked)
 /graphify-out/cache/last_query_stamp
@@ -29,3 +27,5 @@ build/
 /ui9.xml
 /ui_dump.xml
 /vpn_screen_check.png
+.claude\worktrees
+.codebuff-index

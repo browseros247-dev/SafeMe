@@ -217,8 +217,9 @@ class BackupCodecTest {
         assertEquals(DnsPreset.CLOUDFLARE_FAMILY, snapshot.vpn?.preset)
     }
 
+    /** A keyword entry that isn't a {v,c} object would be silently lost → reject. */
     @Test
-    fun badEntriesInsideCollectionsAreDroppedNotFatal() {
+    fun malformedKeywordEntries_areRejected() {
         val raw = """
             {"format": "safeme-backup", "schemaVersion": 1,
              "blocking": {"blocklistKeywords": [
@@ -228,8 +229,46 @@ class BackupCodecTest {
                  42
              ]}}
         """.trimIndent()
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    /** Plain strings are not the keyword format — rejecting beats restoring zero keywords. */
+    @Test
+    fun keywordArrayOfStrings_isRejected() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1,
+            "blocking": {"blocklistKeywords": ["word"]}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun blockedWebsiteArrayOfStrings_isRejected() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1,
+            "blocking": {"blockedWebsites": ["example.com"]}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun nonStringWhitelistEntry_isRejected() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1,
+            "blocking": {"whitelistKeywords": ["work", 42]}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    @Test
+    fun malformedTitleRuleEntry_isRejected() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1,
+            "blocking": {"titleBlockRules": [{"v": "settings"}]}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
+
+    /** Valid {v,c} entries (including unknown categories) still restore. */
+    @Test
+    fun validKeywordObjectsStillRestore() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1,
+            "blocking": {"blocklistKeywords": [{"v": "ok", "c": "CUSTOM"}, {"v": "future", "c": "NEW_CATEGORY"}]}}"""
         val snapshot = successOf(decode(raw))
-        assertEquals(listOf(BlockedKeyword("good", BlockedCategory.CUSTOM)), snapshot.blocking?.blocklistKeywords)
+        assertEquals(2, snapshot.blocking?.blocklistKeywords?.size)
+        assertEquals(BlockedCategory.CUSTOM, snapshot.blocking?.blocklistKeywords?.last()?.category)
     }
 
     @Test

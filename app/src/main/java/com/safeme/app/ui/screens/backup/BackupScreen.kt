@@ -117,8 +117,10 @@ fun BackupScreen(onBack: () -> Unit, viewModel: BackupViewModel = viewModel()) {
 
     fun toastRes(res: Int) = viewModel.toast(context.getString(res))
 
+    // `application/octet-stream` (not `application/json`) so DocumentsUI keeps
+    // the suggested `.jsonc` name instead of appending `.json` to it.
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         val file = pendingExport
         pendingExport = null

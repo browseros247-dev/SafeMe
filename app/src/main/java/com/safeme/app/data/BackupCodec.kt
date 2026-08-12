@@ -190,6 +190,9 @@ object BackupCodec {
             )
         } catch (e: InvalidBackupException) {
             return BackupParseResult.Failure(e.error)
+        } catch (e: IllegalArgumentException) {
+            // Strict section parsers throw IAE on malformed entries (see parseBlocking).
+            return BackupParseResult.Failure(BackupError.INVALID_STRUCTURE)
         }
 
         if (snapshot.presentSections.isEmpty()) {
@@ -231,12 +234,17 @@ object BackupCodec {
         return o
     }
 
+    /**
+     * Strict parsing: a malformed entry (non-object, missing/empty value, wrong
+     * type) is a file error, not silently dropped — a backup that would lose
+     * data on restore must be rejected instead.
+     */
     private fun JSONObject.parseBlocking(): BlockingPrefsState = BlockingPrefsState(
-        blocklistKeywords = keywordsFromJson(jsonArray("blocklistKeywords")?.toString()),
-        whitelistKeywords = stringsFromJson(jsonArray("whitelistKeywords")?.toString()),
-        blockedWebsites = websitesFromJson(jsonArray("blockedWebsites")?.toString()),
-        trustedWebsites = stringsFromJson(jsonArray("trustedWebsites")?.toString()),
-        titleBlockRules = titleRulesFromJson(jsonArray("titleBlockRules")?.toString()),
+        blocklistKeywords = keywordsFromJson(jsonArray("blocklistKeywords")?.toString(), strict = true),
+        whitelistKeywords = stringsFromJson(jsonArray("whitelistKeywords")?.toString(), strict = true),
+        blockedWebsites = websitesFromJson(jsonArray("blockedWebsites")?.toString(), strict = true),
+        trustedWebsites = stringsFromJson(jsonArray("trustedWebsites")?.toString(), strict = true),
+        titleBlockRules = titleRulesFromJson(jsonArray("titleBlockRules")?.toString(), strict = true),
         blockingEnabled = boolean("blockingEnabled", true),
     )
 

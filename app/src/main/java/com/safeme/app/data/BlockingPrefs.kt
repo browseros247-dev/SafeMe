@@ -78,25 +78,32 @@ internal fun keywordsToJson(list: List<BlockedKeyword>): String {
     return arr.toString()
 }
 
-internal fun keywordsFromJson(json: String?): List<BlockedKeyword> {
+internal fun keywordsFromJson(json: String?, strict: Boolean = false): List<BlockedKeyword> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
-    return try {
-        val arr = JSONArray(text)
-        buildList {
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val v = o.optString("v").trim().lowercase()
-                if (v.isNotEmpty()) {
-                    val cat = runCatching {
-                        BlockedCategory.valueOf(o.optString("c"))
-                    }.getOrDefault(BlockedCategory.CUSTOM)
-                    add(BlockedKeyword(v, cat))
-                }
-            }
-        }
+    val arr = try {
+        JSONArray(text)
     } catch (e: JSONException) {
-        emptyList()
+        if (strict) throw IllegalArgumentException("blocklistKeywords is not a JSON array", e)
+        return emptyList()
+    }
+    return buildList {
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i)
+            if (o == null) {
+                if (strict) throw IllegalArgumentException("blocklistKeywords[$i] is not an object")
+                continue
+            }
+            val v = o.optString("v").trim().lowercase()
+            if (v.isEmpty()) {
+                if (strict) throw IllegalArgumentException("blocklistKeywords[$i] has no value")
+                continue
+            }
+            val cat = runCatching {
+                BlockedCategory.valueOf(o.optString("c"))
+            }.getOrDefault(BlockedCategory.CUSTOM)
+            add(BlockedKeyword(v, cat))
+        }
     }
 }
 
@@ -111,25 +118,32 @@ internal fun websitesToJson(list: List<BlockedWebsite>): String {
     return arr.toString()
 }
 
-internal fun websitesFromJson(json: String?): List<BlockedWebsite> {
+internal fun websitesFromJson(json: String?, strict: Boolean = false): List<BlockedWebsite> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
-    return try {
-        val arr = JSONArray(text)
-        buildList {
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val d = o.optString("d").trim().lowercase()
-                if (d.isNotEmpty()) {
-                    val cat = runCatching {
-                        BlockedCategory.valueOf(o.optString("c"))
-                    }.getOrDefault(BlockedCategory.CUSTOM)
-                    add(BlockedWebsite(d, cat))
-                }
-            }
-        }
+    val arr = try {
+        JSONArray(text)
     } catch (e: JSONException) {
-        emptyList()
+        if (strict) throw IllegalArgumentException("blockedWebsites is not a JSON array", e)
+        return emptyList()
+    }
+    return buildList {
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i)
+            if (o == null) {
+                if (strict) throw IllegalArgumentException("blockedWebsites[$i] is not an object")
+                continue
+            }
+            val d = o.optString("d").trim().lowercase()
+            if (d.isEmpty()) {
+                if (strict) throw IllegalArgumentException("blockedWebsites[$i] has no domain")
+                continue
+            }
+            val cat = runCatching {
+                BlockedCategory.valueOf(o.optString("c"))
+            }.getOrDefault(BlockedCategory.CUSTOM)
+            add(BlockedWebsite(d, cat))
+        }
     }
 }
 
@@ -152,41 +166,55 @@ internal fun titleRulesToJson(list: List<TitleBlockRule>): String {
     return arr.toString()
 }
 
-internal fun titleRulesFromJson(json: String?): List<TitleBlockRule> {
+internal fun titleRulesFromJson(json: String?, strict: Boolean = false): List<TitleBlockRule> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
-    return try {
-        val arr = JSONArray(text)
-        buildList {
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val id = o.optString("id").trim()
-                val v = o.optString("v").trim().lowercase()
-                if (id.isEmpty() || v.isEmpty()) continue
-                val mode = runCatching {
-                    TitleMatchMode.valueOf(o.optString("m"))
-                }.getOrDefault(TitleMatchMode.CONTAINS)
-                add(TitleBlockRule(id, v, mode, o.optBoolean("e", true)))
-            }
-        }
+    val arr = try {
+        JSONArray(text)
     } catch (e: JSONException) {
-        emptyList()
+        if (strict) throw IllegalArgumentException("titleBlockRules is not a JSON array", e)
+        return emptyList()
+    }
+    return buildList {
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i)
+            if (o == null) {
+                if (strict) throw IllegalArgumentException("titleBlockRules[$i] is not an object")
+                continue
+            }
+            val id = o.optString("id").trim()
+            val v = o.optString("v").trim().lowercase()
+            if (id.isEmpty() || v.isEmpty()) {
+                if (strict) throw IllegalArgumentException("titleBlockRules[$i] is missing id or value")
+                continue
+            }
+            val mode = runCatching {
+                TitleMatchMode.valueOf(o.optString("m"))
+            }.getOrDefault(TitleMatchMode.CONTAINS)
+            add(TitleBlockRule(id, v, mode, o.optBoolean("e", true)))
+        }
     }
 }
 
-internal fun stringsFromJson(json: String?): List<String> {
+internal fun stringsFromJson(json: String?, strict: Boolean = false): List<String> {
     val text = json ?: ""
     if (text.isBlank()) return emptyList()
-    return try {
-        val arr = JSONArray(text)
-        buildList {
-            for (i in 0 until arr.length()) {
-                val s = arr.optString(i).trim().lowercase()
-                if (s.isNotEmpty()) add(s)
-            }
-        }
+    val arr = try {
+        JSONArray(text)
     } catch (e: JSONException) {
-        emptyList()
+        if (strict) throw IllegalArgumentException("expected a JSON string array", e)
+        return emptyList()
+    }
+    return buildList {
+        for (i in 0 until arr.length()) {
+            val item = arr.opt(i)
+            if (item !is String) {
+                if (strict) throw IllegalArgumentException("entry $i is not a string")
+                continue
+            }
+            val s = item.trim().lowercase()
+            if (s.isNotEmpty()) add(s)
+        }
     }
 }
 

@@ -36,7 +36,9 @@ adb shell pm grant com.safeme.app android.permission.WRITE_SECURE_SETTINGS
   notification (throttled to once/hour).
 - **With the grant**, writes are strictly additive (see §5).
 - Android lint flags the manifest entry as `ProtectedPermissions` — this is
-  the project's known, pre-existing baseline error, not a defect.
+  the project's known, pre-existing baseline finding, recorded in
+  `app/lint-baseline.xml` so `lintDebug` stays green; new findings still fail
+  the build.
 
 ## 2. App Lock
 

@@ -27,12 +27,15 @@ Guidelines for building, testing, and extending SafeMe. Read
 
 ### Lint baseline
 
-`lintDebug` reports exactly **one** error: `ProtectedPermissions` for
-`WRITE_SECURE_SETTINGS` in the manifest. This is intentional (ADB-granted
-for the accessibility self-heal — see
+All known findings live in `app/lint-baseline.xml`, including the single
+intentional `ProtectedPermissions` error for `WRITE_SECURE_SETTINGS`
+(ADB-granted for the accessibility self-heal — see
 [04 — Security architecture](04-security-architecture.md#write_secure_settings-intentional-lint-baseline)).
-Do not "fix" it by removing the permission; do not add new lint findings on
-top of it.
+`lintDebug` is therefore green, and any **new** finding fails the build. Do
+not "fix" the permission by removing it; do not add new findings on top.
+To regenerate the baseline, delete `app/lint-baseline.xml` and re-run
+`./gradlew :app:lintDebug` — only do this when a new finding is
+intentionally accepted, never to hide a defect.
 
 ### Device setup for full feature testing
 
@@ -115,8 +118,9 @@ not the obvious "what".
    needs enforcement.
 4. Build the screen + ViewModel, register the route in `MainScreen.kt`.
 5. Add unit tests for any pure logic; run `testDebugUnitTest`.
-6. Run `compileDebugKotlin`, `lintDebug` (must stay at the single baseline
-   error), install, and smoke-test the screen end-to-end on the emulator.
+6. Run `compileDebugKotlin`, `lintDebug` (must stay green — the baseline
+   covers the known `WRITE_SECURE_SETTINGS` finding; new findings fail),
+   install, and smoke-test the screen end-to-end on the emulator.
 
 ## 5. Constraints checklist (do not break)
 
@@ -130,3 +134,29 @@ not the obvious "what".
 - Don't add per-frame allocations to draw paths; gate periodic background
   work by need.
 - Backup restore must validate before writing and roll back on failure.
+
+## 6. CI/CD
+
+`.github/workflows/ci.yml` runs on every push: it validates the Gradle
+wrapper, then builds the debug and release APKs and runs the JVM unit
+tests on `ubuntu-latest` (Temurin JDK 25 + Android SDK 36). APKs are
+uploaded as build artifacts.
+
+### Release signing in CI
+
+The keystore is never committed. Configure these repository secrets to
+produce a signed release APK:
+
+| Secret | Value |
+|---|---|
+| `KEYSTORE_BASE64` | base64 of `keystore/safeme-release.jks` |
+| `KEYSTORE_PASSWORD` | keystore password |
+| `KEY_ALIAS` | signing key alias (default `safeme`) |
+| `KEY_PASSWORD` | key password |
+
+When the secrets are absent (e.g. forks), `assembleRelease` falls back
+to the app's documented unsigned output — the workflow still passes.
+
+`lintDebug` runs in CI against `app/lint-baseline.xml`, which baselines the
+single documented `ProtectedPermissions` finding (the ADB-granted
+`WRITE_SECURE_SETTINGS`); new findings fail the build.

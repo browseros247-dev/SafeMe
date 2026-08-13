@@ -99,8 +99,10 @@ adb shell pm grant com.safeme.app android.permission.WRITE_SECURE_SETTINGS
 
 Android lint reports this as a `ProtectedPermissions` error by design — the
 permission is intentionally requested and ADB-granted; it is the pre-existing
-baseline, not a defect. Without it the self-heal degrades to detection +
-notification (throttled to once per hour).
+baseline, not a defect. It is recorded in `app/lint-baseline.xml`, so
+`lintDebug` stays green and only *new* findings fail the build. Without it
+the self-heal degrades to detection + notification (throttled to once per
+hour).
 
 ## Repository layout
 

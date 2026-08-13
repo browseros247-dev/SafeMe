@@ -1,0 +1,638 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.3.0" type="baseline" client="gradle" dependencies="false" name="AGP (9.3.0)" variant="all" version="9.3.0">
+
+    <issue
+        id="MissingPermission"
+        message="Setting Exact alarms with `setExactAndAllowWhileIdle` requires the `SCHEDULE_EXACT_ALARM` permission or power exemption from user; it is intended for applications where the user knowingly schedules actions to happen at a precise time such as alarms, clocks, calendars, etc. Check out the javadoc on this permission to make sure your use case is valid."
+        errorLine1="                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pi)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/protect/ScheduleAlarmReceiver.kt"
+            line="70"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdk = 36"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="25"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="BatteryLife"
+        message="Use of `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` violates the Play Store Content Policy regarding acceptable use cases, as described in https://developer.android.com/training/monitoring-device-state/doze-standby.html"
+        errorLine1="                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,"
+        errorLine2="                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/permissions/PermissionSteps.kt"
+            line="127"
+            column="30"/>
+    </issue>
+
+    <issue
+        id="ProtectedPermissions"
+        message="Permission is only granted to system apps"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.WRITE_SECURE_SETTINGS&quot; />"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="11"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="QueryPermissionsNeeded"
+        message="As of Android 11, this method no longer returns information about all apps; see https://g.co/dev/packagevisibility for details"
+        errorLine1="            val installed = pm.getInstalledPackages(PackageManager.GET_SERVICES)"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/protect/A11yProtectionUtils.kt"
+            line="301"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of com.android.application than 9.3.0 is available: 9.3.1"
+        errorLine1="agp = &quot;9.3.0&quot;"
+        errorLine2="      ~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="2"
+            column="7"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of `compileSdk` than 36 is available: 37"
+        errorLine1="    compileSdk = 36"
+        errorLine2="    ~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="20"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test:core than 1.6.1 is available: 1.7.0"
+        errorLine1="    androidTestImplementation(&quot;androidx.test:core:1.6.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="93"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test:runner than 1.6.1 is available: 1.7.0"
+        errorLine1="    androidTestImplementation(&quot;androidx.test:runner:1.6.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="94"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test.ext:junit than 1.2.1 is available: 1.3.0"
+        errorLine1="    androidTestImplementation(&quot;androidx.test.ext:junit:1.2.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="95"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test:orchestrator than 1.5.0 is available: 1.6.1"
+        errorLine1="    androidTestUtil(&quot;androidx.test:orchestrator:1.5.0&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="96"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.0"
+        errorLine1="coreKtx = &quot;1.16.0&quot;"
+        errorLine2="          ~~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="4"
+            column="11"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.9.1 is available: 2.11.0"
+        errorLine1="lifecycleRuntimeKtx = &quot;2.9.1&quot;"
+        errorLine2="                      ~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="5"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.9.1 is available: 2.11.0"
+        errorLine1="lifecycleRuntimeKtx = &quot;2.9.1&quot;"
+        errorLine2="                      ~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="5"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-compose than 1.10.1 is available: 1.13.0"
+        errorLine1="activityCompose = &quot;1.10.1&quot;"
+        errorLine2="                  ~~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="6"
+            column="19"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.compose:compose-bom than 2025.06.01 is available: 2026.06.01"
+        errorLine1="composeBom = &quot;2025.06.01&quot;"
+        errorLine2="             ~~~~~~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="8"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.datastore:datastore-preferences than 1.1.7 is available: 1.2.1"
+        errorLine1="datastore = &quot;1.1.7&quot;"
+        errorLine2="            ~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="9"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.fragment:fragment-ktx than 1.8.5 is available: 1.8.9"
+        errorLine1="fragment = &quot;1.8.5&quot;"
+        errorLine2="           ~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="11"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.10.1 is available: 1.11.0"
+        errorLine1="    androidTestImplementation(&quot;org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="97"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlin.plugin.compose than 2.3.20 is available: 2.4.10"
+        errorLine1="kotlin = &quot;2.3.20&quot;"
+        errorLine2="         ~~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="3"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.json:json than 20240303 is available: 20260719"
+        errorLine1="json = &quot;20240303&quot;"
+        errorLine2="       ~~~~~~~~~~">
+        <location
+            file="$HOME/.codex/worktrees/8f63/SafeMe/gradle/libs.versions.toml"
+            line="13"
+            column="8"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockInputs.kt"
+            line="99"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockInputs.kt"
+            line="191"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ModifierParameter"
+        message="Modifier parameter should be the first optional parameter"
+        errorLine1="    modifier: Modifier = Modifier,"
+        errorLine2="    ~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockInputs.kt"
+            line="248"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;layers&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;home_hero_all_active&quot;>All %1$d layers active&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="106"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;layers&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;home_hero_layers_active&quot;>%1$d of %2$d layers active&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="107"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;need&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;home_hero_attention&quot;>%1$d need attention&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="108"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;exempt&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;vpn_sub_exempt&quot;>%1$s · %2$d exempt&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="429"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PluralsCandidate"
+        message="Formatting %d followed by words (&quot;app&quot;): This should probably be a plural rather than a string"
+        errorLine1="    &lt;string name=&quot;vpn_whitelist_count&quot;>%1$d app(s) exempt&lt;/string>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="443"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields (static reference to `A11yProtectionGuard` which has field `context` pointing to `Context`); this is a memory leak"
+        errorLine1="        @Volatile"
+        errorLine2="        ^">
+        <location
+            file="src/main/java/com/safeme/app/protect/A11yProtectionGuard.kt"
+            line="225"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var credentialLength by remember { mutableStateOf(AppLockStateHolder.credentialLength) }"
+        errorLine2="                                       ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockUnlockOverlay.kt"
+            line="82"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var selectedTab by remember { mutableStateOf(0) }"
+        errorLine2="                                  ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/blocking/BlockingScreen.kt"
+            line="333"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="AutoboxingStateCreation"
+        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
+        errorLine1="    var resumeTick by remember { mutableStateOf(0) }"
+        errorLine2="                                 ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/profile/ProfileScreen.kt"
+            line="81"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/antitamper/AccessibilityProtectionScreen.kt"
+            line="437"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockScreen.kt"
+            line="682"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/blocking/BlockingScreen.kt"
+            line="256"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/focus/FocusScreen.kt"
+            line="478"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/home/HomeScreen.kt"
+            line="467"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/schedule/ScheduleScreen.kt"
+            line="533"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/antitamper/ServicePickerScreen.kt"
+            line="308"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseOfNonLambdaOffsetOverload"
+        message="State backed values should use the lambda overload of Modifier.offset"
+        errorLine1="                .offset(x = 3.dp + thumbOffset)"
+        errorLine2="                 ~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/titleblock/TitleBlockScreen.kt"
+            line="657"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="TypographyDashes"
+        message="Replace &quot;-&quot; with an &quot;en dash&quot; character (–, &amp;#8211;) ?"
+        errorLine1="    &lt;string name=&quot;bs_dwell_sub&quot;>Time before Close unlocks • 3-120s&lt;/string>"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/strings.xml"
+            line="54"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putLong(KEY_LAST_NOTIF_MS, now).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/protect/A11yProtectionGuard.kt"
+            line="210"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/protect/AppLockManager.kt"
+            line="232"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        ratePrefs(context).edit().clear().apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/protect/AppLockManager.kt"
+            line="240"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                                data = Uri.parse("
+        errorLine2="                                       ^">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockUnlockOverlay.kt"
+            line="377"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                                data = Uri.parse("
+        errorLine2="                                       ^">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/applock/AppLockUnlockOverlay.kt"
+            line="377"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                val uri = Uri.parse(trimmed)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/BlockGateActivity.kt"
+            line="97"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                val target = if (uri.scheme == null) Uri.parse(&quot;https://$trimmed&quot;) else uri"
+        errorLine2="                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/BlockGateActivity.kt"
+            line="98"
+            column="54"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    prefs.edit().putLong(KEY_LAST_DISABLED_NOTIF_MS, now).apply()"
+        errorLine2="                    ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/protect/DeviceAdminUtils.kt"
+            line="55"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                    Uri.parse(&quot;package:${context.packageName}&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/permissions/PermissionSteps.kt"
+            line="128"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX function `createBitmap` instead?"
+        errorLine1="                        val bmp = android.graphics.Bitmap.createBitmap(64, 64, android.graphics.Bitmap.Config.ARGB_8888)"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/safeme/app/ui/screens/schedule/ScheduleSheets.kt"
+            line="391"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    androidTestImplementation(&quot;androidx.test:core:1.6.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="93"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    androidTestImplementation(&quot;androidx.test:runner:1.6.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="94"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    androidTestImplementation(&quot;androidx.test.ext:junit:1.2.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="95"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    androidTestUtil(&quot;androidx.test:orchestrator:1.5.0&quot;)"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="96"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseTomlInstead"
+        message="Use version catalog instead"
+        errorLine1="    androidTestImplementation(&quot;org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1&quot;)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="97"
+            column="31"/>
+    </issue>
+
+</issues>

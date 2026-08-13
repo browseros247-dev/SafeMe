@@ -1,0 +1,94 @@
+# CI for SafeMe — builds, signs and tests on every push.
+#
+# Release signing is fed from GitHub repository secrets (never committed):
+#   KEYSTORE_BASE64   — base64 of the release .jks keystore
+#   KEYSTORE_PASSWORD — keystore password
+#   KEY_ALIAS         — signing key alias (default `safeme`)
+#   KEY_PASSWORD      — key password
+# When the secrets are absent (e.g. forks), assembleRelease falls back to the
+# app's documented unsigned output and the workflow still passes.
+#
+# `lintDebug` runs against `app/lint-baseline.xml`, which records the single
+# documented ProtectedPermissions finding (ADB-only WRITE_SECURE_SETTINGS
+# grant). New findings fail the build.
+
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-wrapper:
+    name: Validate Gradle wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Verify wrapper JAR checksum
+        uses: gradle/actions/wrapper-validation@v4
+
+  build:
+    name: Build, sign & test
+    needs: validate-wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25 (build targets release 25)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle (with caching)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK components
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Configure release signing from secrets
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          mkdir -p keystore
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore/safeme-release.jks
+          cat > keystore.properties <<EOF
+          storeFile=keystore/safeme-release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "Release signing configured from GitHub secrets."
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Run Android lint (baseline covers known findings)
+        run: ./gradlew :app:lintDebug
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Build release APK (signed when secrets configured)
+        run: ./gradlew :app:assembleRelease
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: safeme-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk

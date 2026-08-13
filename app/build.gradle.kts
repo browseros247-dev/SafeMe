@@ -61,6 +61,14 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        // All known findings are recorded in lint-baseline.xml (the single
+        // intentional ProtectedPermissions finding for the ADB-granted
+        // WRITE_SECURE_SETTINGS — see docs/04-security-architecture.md). Any
+        // NEW finding fails the build, and the baseline keeps `lintDebug`
+        // green locally and in CI.
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 dependencies {

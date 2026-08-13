@@ -145,5 +145,6 @@ reads are always safer than blocking ones.
 ### ADR-5: `WRITE_SECURE_SETTINGS` is intentionally requested
 
 It exists solely for the opt-in accessibility self-heal and triggers the
-lint `ProtectedPermissions` baseline error by design; it is ADB-granted and
-never requested at runtime from the user.
+lint `ProtectedPermissions` baseline finding by design (recorded in
+`app/lint-baseline.xml`); it is ADB-granted and never requested at runtime
+from the user.

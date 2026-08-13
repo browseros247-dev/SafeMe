@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -45,6 +48,7 @@ import com.safeme.app.R
 import com.safeme.app.data.NOTIF_CUSTOM
 import com.safeme.app.data.NOTIF_DEFAULT
 import com.safeme.app.data.NOTIF_HIDE
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.vpn.DnsPreset
@@ -163,6 +167,8 @@ fun DnsVpnScreen(
             loading = !state.appsLoaded,
             whitelist = state.whitelist,
             onToggle = viewModel::toggleWhitelistApp,
+            onSelectAll = viewModel::selectAllWhitelistApps,
+            onDeselectAll = viewModel::deselectAllWhitelistApps,
             onDone = {
                 showAppsSheet = false
                 viewModel.applyWhitelist()
@@ -601,6 +607,7 @@ private fun VpnNotifField(
     onChange: (String) -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Spacer(Modifier.height(8.dp))
     Row(
         modifier = Modifier
@@ -609,6 +616,10 @@ private fun VpnNotifField(
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface, RoundedCornerShape(14.dp))
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -619,15 +630,14 @@ private fun VpnNotifField(
             tint = colors.ink3,
         )
         Spacer(Modifier.width(10.dp))
-        androidx.compose.foundation.text.BasicTextField(
+        SafeMeTextField(
             value = value,
             onValueChange = onChange,
-            singleLine = true,
             textStyle = androidx.compose.ui.text.TextStyle(
                 fontSize = 15.sp,
                 color = colors.ink,
             ),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).focusRequester(focusRequester),
             decorationBox = { innerTextField ->
                 if (value.isEmpty()) {
                     Text(

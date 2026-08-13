@@ -4,6 +4,7 @@ import android.graphics.drawable.Drawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,8 +34,9 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -47,6 +48,7 @@ import com.safeme.app.R
 import com.safeme.app.data.AppCatalog
 import com.safeme.app.data.InstalledApp
 import com.safeme.app.ui.components.GroupedAppPickerList
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.blurredShadow
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.vpn.VpnValidation
@@ -63,6 +65,8 @@ fun CustomDnsSheet(
     var v4Text by remember { mutableStateOf(v4) }
     var v6Text by remember { mutableStateOf(v6) }
     var showError by remember { mutableStateOf(false) }
+    val v4Focus = remember { FocusRequester() }
+    val v6Focus = remember { FocusRequester() }
     val sheetState = rememberModalBottomSheetState()
     ModalBottomSheet(
         onDismissRequest = onCancel,
@@ -93,11 +97,10 @@ fun CustomDnsSheet(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            VpnSheetField(icon = VpnFieldShieldIcon) {
-                BasicTextField(
+            VpnSheetField(icon = VpnFieldShieldIcon, focusRequester = v4Focus) {
+                SafeMeTextField(
                     value = v4Text,
                     onValueChange = { if (it.length <= 45) { v4Text = it; showError = false } },
-                    singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri
                     ),
@@ -105,7 +108,7 @@ fun CustomDnsSheet(
                         fontSize = 15.sp,
                         color = colors.ink
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(v4Focus),
                     decorationBox = { innerTextField ->
                         if (v4Text.isEmpty()) {
                             Text(
@@ -119,11 +122,10 @@ fun CustomDnsSheet(
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
-            VpnSheetField(icon = VpnFieldShieldIcon) {
-                BasicTextField(
+            VpnSheetField(icon = VpnFieldShieldIcon, focusRequester = v6Focus) {
+                SafeMeTextField(
                     value = v6Text,
                     onValueChange = { if (it.length <= 60) { v6Text = it; showError = false } },
-                    singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri
                     ),
@@ -131,7 +133,7 @@ fun CustomDnsSheet(
                         fontSize = 15.sp,
                         color = colors.ink
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(v6Focus),
                     decorationBox = { innerTextField ->
                         if (v6Text.isEmpty()) {
                             Text(
@@ -201,11 +203,14 @@ fun VpnAppsSheet(
     loading: Boolean = false,
     whitelist: Set<String>,
     onToggle: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
     onDone: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     var query by remember { mutableStateOf("") }
+    val searchFocus = remember { FocusRequester() }
     val sheetState = rememberModalBottomSheetState()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -236,17 +241,15 @@ fun VpnAppsSheet(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            VpnSheetField(icon = VpnSearchIcon) {
-                BasicTextField(
+            VpnSheetField(icon = VpnSearchIcon, focusRequester = searchFocus) {
+                SafeMeTextField(
                     value = query,
                     onValueChange = { query = it },
-                    singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(
                         fontSize = 15.sp,
                         color = colors.ink
                     ),
-                    cursorBrush = SolidColor(colors.ink),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(searchFocus),
                     decorationBox = { innerTextField ->
                         if (query.isEmpty()) {
                             Text(
@@ -259,6 +262,12 @@ fun VpnAppsSheet(
                     }
                 )
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            VpnSelectAllRow(
+                selectedCount = whitelist.size,
+                onSelectAll = onSelectAll,
+                onDeselectAll = onDeselectAll,
+            )
             Spacer(modifier = Modifier.height(12.dp))
             // Search-then-group: categories stay in fixed order, empty groups hidden.
             val groups = remember(apps, query) { AppCatalog.groupApps(apps, query) }
@@ -399,7 +408,11 @@ private fun VpnSheetGrab() {
 }
 
 @Composable
-private fun VpnSheetField(icon: androidx.compose.ui.graphics.vector.ImageVector, content: @Composable () -> Unit) {
+private fun VpnSheetField(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    focusRequester: FocusRequester,
+    content: @Composable () -> Unit,
+) {
     val colors = LocalAppColors.current
     Row(
         modifier = Modifier
@@ -408,6 +421,12 @@ private fun VpnSheetField(icon: androidx.compose.ui.graphics.vector.ImageVector,
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            // Whole-field tap-to-focus: tapping the icon or padding focuses the
+            // inner BasicTextField instead of leaving a dead strip on the left.
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -419,6 +438,46 @@ private fun VpnSheetField(icon: androidx.compose.ui.graphics.vector.ImageVector,
         )
         Spacer(modifier = Modifier.width(10.dp))
         content()
+    }
+}
+
+@Composable
+private fun VpnSelectAllRow(selectedCount: Int, onSelectAll: () -> Unit, onDeselectAll: () -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        VpnSelectAllButton(
+            text = stringResource(R.string.picker_select_all, selectedCount),
+            onClick = onSelectAll,
+            modifier = Modifier.weight(1f)
+        )
+        VpnSelectAllButton(
+            text = stringResource(R.string.picker_deselect_all, selectedCount),
+            onClick = onDeselectAll,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun VpnSelectAllButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    Box(
+        modifier = modifier
+            .height(38.dp)
+            .clip(CircleShape)
+            .background(colors.brandSoft)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.brandDark
+        )
     }
 }
 

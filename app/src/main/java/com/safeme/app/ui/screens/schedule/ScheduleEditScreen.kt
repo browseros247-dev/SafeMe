@@ -3,6 +3,7 @@ package com.safeme.app.ui.screens.schedule
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -48,6 +50,7 @@ import com.safeme.app.R
 import com.safeme.app.data.SCHEDULE_DAY_NAMES
 import com.safeme.app.data.ScheduleMode
 import com.safeme.app.data.scheduleTimeLabel
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.screens.permissions.ChevronIcon
 import com.safeme.app.ui.theme.LocalAppColors
@@ -170,6 +173,8 @@ fun ScheduleEditScreen(
             apps = state.installedApps,
             selected = state.selectedApps,
             onToggle = viewModel::toggleApp,
+            onSelectAll = viewModel::selectAllApps,
+            onDeselectAll = viewModel::deselectAllApps,
             onDone = {
                 val count = viewModel.uiState.value.selectedApps.size
                 val message = context.resources.getQuantityString(
@@ -238,10 +243,11 @@ private fun Header(title: String, onBack: () -> Unit) {
     }
 }
 
-/** Prototype `.field` name input. */
+/** Prototype `.field` name input. Whole row is tap-to-focus. */
 @Composable
 private fun NameField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -249,6 +255,10 @@ private fun NameField(value: String, onValueChange: (String) -> Unit, placeholde
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -263,11 +273,11 @@ private fun NameField(value: String, onValueChange: (String) -> Unit, placeholde
             if (value.isEmpty()) {
                 Text(text = placeholder, fontSize = 15.sp, color = colors.ink3)
             }
-            BasicTextField(
+            SafeMeTextField(
                 value = value,
                 onValueChange = onValueChange,
-                singleLine = true,
                 textStyle = TextStyle(fontSize = 15.sp, color = colors.ink),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
         }
     }

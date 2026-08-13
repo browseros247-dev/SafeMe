@@ -73,6 +73,17 @@ Android.
   (schedule apps vs VPN whitelist) keeps its own design language — only
   grouping/presentation is shared.
 - Selection is a `Set<String>` of package names toggled via `onToggle`.
+- **Bulk actions:** both multi-select sheets (`AppPickerSheet`,
+  `VpnAppsSheet`) show a **Select All / Deselect All** row between the
+  search field and the list. The actions call ViewModel batch methods
+  (`selectAllApps`/`deselectAllApps`, `selectAllWhitelistApps`/
+  `deselectAllWhitelistApps`) that select/deselect **every app in the
+  picker** with one state update; the VPN variant persists the whitelist
+  and restarts the tunnel exactly once, never per app.
+- **Search tap-target:** every picker search field is fully tappable —
+  the `BasicTextField` fills the remaining width and the whole field row
+  (icon + padding included) forwards taps to a `FocusRequester`, so
+  tapping anywhere in the field focuses it, not just the text extent.
 
 ## 5. Consumers
 

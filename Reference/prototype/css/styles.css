@@ -167,7 +167,8 @@
 
   /* ---------- Search / field ---------- */
   .field{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
-         border-radius:14px;padding:0 14px;height:48px;transition:.15s}
+         border-radius:14px;padding:0 14px;height:48px;transition:.15s;cursor:text}
+  .field:active{cursor:text}
   .field:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
   .field svg{width:19px;height:19px;stroke:var(--ink-3);fill:none;stroke-width:2;stroke-linecap:round}
   .field input{flex:1;font-size:15px}

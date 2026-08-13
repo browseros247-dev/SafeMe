@@ -333,7 +333,7 @@
           <button data-panel="kw-st">Setting titles</button>
         </div>
         <div data-panel-view="kw-bl">
-          <div class="field" style="margin-top:14px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input placeholder="Search keywords…"></div>
+          <label class="field" style="margin-top:14px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input placeholder="Search keywords…"></label>
           <div class="group-label">Bundled · 1,189 total</div>
           <div class="list">
             <div class="li"><div class="ic r"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="tx"><div class="t">Adult</div><div class="s">612 keywords</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
@@ -425,7 +425,7 @@
         <div class="card" style="display:flex;gap:12px;align-items:center"><div class="ic g" style="width:40px;height:40px;border-radius:13px;background:#E7F0EC;color:var(--success);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M17 7l5 5-5 5M7 17l-5-5 5-5"/></svg></div><div style="flex:1"><div class="ctitle">VPN whitelist apps</div><div class="csub" id="vpnWhitelistSub">No apps exempt</div></div><button class="btn sm btn-secondary" onclick="openSheet('sheetVpnApps')">Manage</button></div>
         <div class="group-label">Notification</div>
         <div class="seg" style="margin-bottom:10px"><button class="on" onclick="togSeg(this);setVpnNotif(this)">Default</button><button onclick="togSeg(this);setVpnNotif(this)">Hide</button><button onclick="togSeg(this);setVpnNotif(this)">Custom</button></div>
-        <div class="field" id="vpnNotifWrap" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 016 6v5l2 2H4l2-2V9a6 6 0 016-6zM10 20h4"/></svg><input id="vpnNotifCustom" placeholder="Custom message…"></div>
+        <label class="field" id="vpnNotifWrap" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 016 6v5l2 2H4l2-2V9a6 6 0 016-6zM10 20h4"/></svg><input id="vpnNotifCustom" placeholder="Custom message…"></label>
         <div class="note"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>Foreground service with START_STICKY — auto-restores on boot &amp; app foreground.</span></div>
       </section>
 
@@ -466,7 +466,7 @@
           <h2 id="titleHeroTitle">Title blocking is on</h2>
           <p id="titleHeroSub">3 rules · 3 active · matching in real time</p>
         </div>
-        <div class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="titleSearch" placeholder="Search rules…" oninput="titleSearch()"></div>
+        <label class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="titleSearch" placeholder="Search rules…" oninput="titleSearch()"></label>
         <div class="group-label" style="margin-top:14px">Rules</div>
         <div id="titleEmpty" style="display:none"><div class="card" style="padding:22px;text-align:center"><div class="ic d" style="margin:0 auto 10px"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></div><div style="font-size:15px;font-weight:700;color:var(--ink)">No title rules yet</div><div style="font-size:12px;color:var(--ink-2);margin-top:4px">Add your first rule to start blocking by window title.</div></div></div>
         <div class="list" id="titleList">
@@ -686,7 +686,7 @@
 
       <section class="screen" id="sc-scheduleedit">
         <div class="sub" style="margin-top:6px"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1 id="schedEditTitle">New Schedule</h1></div>
-        <div class="field"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><input id="schedName" placeholder="Schedule name (e.g. Study)"></div>
+        <label class="field"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><input id="schedName" placeholder="Schedule name (e.g. Study)"></label>
         <div class="group-label">Repeat</div>
         <div class="days"><button class="day on" onclick="togDay(this)">M</button><button class="day on" onclick="togDay(this)">T</button><button class="day on" onclick="togDay(this)">W</button><button class="day" onclick="togDay(this)">T</button><button class="day" onclick="togDay(this)">F</button><button class="day" onclick="togDay(this)">S</button><button class="day" onclick="togDay(this)">S</button></div>
         <div class="group-label">Time window</div>
@@ -727,7 +727,7 @@
         <button data-panel="mg-wl">Whitelist</button>
       </div>
       <div data-panel-view="mg-kw">
-        <div class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="kwAllSearch" placeholder="Search keywords…" oninput="filterKwAll(this.value)"><span class="x" onclick="this.previousElementSibling.value='';filterKwAll('')">×</span></div>
+        <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="kwAllSearch" placeholder="Search keywords…" oninput="filterKwAll(this.value)"><span class="x" onclick="this.previousElementSibling.value='';filterKwAll('')">×</span></label>
         <div class="chips" style="margin-top:12px" id="kwAllChips">
           <button class="chip on" data-cat="all">All</button>
           <button class="chip" data-cat="Adult">Adult</button>
@@ -748,7 +748,7 @@
         <button class="btn btn-secondary btn-block" style="margin-top:14px" onclick="openSheet('sheetKw')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add keyword</button>
       </div>
       <div data-panel-view="mg-site" style="display:none">
-        <div class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="siteSearch" placeholder="Search websites…" oninput="filterSites(this.value)"><span class="x" onclick="this.previousElementSibling.value='';filterSites('')">×</span></div>
+        <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="siteSearch" placeholder="Search websites…" oninput="filterSites(this.value)"><span class="x" onclick="this.previousElementSibling.value='';filterSites('')">×</span></label>
         <div class="chips" style="margin-top:12px" id="siteChips">
           <button class="chip on" data-cat="all">All</button>
           <button class="chip" data-cat="Social">Social</button>
@@ -777,7 +777,7 @@
       <div class="grab"></div>
       <h3 id="kwSheetTitle">Add keyword</h3>
       <div class="s-sub">Validated against duplicates &amp; format.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="kwInput" placeholder="keyword…"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="kwInput" placeholder="keyword…"></label>
       <div class="group-label" style="margin-top:14px">Category</div>
       <div class="chips" id="kwCat">
         <button class="chip on">Adult</button><button class="chip">Gambling</button><button class="chip">Social</button><button class="chip">Shopping</button><button class="chip">Custom</button>
@@ -788,7 +788,7 @@
       <div class="grab"></div>
       <h3 id="siteSheetTitle">Add website</h3>
       <div class="s-sub">Validated against duplicates &amp; format.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a14 14 0 000 18M12 3a14 14 0 010 18M3 12h18"/></svg><input id="siteInput" placeholder="example.com"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a14 14 0 000 18M12 3a14 14 0 010 18M3 12h18"/></svg><input id="siteInput" placeholder="example.com"></label>
       <div class="group-label" style="margin-top:14px">Category</div>
       <div class="chips" id="siteCat">
         <button class="chip on">All</button><button class="chip">Social</button><button class="chip">Video</button><button class="chip">News</button><button class="chip">Custom</button>
@@ -800,7 +800,7 @@
       <div class="grab"></div>
       <h3 id="titleSheetTitle">Add title rule</h3>
       <div class="s-sub">Blocks apps or system pages whose window title matches.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg><input id="titleInput" placeholder="e.g. Calculator"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg><input id="titleInput" placeholder="e.g. Calculator"></label>
       <div class="group-label" style="margin-top:14px">Match</div>
       <div class="seg" id="titleMode"><button class="on" onclick="togSeg(this)">Contains</button><button onclick="togSeg(this)">Exact</button><button onclick="togSeg(this)">Starts with</button></div>
       <div class="group-label" style="margin-top:14px">Scope</div>
@@ -814,7 +814,7 @@
       <div class="grab"></div>
       <h3>Choose app</h3>
       <div class="s-sub">Select the app this rule targets.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="titleAppSearch" placeholder="Search apps…" oninput="filterTitleApps(this.value)"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="titleAppSearch" placeholder="Search apps…" oninput="filterTitleApps(this.value)"></label>
       <div class="app-picker" id="titleAppList"></div>
       <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="closeSheets()">Done</button>
     </div>
@@ -845,7 +845,7 @@
             </div>
           </div>
           <div class="set-ui" data-m="password" style="display:none">
-            <div class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 00-4 4v3H6a1 1 0 00-1 1v9a1 1 0 001 1h12a1 1 0 001-1v-9a1 1 0 00-1-1h-2V7a4 4 0 00-4-4z"/></svg><input id="pcInput" type="password" placeholder="4+ characters" oninput="wizInput('c')"></div>
+            <label class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 00-4 4v3H6a1 1 0 00-1 1v9a1 1 0 001 1h12a1 1 0 001-1v-9a1 1 0 00-1-1h-2V7a4 4 0 00-4-4z"/></svg><input id="pcInput" type="password" placeholder="4+ characters" oninput="wizInput('c')"></label>
             <p style="font-size:12px;color:var(--ink-2);margin-top:10px;text-align:center">Letters, numbers &amp; symbols</p>
           </div>
           <div class="set-ui" data-m="pattern" style="display:none">
@@ -872,7 +872,7 @@
             </div>
           </div>
           <div class="set-ui" data-m="password" style="display:none">
-            <div class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 00-4 4v3H6a1 1 0 00-1 1v9a1 1 0 001 1h12a1 1 0 001-1v-9a1 1 0 00-1-1h-2V7a4 4 0 00-4-4z"/></svg><input id="pvInput" type="password" placeholder="Re-enter password" oninput="wizInput('v')"></div>
+            <label class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 00-4 4v3H6a1 1 0 00-1 1v9a1 1 0 001 1h12a1 1 0 001-1v-9a1 1 0 00-1-1h-2V7a4 4 0 00-4-4z"/></svg><input id="pvInput" type="password" placeholder="Re-enter password" oninput="wizInput('v')"></label>
           </div>
           <div class="set-ui" data-m="pattern" style="display:none">
             <div class="patgrid" id="patGridV">
@@ -933,7 +933,7 @@
       <div class="grab"></div>
       <h3>Custom message</h3>
       <div class="s-sub">Shown on the block screen.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><input id="bsMsgInput" maxlength="60" placeholder="Stay safe, Alex. You chose this."></div>
+      <label class="field"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><input id="bsMsgInput" maxlength="60" placeholder="Stay safe, Alex. You chose this."></label>
       <div class="group-label" style="margin-top:14px">Suggestions</div>
       <div class="chips" id="bsMsgChips">
         <button class="chip on" onclick="pickMsgChip(this)">Stay safe, Alex</button><button class="chip" onclick="pickMsgChip(this)">Stay focused</button><button class="chip" onclick="pickMsgChip(this)">You chose this</button><button class="chip" onclick="pickMsgChip(this)">Your goal matters</button><button class="chip" onclick="pickMsgChip(this)">Step away</button>
@@ -945,7 +945,7 @@
       <div class="grab"></div>
       <h3>Redirect URL</h3>
       <div class="s-sub">Where to go after the countdown finishes.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><path d="M17 7l5 5-5 5M7 17l-5-5 5-5"/></svg><input id="bsUrlInput" placeholder="https://example.com"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><path d="M17 7l5 5-5 5M7 17l-5-5 5-5"/></svg><input id="bsUrlInput" placeholder="https://example.com"></label>
       <div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>Leave empty to return to the app after closing.</span></div>
       <div class="row2" style="margin-top:18px"><button class="btn btn-ghost" onclick="closeSheets()">Cancel</button><button class="btn btn-primary" onclick="saveUrl()">Save</button></div>
     </div>
@@ -966,7 +966,8 @@
       <div class="grab"></div>
       <h3>Choose apps</h3>
       <div class="s-sub">Search &amp; multi-select, then Done.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="appSearch" placeholder="Search apps…" oninput="filterApps(this.value)"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="appSearch" placeholder="Search apps…" oninput="filterApps(this.value)"></label>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm btn-secondary" style="flex:1" id="selAllAppsBtn" onclick="selectAllApps()">Select All (12)</button><button class="btn sm btn-secondary" style="flex:1" id="deselAllAppsBtn" onclick="deselectAllApps()">Deselect All (12)</button></div>
       <div class="app-picker" id="appList"></div>
       <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="appsDone()">Done</button>
     </div>
@@ -976,8 +977,8 @@
       <div class="grab"></div>
       <h3>Custom DNS</h3>
       <div class="s-sub">Enter resolver addresses — IPv4 is required.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="dnsIpv4" placeholder="IPv4 e.g. 1.1.1.1"></div>
-      <div class="field" style="margin-top:10px"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="dnsIpv6" placeholder="IPv6 (optional)"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="dnsIpv4" placeholder="IPv4 e.g. 1.1.1.1"></label>
+      <label class="field" style="margin-top:10px"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="dnsIpv6" placeholder="IPv6 (optional)"></label>
       <div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>IPv4 is validated strictly; IPv6 is optional and validated if provided.</span></div>
       <div class="row2" style="margin-top:18px"><button class="btn btn-ghost" onclick="closeSheets()">Cancel</button><button class="btn btn-primary" onclick="saveDns()">Save</button></div>
     </div>
@@ -987,7 +988,8 @@
       <div class="grab"></div>
       <h3>VPN whitelist</h3>
       <div class="s-sub">Select apps exempt from filtering.</div>
-      <div class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="vpnAppSearch" placeholder="Search apps…" oninput="filterVpnApps(this.value)"></div>
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="vpnAppSearch" placeholder="Search apps…" oninput="filterVpnApps(this.value)"></label>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm btn-secondary" style="flex:1" id="selAllVpnBtn" onclick="selectAllVpnApps()">Select All (0)</button><button class="btn sm btn-secondary" style="flex:1" id="deselAllVpnBtn" onclick="deselectAllVpnApps()">Deselect All (0)</button></div>
       <div class="app-picker" id="vpnAppList"></div>
       <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="vpnAppsDone()">Done</button>
     </div>

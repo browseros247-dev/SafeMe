@@ -293,6 +293,7 @@
     const search=document.getElementById(cfg[1]); if(search) search.value='';
     const sel = id==='sheetTitleApps' ? (titleApp?new Set([titleApp]):new Set()) : (id==='sheetApps'?appPickSel:vpnPickSel);
     renderAppPicker(host, cfg[2], sel, '');
+    updatePickerCounts();
   }
 
   // ---------- Sheets ----------
@@ -423,6 +424,7 @@
     const name=li.dataset.app||(li.querySelector('.t')||{textContent:''}).textContent;
     const set = li.closest('#appList') ? appPickSel : (li.closest('#vpnAppList') ? vpnPickSel : null);
     if(set){ if(c.classList.contains('on')) set.add(name); else set.delete(name); }
+    updatePickerCounts();
   }
 
   // ---------- Time delay gate ----------
@@ -616,7 +618,7 @@
         '<button class="sym" style="visibility:hidden"></button><button onclick="unlockPin(\'0\')">0</button><button class="sym" onclick="unlockBack()">⌫</button></div>';
     }
     else if(lockMethod==='password'){
-      b.innerHTML='<div class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 00-4 4v3H6a1 1 0 00-1 1v9a1 1 0 001 1h12a1 1 0 001-1v-9a1 1 0 00-1-1h-2V7a4 4 0 00-4-4z"/></svg><input id="unlockPass" type="password" placeholder="Enter password" oninput="unlockPass(this.value)"></div>';
+      b.innerHTML='<label class="field" style="margin-top:16px"><svg viewBox="0 0 24 24"><path d="M12 3a4 4 0 00-4 4v3H6a1 1 0 00-1 1v9a1 1 0 001 1h12a1 1 0 001-1v-9a1 1 0 00-1-1h-2V7a4 4 0 00-4-4z"/></svg><input id="unlockPass" type="password" placeholder="Enter password" oninput="unlockPass(this.value)"></label>';
     }
     else {
       b.innerHTML='<div class="patgrid" id="unlockPat">'+[1,2,3,4,5,6,7,8,9].map(i=>'<button data-i="'+i+'" onclick="patUnlock(this)"></button>').join('')+'</div><div class="s-sub" style="text-align:center;margin-top:12px">Draw your pattern</div>';
@@ -881,6 +883,28 @@
     });
   }
 
+  function updatePickerCounts(){
+    const a=document.getElementById('selAllAppsBtn'), b=document.getElementById('deselAllAppsBtn');
+    if(a) a.textContent='Select All ('+appPickSel.size+')';
+    if(b) b.textContent='Deselect All ('+appPickSel.size+')';
+    const c=document.getElementById('selAllVpnBtn'), d=document.getElementById('deselAllVpnBtn');
+    if(c) c.textContent='Select All ('+vpnPickSel.size+')';
+    if(d) d.textContent='Deselect All ('+vpnPickSel.size+')';
+  }
+  function selectAllApps(){
+    const q=(document.getElementById('appSearch')||{}).value||'';
+    APPS.forEach(a=>appPickSel.add(a.name));
+    renderAppPicker(document.getElementById('appList'),'multi',appPickSel,q);
+    updatePickerCounts();
+    toast('All apps selected');
+  }
+  function deselectAllApps(){
+    const q=(document.getElementById('appSearch')||{}).value||'';
+    appPickSel.clear();
+    renderAppPicker(document.getElementById('appList'),'multi',appPickSel,q);
+    updatePickerCounts();
+    toast('Deselected all apps');
+  }
   function appsDone(){
     const names=[...appPickSel];
     const editor=document.getElementById('sc-scheduleedit');
@@ -915,6 +939,20 @@
     dnsV4=v4; dnsV6=v6;
     const cs=document.getElementById('dnsCustomSub'); if(cs) cs.textContent='IPv4 '+v4+(v6?' · IPv6 '+v6:'');
     vpnStatus(); closeSheets(); toast('Custom DNS saved');
+  }
+  function selectAllVpnApps(){
+    const q=(document.getElementById('vpnAppSearch')||{}).value||'';
+    APPS.forEach(a=>vpnPickSel.add(a.name));
+    renderAppPicker(document.getElementById('vpnAppList'),'multi',vpnPickSel,q);
+    updatePickerCounts();
+    toast('All apps selected');
+  }
+  function deselectAllVpnApps(){
+    const q=(document.getElementById('vpnAppSearch')||{}).value||'';
+    vpnPickSel.clear();
+    renderAppPicker(document.getElementById('vpnAppList'),'multi',vpnPickSel,q);
+    updatePickerCounts();
+    toast('Deselected all apps');
   }
   function vpnAppsDone(){
     vpnWhitelist=[...vpnPickSel];

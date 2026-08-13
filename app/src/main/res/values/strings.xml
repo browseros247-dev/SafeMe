@@ -127,6 +127,10 @@
     <string name="app_cat_news_prod">News &amp; Productivity</string>
     <string name="app_cat_other">Other</string>
 
+    <!-- App Picker bulk actions -->
+    <string name="picker_select_all">Select All (%1$d)</string>
+    <string name="picker_deselect_all">Deselect All (%1$d)</string>
+
     <string name="home_quick_actions">Quick actions</string>
     <string name="home_edit">Edit</string>
     <string name="home_start_focus">Start Focus</string>

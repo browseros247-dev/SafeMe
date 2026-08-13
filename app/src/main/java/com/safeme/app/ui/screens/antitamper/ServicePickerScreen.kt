@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,8 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -49,6 +51,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.protect.ProtectedServiceEntry
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.screens.permissions.ChevronIcon
 import com.safeme.app.ui.theme.LocalAppColors
 
@@ -162,12 +165,17 @@ private fun SearchField(
     onQuery: (String) -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -177,18 +185,17 @@ private fun SearchField(
             modifier = Modifier.size(18.dp),
             tint = colors.ink3,
         )
-        androidx.compose.foundation.text.BasicTextField(
+        SafeMeTextField(
             value = query,
             onValueChange = onQuery,
             textStyle = androidx.compose.ui.text.TextStyle(
                 fontSize = 14.sp,
                 color = colors.ink,
             ),
-            singleLine = true,
-            cursorBrush = SolidColor(colors.ink),
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 10.dp, vertical = 13.dp),
+                .padding(horizontal = 10.dp, vertical = 13.dp)
+                .focusRequester(focusRequester),
         )
         if (query.isNotEmpty()) {
             IconButton(

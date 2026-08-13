@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -36,10 +36,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -52,6 +53,7 @@ import com.safeme.app.R
 import com.safeme.app.data.AppCatalog
 import com.safeme.app.data.InstalledApp
 import com.safeme.app.ui.components.GroupedAppPickerList
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.theme.LocalAppColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -290,6 +292,8 @@ fun AppPickerSheet(
     apps: List<InstalledApp>,
     selected: Set<String>,
     onToggle: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
     onDone: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -331,6 +335,12 @@ fun AppPickerSheet(
                 value = query,
                 onValueChange = { query = it },
                 placeholder = stringResource(R.string.sche_apps_search),
+            )
+            Spacer(Modifier.height(14.dp))
+            SelectAllRow(
+                selectedCount = selected.size,
+                onSelectAll = onSelectAll,
+                onDeselectAll = onDeselectAll,
             )
             Spacer(Modifier.height(14.dp))
             if (groups.isEmpty()) {
@@ -476,10 +486,16 @@ private fun CheckBox(checked: Boolean) {
     }
 }
 
-/** Prototype `.field`: surface, 14 radius, 48dp, search icon. */
+/**
+ * Prototype `.field`: surface, 14 radius, 48dp, search icon. The BasicTextField
+ * fills the whole remaining width and the row itself is tap-to-focus, so tapping
+ * anywhere in the field (icon, padding, empty space) focuses the input instead of
+ * only the narrow text extent.
+ */
 @Composable
 private fun SearchField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -487,6 +503,10 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, placehol
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -501,14 +521,54 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, placehol
             if (value.isEmpty()) {
                 Text(text = placeholder, fontSize = 15.sp, color = colors.ink3)
             }
-            BasicTextField(
+            SafeMeTextField(
                 value = value,
                 onValueChange = onValueChange,
-                singleLine = true,
                 textStyle = TextStyle(fontSize = 15.sp, color = colors.ink),
-                cursorBrush = SolidColor(colors.ink),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
         }
+    }
+}
+
+/** Prototype `.btn.sm.btn-secondary`: 38dp pills, one per bulk action. */
+@Composable
+private fun SelectAllRow(selectedCount: Int, onSelectAll: () -> Unit, onDeselectAll: () -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SelectAllButton(
+            text = stringResource(R.string.picker_select_all, selectedCount),
+            onClick = onSelectAll,
+            modifier = Modifier.weight(1f),
+        )
+        SelectAllButton(
+            text = stringResource(R.string.picker_deselect_all, selectedCount),
+            onClick = onDeselectAll,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun SelectAllButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    Box(
+        modifier = modifier
+            .height(38.dp)
+            .clip(CircleShape)
+            .background(colors.brandSoft)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.brandDark,
+        )
     }
 }
 

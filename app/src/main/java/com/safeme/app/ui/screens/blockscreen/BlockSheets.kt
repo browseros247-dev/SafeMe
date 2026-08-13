@@ -3,6 +3,7 @@ package com.safeme.app.ui.screens.blockscreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -33,6 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -40,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.safeme.app.R
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.blurredShadow
 import com.safeme.app.ui.theme.LocalAppColors
 
@@ -213,16 +216,15 @@ fun CustomMessageSheet(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            SheetField(icon = MessageIcon) {
-                BasicTextField(
+            SheetField(icon = MessageIcon) { focusRequester ->
+                SafeMeTextField(
                     value = text,
                     onValueChange = { if (it.length <= 60) text = it },
-                    singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(
                         fontSize = 15.sp,
                         color = colors.ink
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
                     decorationBox = { innerTextField ->
                         if (text.isEmpty()) {
                             Text(
@@ -337,16 +339,15 @@ fun RedirectUrlSheet(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            SheetField(icon = LinkIcon) {
-                BasicTextField(
+            SheetField(icon = LinkIcon) { focusRequester ->
+                SafeMeTextField(
                     value = text,
                     onValueChange = { text = it },
-                    singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(
                         fontSize = 15.sp,
                         color = colors.ink
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
                     decorationBox = { innerTextField ->
                         if (text.isEmpty()) {
                             Text(
@@ -401,8 +402,12 @@ private fun SheetGrab() {
 }
 
 @Composable
-private fun SheetField(icon: androidx.compose.ui.graphics.vector.ImageVector, content: @Composable () -> Unit) {
+private fun SheetField(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    content: @Composable (FocusRequester) -> Unit,
+) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -410,6 +415,13 @@ private fun SheetField(icon: androidx.compose.ui.graphics.vector.ImageVector, co
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            // Whole-field tap-to-focus: the BasicTextField is content-sized via
+            // weight(1f), so without this only the text area would take focus
+            // and the icon strip would be dead.
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -420,7 +432,7 @@ private fun SheetField(icon: androidx.compose.ui.graphics.vector.ImageVector, co
             tint = colors.ink3
         )
         Spacer(modifier = Modifier.width(10.dp))
-        content()
+        content(focusRequester)
     }
 }
 

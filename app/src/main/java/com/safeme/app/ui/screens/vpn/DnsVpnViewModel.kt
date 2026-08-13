@@ -293,8 +293,29 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
         val current = _uiState.value.whitelist
         val updated = if (pkg in current) current - pkg else current + pkg
         _uiState.update { it.copy(whitelist = updated) }
+        persistWhitelistOnce()
+    }
+
+    /** Selects every app in the picker; one atomic persist + tunnel restart. */
+    fun selectAllWhitelistApps() {
+        _uiState.update {
+            it.copy(whitelist = it.whitelist + it.installedApps.map { app -> app.packageName })
+        }
+        persistWhitelistOnce()
+    }
+
+    /** Deselects every app in the picker; one atomic persist + tunnel restart. */
+    fun deselectAllWhitelistApps() {
+        _uiState.update {
+            it.copy(whitelist = it.whitelist - it.installedApps.map { app -> app.packageName })
+        }
+        persistWhitelistOnce()
+    }
+
+    /** Persists the current whitelist once and restarts the tunnel if needed. */
+    private fun persistWhitelistOnce() {
         viewModelScope.launch {
-            getApplication<Application>().setVpnWhitelist(updated)
+            getApplication<Application>().setVpnWhitelist(_uiState.value.whitelist)
             restartIfRunning()
         }
     }

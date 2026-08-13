@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.theme.LocalAppColors
 import kotlin.math.roundToInt
 
@@ -262,6 +262,18 @@ fun PasswordField(
                 if (focused) colors.brand else colors.line,
                 RoundedCornerShape(14.dp),
             )
+            // Whole-field tap-to-focus: tapping the lock icon or padding focuses
+            // the field even when no focusRequester is wired to auto-focus it.
+            .then(
+                if (focusRequester != null) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { focusRequester!!.requestFocus() }
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 14.dp),
     ) {
         Icon(
@@ -282,11 +294,10 @@ fun PasswordField(
                     color = colors.ink3,
                 )
             }
-            BasicTextField(
+            SafeMeTextField(
                 value = value,
                 onValueChange = onValueChange,
                 enabled = enabled,
-                singleLine = true,
                 textStyle = TextStyle(fontSize = 15.sp, color = colors.ink),
                 interactionSource = interaction,
                 modifier = Modifier

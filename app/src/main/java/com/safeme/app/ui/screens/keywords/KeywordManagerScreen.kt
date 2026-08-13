@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -39,8 +39,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -53,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.data.BlockedCategory
 import com.safeme.app.data.normalizeDomain
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.screens.blocking.BlkGlobeIcon
 import com.safeme.app.ui.screens.blocking.BlkSquarePlusIcon
@@ -422,6 +424,7 @@ private fun Seg(
 @Composable
 private fun SearchField(placeholder: String, value: String, onValueChange: (String) -> Unit) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -429,6 +432,10 @@ private fun SearchField(placeholder: String, value: String, onValueChange: (Stri
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -443,12 +450,11 @@ private fun SearchField(placeholder: String, value: String, onValueChange: (Stri
             if (value.isEmpty()) {
                 Text(text = placeholder, fontSize = 14.sp, color = colors.ink3)
             }
-            BasicTextField(
+            SafeMeTextField(
                 value = value,
                 onValueChange = onValueChange,
-                singleLine = true,
                 textStyle = TextStyle(fontSize = 14.sp, color = colors.ink),
-                cursorBrush = SolidColor(colors.ink),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
         }
     }
@@ -696,10 +702,9 @@ private fun SheetField(
         if (value.isEmpty()) {
             Text(text = placeholder, fontSize = 14.sp, color = colors.ink3)
         }
-        BasicTextField(
+        SafeMeTextField(
             value = value,
             onValueChange = onValueChange,
-            singleLine = true,
             textStyle = TextStyle(fontSize = 14.sp, color = colors.ink),
             modifier = Modifier.fillMaxWidth(),
         )

@@ -108,6 +108,20 @@ class ScheduleEditViewModel(
         }
     }
 
+    /** Selects every app in the picker (empty search results are a no-op). */
+    fun selectAllApps() {
+        _uiState.update {
+            it.copy(selectedApps = it.selectedApps + it.installedApps.map { app -> app.packageName })
+        }
+    }
+
+    /** Deselects every app in the picker. */
+    fun deselectAllApps() {
+        _uiState.update {
+            it.copy(selectedApps = it.selectedApps - it.installedApps.map { app -> app.packageName })
+        }
+    }
+
     fun applyApps(apps: Set<String>) {
         _uiState.update { it.copy(selectedApps = apps) }
     }

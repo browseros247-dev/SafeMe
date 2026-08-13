@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,8 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -59,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.data.TitleBlockRule
 import com.safeme.app.data.TitleMatchMode
+import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.screens.blocking.BlkChevronRightIcon
 import com.safeme.app.ui.screens.blocking.BlkCrossIcon
@@ -490,6 +492,7 @@ private fun SearchField(
     placeholder: String,
 ) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -497,6 +500,10 @@ private fun SearchField(
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -511,12 +518,11 @@ private fun SearchField(
             if (value.isEmpty()) {
                 Text(text = placeholder, fontSize = 14.sp, color = colors.ink3)
             }
-            BasicTextField(
+            SafeMeTextField(
                 value = value,
                 onValueChange = onValueChange,
-                singleLine = true,
                 textStyle = TextStyle(fontSize = 14.sp, color = colors.ink),
-                cursorBrush = SolidColor(colors.ink),
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             )
         }
     }
@@ -708,6 +714,7 @@ private fun SheetField(
     icon: ImageVector,
 ) {
     val colors = LocalAppColors.current
+    val focusRequester = remember { FocusRequester() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -715,6 +722,10 @@ private fun SheetField(
             .clip(RoundedCornerShape(14.dp))
             .background(colors.surface)
             .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { focusRequester.requestFocus() }
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -730,12 +741,11 @@ private fun SheetField(
                 if (value.isEmpty()) {
                     Text(text = placeholder, fontSize = 14.sp, color = colors.ink3)
                 }
-                BasicTextField(
+                SafeMeTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    singleLine = true,
                     textStyle = TextStyle(fontSize = 14.sp, color = colors.ink),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 )
             }
         }

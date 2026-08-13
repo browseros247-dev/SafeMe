@@ -59,6 +59,7 @@
     <string name="bs_why">"Why am I seeing this?"</string>
     <string name="bs_why_sub">Show the explanation toggle</string>
 
+    <string name="bs_save_changes">Save changes</string>
     <string name="bs_preview_block">Preview block screen</string>
     <string name="bs_rate">Rate SafeMe on Play Store</string>
 
@@ -78,6 +79,8 @@
     <string name="bs_toast_redirect_cleared">Redirect cleared</string>
     <string name="bs_toast_img_set">Motivation image set to %1$s</string>
     <string name="bs_toast_img_none">No motivation image</string>
+    <string name="bs_toast_changes_saved">Changes saved</string>
+    <string name="bs_toast_save_failed">Couldn\'t save. Please try again.</string>
     <string name="bs_toast_redirecting">Redirecting to %1$s</string>
     <string name="bs_toast_back_app">Back to the app</string>
     <string name="bs_toast_rate">Play Store rating prompt</string>
@@ -188,6 +191,7 @@
     <string name="backup_section_app_lock">App Lock</string>
     <string name="backup_section_prevent_uninstall">Prevent Uninstall</string>
     <string name="backup_section_a11y">Accessibility Protection</string>
+    <string name="backup_section_block_screen">Block Screen</string>
     <string name="backup_toast_exported">Backup exported</string>
     <string name="backup_toast_export_failed">Couldn\'t export backup</string>
     <string name="backup_toast_restored">Backup restored</string>

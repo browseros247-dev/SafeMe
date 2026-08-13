@@ -23,6 +23,7 @@ enum class BackupSection {
     APP_LOCK,
     PREVENT_UNINSTALL,
     A11Y_PROTECTION,
+    BLOCK_SCREEN,
 }
 
 /**
@@ -79,6 +80,7 @@ data class BackupSnapshot(
     val appLock: AppLockPrefsState? = null,
     val preventUninstall: PreventUninstallPrefsState? = null,
     val a11yProtection: A11yProtectionPrefsState? = null,
+    val blockScreen: BlockScreenPrefsState? = null,
 ) {
     /** The sections that carry data — in canonical order. */
     val presentSections: List<BackupSection> get() = buildList {
@@ -89,6 +91,7 @@ data class BackupSnapshot(
         if (appLock != null) add(BackupSection.APP_LOCK)
         if (preventUninstall != null) add(BackupSection.PREVENT_UNINSTALL)
         if (a11yProtection != null) add(BackupSection.A11Y_PROTECTION)
+        if (blockScreen != null) add(BackupSection.BLOCK_SCREEN)
     }
 
     fun valueFor(section: BackupSection): Any? = when (section) {
@@ -99,6 +102,7 @@ data class BackupSnapshot(
         BackupSection.APP_LOCK -> appLock
         BackupSection.PREVENT_UNINSTALL -> preventUninstall
         BackupSection.A11Y_PROTECTION -> a11yProtection
+        BackupSection.BLOCK_SCREEN -> blockScreen
     }
 }
 
@@ -134,6 +138,7 @@ object BackupCodec {
         snapshot.appLock?.let { root.put("appLock", it.toJson()) }
         snapshot.preventUninstall?.let { root.put("preventUninstall", it.toJson()) }
         snapshot.a11yProtection?.let { root.put("a11yProtection", it.toJson()) }
+        snapshot.blockScreen?.let { root.put("blockScreen", it.toJson()) }
 
         val header = buildString {
             appendLine("// SafeMe backup — JSONC")
@@ -187,6 +192,7 @@ object BackupCodec {
                 appLock = root.parseSection("appLock") { it.parseAppLock() },
                 preventUninstall = root.parseSection("preventUninstall") { it.parsePreventUninstall() },
                 a11yProtection = root.parseSection("a11yProtection") { it.parseA11yProtection() },
+                blockScreen = root.parseSection("blockScreen") { it.parseBlockScreen() },
             )
         } catch (e: InvalidBackupException) {
             return BackupParseResult.Failure(e.error)
@@ -317,6 +323,27 @@ object BackupCodec {
         o.put("protectedComponents", JSONArray(protectedComponents.toList()))
         return o
     }
+
+    private fun BlockScreenPrefsState.toJson(): JSONObject {
+        val o = JSONObject()
+        o.put("dwell", dwell)
+        o.put("message", message)
+        o.put("img", img)
+        o.put("redirect", redirect)
+        o.put("whyOn", whyOn)
+        return o
+    }
+
+    private fun JSONObject.parseBlockScreen(): BlockScreenPrefsState = BlockScreenPrefsState(
+        // Absent keys fall back to defaults; a stored dwell outside the valid
+        // range is clamped so a backup can never restore an out-of-range gate.
+        dwell = int("dwell", BLOCK_SCREEN_DEFAULT_DWELL)
+            .coerceIn(BLOCK_SCREEN_MIN_DWELL, BLOCK_SCREEN_MAX_DWELL),
+        message = string("message") ?: "",
+        img = string("img") ?: "",
+        redirect = string("redirect") ?: "",
+        whyOn = boolean("whyOn", true),
+    )
 
     private fun JSONObject.parseA11yProtection(): A11yProtectionPrefsState =
         A11yProtectionPrefsState(

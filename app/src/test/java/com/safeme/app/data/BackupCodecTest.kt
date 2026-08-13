@@ -42,6 +42,10 @@ class BackupCodecTest {
         a11yProtection = A11yProtectionPrefsState(
             protectionEnabled = true, protectedComponents = setOf("com.pkg/com.pkg.Service"),
         ),
+        blockScreen = BlockScreenPrefsState(
+            dwell = 12, message = "Stay safe, Alex.", img = "sunset",
+            redirect = "https://example.com", whyOn = false,
+        ),
     )
 
     private fun encode(snapshot: BackupSnapshot = fullSnapshot()): String =
@@ -195,6 +199,28 @@ class BackupCodecTest {
     }
 
     // ------------------------------------------------------------- tolerance
+
+    @Test
+    fun blockScreenRoundTripsAndAbsentKeysFallBackToDefaults() {
+        val original = fullSnapshot()
+        assertEquals(original, successOf(decode(encode(original))))
+
+        // Only some keys present → the rest take defaults.
+        val partial = """{"format": "safeme-backup", "schemaVersion": 1,
+            "blockScreen": {"dwell": 300, "message": "Focus"}}"""
+        val snapshot = successOf(decode(partial))
+        assertEquals(120, snapshot.blockScreen?.dwell) // clamped to the valid range
+        assertEquals("Focus", snapshot.blockScreen?.message)
+        assertEquals("", snapshot.blockScreen?.img)
+        assertEquals("", snapshot.blockScreen?.redirect)
+        assertEquals(true, snapshot.blockScreen?.whyOn)
+    }
+
+    @Test
+    fun blockScreenFieldOfWrongType_isInvalidStructure() {
+        val raw = """{"format": "safeme-backup", "schemaVersion": 1, "blockScreen": {"whyOn": "yes"}}"""
+        assertEquals(BackupError.INVALID_STRUCTURE, errorOf(decode(raw)))
+    }
 
     @Test
     fun unknownQuickActionIdsAreDropped() {

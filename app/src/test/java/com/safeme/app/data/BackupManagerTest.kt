@@ -59,9 +59,10 @@ class BackupManagerTest {
         ),
         preventUninstall = PreventUninstallPrefsState(preventUninstallEnabled = true),
         a11yProtection = A11yProtectionPrefsState(protectionEnabled = true, protectedComponents = setOf("pkg/svc")),
+        blockScreen = BlockScreenPrefsState(dwell = 8, message = "Focus", whyOn = false),
     )
 
-    /** All seven stores seeded with "old" values that differ from the backup. */
+    /** All eight stores seeded with "old" values that differ from the backup. */
     private fun seededStores(
         failEveryWriteOn: BackupSection? = null,
         failOnWriteNumber: BackupSection? = null,
@@ -73,6 +74,7 @@ class BackupManagerTest {
         put(BackupSection.APP_LOCK, FakeStore(AppLockPrefsState(lockType = LockType.OFF)))
         put(BackupSection.PREVENT_UNINSTALL, FakeStore(PreventUninstallPrefsState(preventUninstallEnabled = false)))
         put(BackupSection.A11Y_PROTECTION, FakeStore(A11yProtectionPrefsState(protectionEnabled = false)))
+        put(BackupSection.BLOCK_SCREEN, FakeStore(BlockScreenPrefsState(dwell = 5)))
     }.mapValues { (section, store) ->
         when (section) {
             failEveryWriteOn -> FakeStore(store.value, failEveryWrite = true)
@@ -100,6 +102,7 @@ class BackupManagerTest {
         assertEquals(restored.appLock, stores[BackupSection.APP_LOCK]?.value)
         assertEquals(restored.preventUninstall, stores[BackupSection.PREVENT_UNINSTALL]?.value)
         assertEquals(restored.a11yProtection, stores[BackupSection.A11Y_PROTECTION]?.value)
+        assertEquals(restored.blockScreen, stores[BackupSection.BLOCK_SCREEN]?.value)
     }
 
     @Test

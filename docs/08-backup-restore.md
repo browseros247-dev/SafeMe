@@ -31,18 +31,19 @@ JSONC file and restores it atomically with validation and rollback.
                "biometricEnabled": …, "forgotPasswordDisabled": …,
                "autoLock": … },
   "preventUninstall": { "enabled": … },
-  "a11yProtection": { "enabled": …, "protectedComponents": […] }
+  "a11yProtection": { "enabled": …, "protectedComponents": […] },
+  "blockScreen": { "dwell": …, "message": …, "img": …, "redirect": …, "whyOn": … }
 }
 ```
 
-- **7 sections**, each mapping 1:1 to a DataStore domain and restored
+- **8 sections**, each mapping 1:1 to a DataStore domain and restored
   atomically as a unit.
 - Sections are **optional**: a section absent from the file is `null` and is
   *never touched* on restore (backups from older schema versions or
   hand-edited files restore exactly what they contain). A file with zero
   present sections is rejected as `EMPTY`.
 - Section keys: `blocking`, `schedules`, `vpn`, `quickActions`, `appLock`,
-  `preventUninstall`, `a11yProtection`.
+  `preventUninstall`, `a11yProtection`, `blockScreen`.
 - Enum fields are stored as names (`preset`, `lockType.storage`, …) and parse
   through resilient lookups with defaults (unknown values fall back, never
   crash).
@@ -53,7 +54,8 @@ JSONC file and restores it atomically with validation and rollback.
 `Context.createBackup()`:
 
 1. Reads every store via `xxxPrefs().first()` (blocking, schedules, vpn,
-   quick actions, app lock, prevent uninstall, a11y protection).
+   quick actions, app lock, prevent uninstall, a11y protection, block
+   screen).
 2. Reads the real `versionName` from `PackageManager`.
 3. `BackupCodec.toJsonc(...)` with a header comment recording created-at,
    app version, and schema version.

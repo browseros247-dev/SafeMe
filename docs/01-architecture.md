@@ -33,9 +33,10 @@ services and UI read the same flows.
                │ flows (collectAsState)          │ suspend calls
 ┌──────────────▼─────────────────────────────────▼───────────────┐
 │                        data/ (DataStore)                        │
-│ BlockingPrefs · SchedulePrefs · QuickActionsPrefs · VpnPrefs    │
-│ AppLockPrefs · OnboardingPrefs · A11yProtectionPrefs            │
-│ PreventUninstallPrefs · ActivityLog · BackupCodec · AppCatalog  │
+│ BlockingPrefs · BlockScreenPrefs · SchedulePrefs · VpnPrefs     │
+│ QuickActionsPrefs · AppLockPrefs · OnboardingPrefs · A11y-      │
+│ ProtectionPrefs · PreventUninstallPrefs · ActivityLog ·         │
+│ BackupCodec · AppCatalog                                        │
 └───────┬──────────────────┬──────────────────────┬───────────────┘
         │ flows            │ calls                │ calls
 ┌───────▼───────┐   ┌──────▼──────────┐   ┌────────▼───────────────┐
@@ -68,6 +69,7 @@ One `preferencesDataStore` per domain (each is a separate file on disk):
 | `onboarding_prefs` | onboarding-complete flag, theme preference |
 | `a11y_protection_prefs` | protection master switch, protected component set |
 | `safeme_pu_prefs` | prevent-uninstall switch |
+| `block_screen_prefs` | block-gate appearance: dwell countdown, custom message, motivation image, redirect URL, "why" toggle |
 | `vpn_prefs` | enabled, preset, custom v4/v6, whitelist, notification mode/copy |
 | `activity_log_prefs` | recent-activity entries (capped at 50, deduped) |
 

@@ -494,6 +494,29 @@
     },1000);
   }
   function closeBlockov(){ document.getElementById('blockov').classList.remove('show'); toast(bsRedirect?('Redirecting to '+bsRedirect):'Back to the app'); }
+  // Block-screen settings persist to localStorage (simulates SAF persistence),
+  // mirroring the app's Save changes button on the Block Screen.
+  const BS_KEY='safeme_blockscreen';
+  function saveBlockScreen(){
+    try{
+      const sw=document.getElementById('bsWhySw');
+      localStorage.setItem(BS_KEY, JSON.stringify({dwell:bsDwell,msg:bsMsg,img:bsImg,redirect:bsRedirect,why:sw?sw.classList.contains('on'):true}));
+    }catch(e){}
+    toast('Changes saved');
+  }
+  function loadBlockScreen(){
+    try{
+      const raw=localStorage.getItem(BS_KEY); if(!raw) return;
+      const s=JSON.parse(raw)||{};
+      if(Number.isFinite(s.dwell)) bsDwell=Math.max(3,Math.min(120,s.dwell));
+      if(typeof s.msg==='string' && s.msg) bsMsg=s.msg;
+      if(typeof s.img==='string') bsImg=s.img;
+      if(typeof s.redirect==='string') bsRedirect=s.redirect;
+      const sw=document.getElementById('bsWhySw');
+      if(sw) sw.classList.toggle('on', !!s.why);
+    }catch(e){}
+  }
+  loadBlockScreen();
   renderBlockPreview();
 
   // ---------- Presets / pickers ----------

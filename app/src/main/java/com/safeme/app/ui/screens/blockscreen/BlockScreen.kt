@@ -32,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,7 @@ import com.safeme.app.ui.components.blurredShadow
 import com.safeme.app.ui.screens.permissions.ChevronIcon
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.ui.theme.SerifFamily
+import kotlinx.coroutines.launch
 
 @Composable
 fun BlockScreen(onBack: () -> Unit) {
@@ -69,6 +71,7 @@ fun BlockScreen(onBack: () -> Unit) {
     var showUrlSheet by remember { mutableStateOf(false) }
     var showOverlay by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val colors = LocalAppColors.current
 
@@ -236,6 +239,23 @@ fun BlockScreen(onBack: () -> Unit) {
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
+
+                // The only commit point for the whole screen: saves every
+                // setting shown above in one atomic DataStore write. Edits are
+                // live in the working copy/preview but are discarded when the
+                // user leaves without tapping Save.
+                PrimaryBlockButton(stringResource(R.string.bs_save_changes)) {
+                    scope.launch {
+                        val ok = vm.save()
+                        Toast.makeText(
+                            context,
+                            if (ok) R.string.bs_toast_changes_saved else R.string.bs_toast_save_failed,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
 
                 PrimaryBlockButton(stringResource(R.string.bs_preview_block)) { showOverlay = true }
 

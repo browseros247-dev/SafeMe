@@ -68,6 +68,24 @@ it is genuinely functional right now:
 ./gradlew :app:assembleRelease
 ```
 
+### Release signing
+
+Release builds are signed from `keystore.properties` (gitignored) when it
+is present, and fall back to unsigned output otherwise. The file and the
+keystore it points at are **never** committed — copy
+[`keystore.properties.example`](keystore.properties.example) to
+`keystore.properties` and fill in real values:
+
+```bash
+keytool -genkeypair -v -keystore keystore/safeme-release.jks -alias safeme \
+  -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=SafeMe, O=SafeMe, C=BD"
+```
+
+> **Back up `keystore/safeme-release.jks` and its passwords somewhere safe.**
+> Android apps can only be updated in place by APKs signed with the same key;
+> losing the keystore means every installed SafeMe must be uninstalled and
+> reconfigured before any future release can be installed.
+
 ### Optional ADB grants
 
 The Accessibility-protection self-heal feature rewrites

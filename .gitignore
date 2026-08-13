@@ -29,3 +29,7 @@ build/
 /vpn_screen_check.png
 .claude\worktrees
 .codebuff-index
+
+# Release signing — never commit the keystore or its credentials
+/keystore.properties
+/keystore/

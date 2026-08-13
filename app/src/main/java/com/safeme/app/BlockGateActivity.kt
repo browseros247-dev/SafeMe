@@ -7,31 +7,37 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
+import com.safeme.app.R
 import com.safeme.app.data.ACTIVITY_BLOCK
+import com.safeme.app.data.BlockScreenPrefsState
 import com.safeme.app.data.addActivity
+import com.safeme.app.data.blockScreenPrefs
 import com.safeme.app.data.incrementBlockedToday
 import com.safeme.app.ui.screens.blockscreen.BlockOverlay
 import com.safeme.app.ui.theme.SafeMeApp
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.platform.LocalConfiguration
-import com.safeme.app.R
 import kotlinx.coroutines.launch
 
 /**
  * Full-screen block gate raised by [service.SafeMeAccessibilityService] over an offending
  * app. Reuses the self-contained [BlockOverlay] composable (dwell countdown + ready-gated
- * Close). Increments the persisted blocked-today counter for every real block it shows.
+ * Close) and honors the persisted Block Screen settings: dwell countdown, custom message,
+ * close-gate redirect and the "Why am I seeing this?" toggle. Increments the persisted
+ * blocked-today counter for every real block it shows.
  *
  * Robustness:
  *  - Increment happens only on first creation (never re-incremented on recreation/rotation).
- *  - Close resolves to an ACTION_VIEW redirect when one is supplied, otherwise finishes,
- *    returning the user to the app they were in.
- *  - Failure to persist the counter is swallowed and never crashes the gate.
+ *  - Close resolves to an ACTION_VIEW redirect when one is supplied (a per-gate extra wins
+ *    over the persisted redirect), otherwise finishes, returning the user to the app they
+ *    were in.
+ *  - Settings load asynchronously (defaults render first); failure to persist the counter
+ *    is swallowed and never crashes the gate.
  */
 class BlockGateActivity : ComponentActivity() {
 
@@ -62,7 +68,7 @@ class BlockGateActivity : ComponentActivity() {
                     matched = matched,
                     type = type,
                     redirect = redirect,
-                    onClose = { closeGate(redirect) },
+                    onClose = { closeGate(it) },
                 )
             }
         }
@@ -120,33 +126,48 @@ private fun BlockGate(
     matched: String,
     type: String,
     redirect: String,
-    onClose: () -> Unit,
+    onClose: (String) -> Unit,
 ) {
-    var whyOn by remember { mutableStateOf(true) }
-    // [L1 fix] locale is captured as a remember key so the PU gate message
-    // updates when the system locale changes mid-display.
+    val context = LocalContext.current
+    // Persisted Block Screen settings (dwell, custom message, redirect, why
+    // toggle). The flow renders defaults on the first frame, then the saved
+    // values, so the gate never blocks on DataStore.
+    val prefs by context.blockScreenPrefs().collectAsState(initial = BlockScreenPrefsState())
+    // [L1 fix] locale is captured as a remember key so the PU/schedule reason
+    // text updates when the system locale changes mid-display.
     val locale = LocalConfiguration.current.locales[0]
+    val defaultMessage = stringResource(R.string.bs_preview_msg_default)
     val puGateMessage = stringResource(R.string.pu_gate_message)
     val scheduleGateMessage = stringResource(R.string.schedule_gate_message)
-    val msg = remember(pkg, matched, type, locale) {
+    // A per-gate redirect extra (functional redirects like SafeSearch) wins
+    // over the user's persisted close-gate redirect.
+    val effectiveRedirect = remember(redirect, prefs.redirect) {
+        redirect.ifEmpty { prefs.redirect }
+    }
+    // The persisted custom message is the gate message (default fallback), so
+    // the live gate matches the Block Screen preview and the prototype.
+    val msg = remember(prefs.message, defaultMessage, locale) {
+        prefs.message.ifEmpty { defaultMessage }
+    }
+    // The block context moves to the "Why am I seeing this?" toast.
+    val whyReason = remember(pkg, matched, type, puGateMessage, scheduleGateMessage, locale) {
         when (type) {
             "website" ->
-                if (matched.isNotEmpty()) "Website blocked by SafeMe: $matched" else "This site is blocked by SafeMe"
+                if (matched.isNotEmpty()) "Why: website blocked by SafeMe ($matched)" else "Why: website blocked by SafeMe"
             "title" ->
-                if (matched.isNotEmpty()) "Settings page blocked by SafeMe: $matched" else "Settings page blocked by SafeMe"
+                if (matched.isNotEmpty()) "Why: Settings page blocked by SafeMe ($matched)" else "Why: Settings page blocked by SafeMe"
             "pu" -> puGateMessage
             "schedule" -> scheduleGateMessage
             else ->
-                if (matched.isNotEmpty()) "Keyword blocked by SafeMe: $matched" else "Blocked by SafeMe"
+                if (matched.isNotEmpty()) "Why: $matched blocked by SafeMe" else null
         }
     }
     BlockOverlay(
-        dwell = GATE_DWELL,
+        dwell = prefs.dwell,
         msg = msg,
-        whyOn = whyOn,
-        redirect = redirect,
-        onClose = onClose,
+        whyOn = prefs.whyOn,
+        redirect = effectiveRedirect,
+        whyReason = whyReason,
+        onClose = { onClose(effectiveRedirect) },
     )
 }
-
-private const val GATE_DWELL = 5

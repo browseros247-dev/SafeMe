@@ -55,6 +55,7 @@ fun BlockOverlay(
     whyOn: Boolean,
     redirect: String,
     onClose: () -> Unit,
+    whyReason: String? = null,
 ) {
     var remaining by remember { mutableIntStateOf(dwell) }
     var ready by remember { mutableStateOf(dwell <= 0) }
@@ -136,7 +137,9 @@ fun BlockOverlay(
                             .background(colors.brand.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
                             .clickable {
                                 Toast.makeText(
-                                    context, R.string.bs_toast_why, Toast.LENGTH_SHORT
+                                    context,
+                                    whyReason ?: context.getString(R.string.bs_toast_why),
+                                    Toast.LENGTH_SHORT
                                 ).show()
                             }
                             .padding(horizontal = 16.dp, vertical = 10.dp)

@@ -98,16 +98,35 @@ which the accessibility guards intercept while Prevent Uninstall is on.
 While the PU flag is on, exactly three surfaces are guarded — all identified
 by SafeMe's own app name / service label on a settings-family window:
 
-1. **SafeMe's own accessibility-service detail page** — evicted via
-   `GLOBAL_ACTION_HOME` + a delayed toast. **Never** covered by the block
-   gate: Android auto-disables an accessibility service whose window obscures
-   a11y-management screens.
+1. **SafeMe's own accessibility-service detail page** — the PU gate (Block
+   screen) is raised **first** on every activation; dismissing it bounces to
+   HOME, so the user never reaches the page and the gate is never left
+   covering an a11y-management screen (the a11y kill vector: Android
+   auto-disables a service whose window persistently obscures them).
+   Enforcement runs on **every** activation: a background watchdog re-probes
+   the active window every 2 s while the foreground is a Settings-family
+   package, so the gate appears whether the page is opened directly, reopened,
+   reached through any Settings entry point, or already active when the PU
+   flag flips on. The kick/probe throttle windows only dedupe event floods —
+   they never suppress a genuine reopen.
 2. **Other a11y-management screens** (lists, other services' details) — never
    blocked, only self-healed.
 3. **SafeMe's own App Info / Device-Admin deactivation / force-stop /
    uninstall-confirmation pages** — blocked with the PU gate. The stock
    uninstall confirmation (`com.android.packageinstaller` UninstallerActivity /
-   AlertDialog with "uninstall" text) is part of the surface.
+   AlertDialog with "uninstall" text) is part of the surface. The watchdog
+   re-checks these surfaces too: a page that is ALREADY active when the PU
+   flag flips on, or one the event path failed to classify (tree not ready at
+   the window-state-changed event), raises the gate on the next 2 s tick —
+   the block is not dependent on a fresh window-state-changed event. While a
+   gate is on screen the watchdog pauses probing (the active tree is the
+   gate's, not the protected page's) and resumes immediately when the gate is
+   dismissed onto a new window — the event path kicks a tick at that instant
+   (re-arming the PU gate cooldown so a protected page underneath is re-gated
+   at once) rather than waiting for the next cadence. The framework app-name
+   probe is throttled above the watchdog cadence (5 s) so it never runs on
+   every tick; the walked-texts checks run unthrottled, so a genuine
+   activation is never delayed.
 
 Detection rules live in `protect/ProtectedSystemScreens.kt` (pure,
 unit-tested):

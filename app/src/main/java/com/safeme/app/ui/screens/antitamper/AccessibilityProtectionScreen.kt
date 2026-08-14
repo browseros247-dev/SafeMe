@@ -1,5 +1,8 @@
 package com.safeme.app.ui.screens.antitamper
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -30,12 +33,14 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -54,6 +59,8 @@ import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.screens.blockscreen.InfoIcon
 import com.safeme.app.ui.screens.permissions.ChevronIcon
 import com.safeme.app.ui.theme.LocalAppColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Accessibility Protection — the prototype's "self-protect" screen.
@@ -216,7 +223,11 @@ private fun PermissionCard(
     onRecheck: () -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
+    var copied by remember { mutableStateOf(false) }
+    val command = stringResource(R.string.ap_perm_command, "com.safeme.app")
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -303,11 +314,36 @@ private fun PermissionCard(
                         color = colors.ink2,
                     )
                     Text(
-                        text = stringResource(R.string.ap_perm_command, "com.safeme.app"),
+                        text = command,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.brandDark,
                     )
+                    // Copy the complete ADB command to the clipboard, with a
+                    // brief "Copied" confirmation (resets after 2 s).
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (copied) colors.successBg else colors.brandSoft)
+                            .clickable {
+                                copyToClipboard(context, command)
+                                copied = true
+                                scope.launch {
+                                    delay(2000)
+                                    copied = false
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (copied) R.string.ap_perm_copied else R.string.ap_perm_copy,
+                            ),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (copied) colors.success else colors.brandDark,
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -406,6 +442,15 @@ private fun Note() {
             lineHeight = 18.sp,
             color = colors.ink2,
         )
+    }
+}
+
+/** Copies [text] to the system clipboard; swallows any failure (never crash the screen). */
+private fun copyToClipboard(context: Context, text: String) {
+    runCatching {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            ?: return
+        clipboard.setPrimaryClip(ClipData.newPlainText("SafeMe ADB command", text))
     }
 }
 

@@ -71,4 +71,69 @@ object UninstallBlockers {
         "storage",
         "permissions",
     )
+
+    /**
+     * Pure decision core for the app-info / device-admin / force-stop /
+     * uninstall guard surface. Every framework-dependent input is passed in
+     * (app-name presence including the node-tree probe result, the
+     * caller-appropriate our-a11y-detail check, Device Admin state) so the
+     * logic is unit-testable without an AccessibilityService.
+     *
+     * [isOurA11yDetailPage] is evaluated lazily (it may probe the node tree)
+     * and only when the page is otherwise a target. All branches are
+     * fail-open: anything that is not unmistakably SafeMe's own tamper surface
+     * is left untouched.
+     */
+    fun isOurUninstallTargetPage(
+        pkg: String,
+        lowerClass: String,
+        lowerText: String,
+        appIsOnPage: Boolean,
+        isOurA11yDetailPage: () -> Boolean,
+        adminActive: Boolean,
+    ): Boolean {
+        // The stock uninstall confirmation lives in the packageinstaller
+        // package (UninstallerActivity). Only that dialog surface may be
+        // gated there — its install/update screens must never be blocked.
+        if (ProtectedSystemPages.isUninstallerPackage(pkg)) {
+            // The uninstall confirmation is reported either as the
+            // UninstallerActivity class or as a generic AlertDialog window
+            // (observed on Android 16). Both surfaces are gated on the
+            // "uninstall" text so install/update/permission dialogs in the
+            // packageinstaller are never blocked.
+            val isUninstallSurface = lowerClass.contains("uninstalleractivity") ||
+                lowerClass.contains("alertdialog")
+            val hasUninstallText = lowerText.contains("uninstall")
+            return isUninstallSurface && appIsOnPage && hasUninstallText
+        }
+
+        if (lowerClass.contains("uninstalleractivity")) {
+            if (appIsOnPage) return true
+        }
+
+        if (!appIsOnPage) return false
+
+        // Never block our own a11y detail page (the eviction path handles it).
+        if (isOurA11yDetailPage()) return false
+
+        // DeviceAdminAdd hosts BOTH the activation flow (admin NOT active)
+        // and the deactivation flow (admin active). The activation page
+        // must never be blocked — its text matches the "device admin" and
+        // "uninstall" markers ("device administrator", our own ADD
+        // explanation), so a stale PU flag would lock the user out of
+        // turning the feature on. Only deactivation is a tamper surface.
+        if (lowerClass.contains("deviceadminadd") && !adminActive) return false
+
+        val isAppInfoClass = APP_INFO_CLASS_MARKERS.any { lowerClass.contains(it) }
+        val hasUninstallKeyword = UNINSTALL_KEYWORDS.any { lowerText.contains(it) }
+        if (isAppInfoClass || hasUninstallKeyword) return true
+
+        // The Device-admin texts can also appear on the administrators LIST
+        // page — block it only while our admin is actually active.
+        if (adminActive && DEVICE_ADMIN_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
+
+        if (FORCE_STOP_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
+
+        return false
+    }
 }

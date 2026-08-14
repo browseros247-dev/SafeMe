@@ -1,7 +1,6 @@
 package com.safeme.app
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,9 +32,8 @@ import kotlinx.coroutines.launch
  *
  * Robustness:
  *  - Increment happens only on first creation (never re-incremented on recreation/rotation).
- *  - Close resolves to an ACTION_VIEW redirect when one is supplied (a per-gate extra wins
- *    over the persisted redirect), otherwise finishes, returning the user to the app they
- *    were in.
+ *  - Close ALWAYS returns the user to the launcher (HOME) — never back to the page that
+ *    triggered the block. This applies globally to every gate type and source.
  *  - Settings load asynchronously (defaults render first); failure to persist the counter
  *    is swallowed and never crashes the gate.
  */
@@ -68,7 +66,7 @@ class BlockGateActivity : ComponentActivity() {
                     matched = matched,
                     type = type,
                     redirect = redirect,
-                    onClose = { closeGate(it) },
+                    onClose = { closeGate() },
                 )
             }
         }
@@ -96,18 +94,21 @@ class BlockGateActivity : ComponentActivity() {
         addActivity(ACTIVITY_BLOCK, title, sub)
     }
 
-    private fun closeGate(redirect: String) {
-        val trimmed = redirect.trim()
-        if (trimmed.isNotEmpty()) {
-            try {
-                val uri = Uri.parse(trimmed)
-                val target = if (uri.scheme == null) Uri.parse("https://$trimmed") else uri
-                startActivity(
-                    Intent(Intent.ACTION_VIEW, target).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            } catch (t: Throwable) {
-                // Invalid URI: fall through and just close.
-            }
+    private fun closeGate() {
+        // [Global] Close ALWAYS goes to the launcher — never back to the page
+        // that triggered the block, regardless of gate type or how it was
+        // raised. The persisted close-gate redirect is intentionally not used
+        // here; finishing without this would return the user to the blocked
+        // page (and a PU gate would be re-raised over it).
+        try {
+            startActivity(
+                Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (t: Throwable) {
+            // If the launcher can't be started, a plain finish still exits the gate.
         }
         finish()
     }
@@ -126,7 +127,7 @@ private fun BlockGate(
     matched: String,
     type: String,
     redirect: String,
-    onClose: (String) -> Unit,
+    onClose: () -> Unit,
 ) {
     val context = LocalContext.current
     // Persisted Block Screen settings (dwell, custom message, redirect, why
@@ -168,6 +169,6 @@ private fun BlockGate(
         whyOn = prefs.whyOn,
         redirect = effectiveRedirect,
         whyReason = whyReason,
-        onClose = { onClose(effectiveRedirect) },
+        onClose = onClose,
     )
 }

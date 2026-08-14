@@ -124,8 +124,10 @@ not the obvious "what".
 
 ## 5. Constraints checklist (do not break)
 
-- Never raise the block gate over accessibility-management screens (a11y
-  kill vector). See [04](04-security-architecture.md).
+- Never leave the block gate looping over accessibility-management screens
+  (a11y kill vector): the gate may appear over SafeMe's own a11y detail page,
+  but dismissing it must bounce away (HOME) — never re-cover the page. See
+  [04](04-security-architecture.md).
 - Keep the a11y self-heal strictly add-only.
 - Keep the VPN tunnel DNS-only (no packet inspection/relay).
 - Keep the "block everything" schedule exempting

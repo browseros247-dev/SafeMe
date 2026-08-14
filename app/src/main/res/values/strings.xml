@@ -527,7 +527,7 @@
     <string name="at_card_sub">Prevents uninstall · blocks our app-info page</string>
     <string name="at_activate">Activate</string>
     <string name="at_card_btn_active">Active · Deactivate</string>
-    <string name="at_note">While on, SafeMe blocks its App Info, Device Admin and uninstall pages — and never covers accessibility management screens, so the service can\'t be disabled by its own overlay.</string>
+    <string name="at_note">While on, SafeMe blocks its App Info, Device Admin and uninstall pages — and shows the protection screen before its own Accessibility page, then returns you away so the service can\'t be disabled by its own overlay.</string>
     <string name="at_protect_btn_title">Protect Another App\'s Accessibility Service</string>
     <string name="at_toast_activating">Activating Prevent Uninstall…</string>
     <string name="at_toast_activated">Prevent Uninstall activated</string>
@@ -548,6 +548,8 @@
     <string name="ap_perm_step_1">1. Connect your phone to a computer and enable USB debugging.</string>
     <string name="ap_perm_step_2">2. Run this command from a terminal:</string>
     <string name="ap_perm_command">adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="ap_perm_copy">Copy</string>
+    <string name="ap_perm_copied">Copied</string>
     <string name="ap_perm_recheck">I\'ve granted it — re-check</string>
 
     <string name="ap_add_service">Protect Another App\'s Accessibility Service</string>

@@ -13,12 +13,15 @@ import java.util.Locale
  * Android actively protects its accessibility-management screens against
  * obscuring: when an accessibility service draws a normal blocking window over
  * the a11y service detail/enable page, the system DISABLES that service
- * automatically (anti-tapjacking / consent-integrity protection) within ~1–5 s.
+ * automatically (anti-tapjacking / consent-integrity protection) within ~1–5 s
+ * of a PERSISTENT cover.
  *
- * SafeMe's [com.safeme.app.BlockGateActivity] therefore must NEVER be raised
- * over an accessibility-management screen. Pages detected by
- * [isAccessibilityManagementScreen] are skipped (self-heal territory), never
- * covered. Our own a11y detail page is evicted via HOME + toast, never blocked.
+ * SafeMe's [com.safeme.app.BlockGateActivity] therefore may be raised over OUR
+ * OWN a11y detail page — the Block screen must appear first — but must never
+ * be left LOOPING over it: [com.safeme.app.service.SafeMeAccessibilityService]
+ * bounces the dismissed gate to HOME so the cover is brief and one-shot. Pages
+ * detected by [isAccessibilityManagementScreen] other than our own are skipped
+ * (self-heal territory), never covered.
  */
 object ProtectedSystemPages {
 

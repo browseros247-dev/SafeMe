@@ -27,8 +27,10 @@ import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.protect.UninstallBlockers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -75,8 +77,23 @@ class SafeMeAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastA11yPageKickMs: Long = 0L
 
+    /** Last app-name framework probe timestamp — throttles [nodeTreeContainsText] on watchdog ticks. */
+    @Volatile
+    private var lastAppNameProbeMs: Long = 0L
+
     @Volatile
     private var lastPuKickToastMs: Long = 0L
+
+    /** Latest foreground package seen on a window-state-changed event — gates the PU watchdog cheaply. */
+    @Volatile
+    private var lastForegroundPkg: String? = null
+
+    /** Latest foreground window class — gives the PU watchdog the current page identity for gating. */
+    @Volatile
+    private var lastForegroundCls: String? = null
+
+    /** PU watchdog job — periodically re-probes the active window so our a11y detail page is evicted on every activation. */
+    private var puWatchdogJob: Job? = null
 
     /** Separate cooldown tracker for PU blocks — [M1 fix] prevents PU cooldown from suppressing keyword blocks. */
     @Volatile
@@ -112,6 +129,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 cachedPuEnabled = false
             }
         }
+        // PU watchdog: enforces eviction of our own a11y detail page on every
+        // activation (not just window-state-changed events).
+        startPuWatchdog()
         // Re-arm the accessibility-protection guard + self-heal (background;
         // no-op when the protection toggle is off).
         A11yProtectionUtils.selfHealAllAsync(this)
@@ -132,7 +152,45 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
         val pkg = event.packageName?.toString() ?: return
         val ownPackage = applicationContext.packageName ?: return
+        // True when OUR full-screen window (the block gate) was foreground
+        // before this event — i.e. the gate was just dismissed onto [pkg].
+        val prevOwnWindow = lastForegroundPkg == ownPackage
+        lastForegroundPkg = pkg
+        lastForegroundCls = runCatching { event.className?.toString() }.getOrDefault("")
         if (pkg == ownPackage) return
+
+        // Gate dismissed onto a new window: kick the PU watchdog immediately
+        // so a protected page underneath is re-probed now instead of on the
+        // next cadence tick. While the gate was up the watchdog skipped
+        // probing (see [puWatchdogTick]), so this is the resume point.
+        if (prevOwnWindow) {
+            // A gate was dismissed: re-arm the PU gate cooldown so a protected
+            // page underneath is re-gated at once (not after the 4 s window),
+            // then kick the watchdog now.
+            lastPuBlockAt = 0L
+            try {
+                // If the dismissed gate was over OUR a11y detail page, it has
+                // been shown once — bounce to HOME now (never let the user
+                // reach the page, and never leave a cover looping over an
+                // a11y-management screen). Otherwise kick the watchdog to
+                // re-probe the revealed window.
+                val root = runCatching { rootInActiveWindow }.getOrNull()
+                var a11yDetailActive = false
+                if (root != null) {
+                    try {
+                        a11yDetailActive = isOurA11yDetailPageInTree(root)
+                    } finally {
+                        recycle(root)
+                    }
+                }
+                if (a11yDetailActive) {
+                    evictFromOurA11yServicePage()
+                } else {
+                    puWatchdogTick()
+                }
+            } catch (_: Throwable) {
+            }
+        }
 
         // Prevent Uninstall guards are independent of the master blocking
         // switch: they gate only on the PU DataStore flag.
@@ -172,10 +230,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
      * identified by SafeMe's own package/app-name/service-description on a
      * settings-family window:
      *
-     *  1. Our accessibility-service DETAIL page — evicted via HOME + delayed
-     *     toast. NEVER covered by [BlockGateActivity]: Android auto-disables
-     *     an accessibility service whose window obscures a11y-management
-     *     screens, so covering our own page would kill the engine.
+     *  1. Our accessibility-service DETAIL page — the PU gate (Block screen)
+     *     is raised FIRST on every activation; dismissing it bounces to HOME
+     *     (see [handleEvent]), so the user never reaches the page and the gate
+     *     is never left covering an a11y-management screen. A persistent cover
+     *     is the a11y kill vector (Android auto-disables a service whose
+     *     window obscures those screens), so the gate is one-shot, never a
+     *     loop.
      *  2. All OTHER a11y-management screens (lists, other apps' detail pages)
      *     — never blocked, only self-healed.
      *  3. SafeMe's own App Info / Device Admin deactivation / force-stop /
@@ -202,10 +263,12 @@ class SafeMeAccessibilityService : AccessibilityService() {
             val a11yContext =
                 ProtectedSystemPages.isAccessibilityManagementScreen(pkg, cls)
 
-            // 1. Our own a11y detail page → evict (never cover).
+            // 1. Our own a11y detail page → gate first (Block screen), then
+            //    HOME on dismissal (see [handleEvent]) — never a silent
+            //    redirect, never a looping cover over an a11y screen.
             if (a11yContext) {
                 if (isOurA11yServiceDetailPage(event)) {
-                    evictFromOurA11yServicePage()
+                    launchPuGate(pkg)
                     return true
                 }
                 // Any other a11y-management screen is left untouched.
@@ -213,21 +276,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
             }
 
             // 2. App Info / Device Admin / force-stop / uninstall pages for OUR app.
-            val appName = getString(R.string.app_name)
-            // [M1 fix] PU blocks use a separate cooldown key so they don't
-            // suppress keyword blocking during the cooldown window.
-            val key = "$pkg|pu"
-            val now = SystemClock.elapsedRealtime()
-            if (lastBlockKey == key && now - lastPuBlockAt < COOLDOWN_MS) return true
             if (!isOurUninstallTargetPage(event, pkg, cls)) {
                 Log.d(TAG, "PU: not a target (pkg=$pkg cls=$cls)")
                 return false
             }
             Log.d(TAG, "PU: blocking page (pkg=$pkg cls=$cls)")
-
-            lastBlockKey = key
-            lastPuBlockAt = now
-            launchGate(pkg, MatchResult(appName, "pu"))
+            // [M1 fix] PU blocks use a separate cooldown key (set inside
+            // [launchPuGate]) so they don't suppress keyword blocking during
+            // the cooldown window.
+            launchPuGate(pkg)
             true
         } catch (t: Throwable) {
             Log.w(TAG, "handlePreventUninstall failed — fail open", t)
@@ -237,9 +294,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     /**
      * True when the visible settings window is SafeMe's OWN accessibility
-     * service DETAIL page. Layer 1 is a cheap scan of the event text; layer 2
-     * is a bounded node-tree probe (throttled — it is the only expensive step
-     * and a stream of events must cost nothing).
+     * service DETAIL page. Layer 1 is a cheap scan of the event text; if that
+     * misses (Android 16 does not expose the description to the event) the
+     * active-window tree is probed via the shared [isOurA11yDetailPageInTree].
      */
     private fun isOurA11yServiceDetailPage(event: AccessibilityEvent): Boolean {
         return try {
@@ -252,37 +309,12 @@ class SafeMeAccessibilityService : AccessibilityService() {
             if (marker.length < 8) return false // fail open: can't distinguish detail from list
             if (eventTextNormalized(event).contains(marker)) return true
 
-            // Android 16 renders the detail page in a generic SubSettings
-            // container and does NOT expose the description to the tree. The
-            // detail-only "shortcut" row ("<label> shortcut") carries our
-            // service label — the list row shows the label without it.
-            val label = getString(R.string.accessibility_service_label)
-            if (label.isNotBlank()) {
-                val labelLower = label.lowercase(Locale.ROOT)
-                val shortcutLower = "shortcut"
-                if (collectTexts(event).any {
-                        val t = it.lowercase(Locale.ROOT)
-                        t.contains(labelLower) && t.contains(shortcutLower)
-                    }
-                ) {
-                    return true
-                }
+            val root = rootInActiveWindow ?: return false
+            try {
+                isOurA11yDetailPageInTree(root)
+            } finally {
+                recycle(root)
             }
-
-            val now = SystemClock.elapsedRealtime()
-            if (now - lastA11yPageProbeMs < A11Y_PAGE_PROBE_THROTTLE_MS) return false
-            lastA11yPageProbeMs = now
-            // findAccessibilityNodeInfosByText matches the RAW node text (spaces
-            // intact), so the normalized [marker] can never match. Probe with the
-            // spaced detail-only suffix instead — it appears on the detail page
-            // (full description) but never on the list row (summary only).
-            val spacedProbe = if (description.startsWith(summary)) {
-                description.removePrefix(summary).trim()
-            } else {
-                description.drop(40).trim()
-            }
-            if (spacedProbe.length < 8) return false
-            return nodeTreeContainsText(spacedProbe.take(30))
         } catch (t: Throwable) {
             Log.w(TAG, "isOurA11yServiceDetailPage failed — assuming not our page", t)
             false
@@ -290,23 +322,221 @@ class SafeMeAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Bounded node-tree substring search. Every node obtained from the active
-     * window is recycled afterwards (required on API 26–32, a no-op on 33+).
+     * Tree-only detection of SafeMe's OWN accessibility-service DETAIL page,
+     * shared by the event path (as a fallback when the event text isn't
+     * exposed) and the PU watchdog (which has no event at all). [root] is the
+     * active-window root and is NOT recycled here — the caller owns it.
+     *
+     * Layers (cheap first):
+     *  1. Window title (API 33+) — the detail page's window title is our
+     *     service label, while the a11y LIST window's title is "Accessibility".
+     *  2. Detail-only description fingerprint in the walked node texts
+     *     (pre-Android-16: the description IS exposed to the tree).
+     *  3. The detail-only "shortcut" row ("<label> shortcut") — Android 16
+     *     hosts the detail page in a generic SubSettings container whose
+     *     description is not exposed; the shortcut row is the only
+     *     label-carrier the list row lacks.
+     *  4. Bounded framework substring probe (throttled — it is the only
+     *     framework-side search and a stream of events must cost nothing).
      */
-    private fun nodeTreeContainsText(needle: String): Boolean {
-        if (needle.isBlank()) return false
-        val root = rootInActiveWindow ?: return false
+    private fun isOurA11yDetailPageInTree(root: AccessibilityNodeInfo): Boolean {
+        // Layer 1: window title (cheap, no tree walk).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val title = runCatching { root.window?.title?.toString() }.getOrDefault("").orEmpty()
+            val label = getString(R.string.accessibility_service_label)
+            if (title.isNotBlank() && label.isNotBlank() &&
+                ProtectedSystemPages.normalize(title)
+                    .contains(ProtectedSystemPages.normalize(label))
+            ) {
+                return true
+            }
+        }
+
+        val description = getString(R.string.accessibility_service_description)
+        val summary = getString(R.string.accessibility_service_summary)
+        val marker = ProtectedSystemPages.detailOnlyFingerprint(
+            ProtectedSystemPages.normalize(description),
+            ProtectedSystemPages.normalize(summary)
+        )
+        val label = getString(R.string.accessibility_service_label)
+        val labelLower = label.lowercase(Locale.ROOT)
+
+        // Layers 2 + 3 share one bounded walk of the node tree.
+        if (marker.length >= 8 || labelLower.isNotBlank()) {
+            val texts = collectTextsFrom(root)
+            if (marker.length >= 8 &&
+                texts.any { ProtectedSystemPages.normalize(it).contains(marker) }
+            ) {
+                return true
+            }
+            if (labelLower.isNotBlank() && texts.any {
+                    val t = it.lowercase(Locale.ROOT)
+                    t.contains(labelLower) && t.contains("shortcut")
+                }
+            ) {
+                return true
+            }
+        }
+
+        // Layer 4: findAccessibilityNodeInfosByText matches the RAW node text
+        // (spaces intact), so the normalized marker can never match. Probe with
+        // the spaced detail-only suffix — it appears on the detail page (full
+        // description) but never on the list row (summary only). Throttled.
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastA11yPageProbeMs < A11Y_PAGE_PROBE_THROTTLE_MS) return false
+        lastA11yPageProbeMs = now
+        val spacedProbe = if (description.startsWith(summary)) {
+            description.removePrefix(summary).trim()
+        } else {
+            description.drop(40).trim()
+        }
+        if (spacedProbe.length < 8) return false
+        val needle = spacedProbe.take(30)
         val nodes = try {
             root.findAccessibilityNodeInfosByText(needle)
         } catch (t: Throwable) {
+            null
+        }
+        return try {
+            nodes != null && nodes.isNotEmpty()
+        } finally {
+            if (nodes != null) nodes.forEach { recycle(it) }
+        }
+    }
+
+    /**
+     * Starts the PU watchdog loop. Every [PU_WATCHDOG_INTERVAL_MS] while the
+     * service is alive it re-checks the active window. The window-state-changed
+     * path only fires when the foreground itself changes windows, so it misses
+     * activations that arrive without a fresh state change — a guarded page
+     * already active when the PU flag flips on, a detection that failed because
+     * the tree wasn't ready at the event, or a gate dismissed back onto the
+     * page. The tick is a cheap no-op unless PU is on AND the foreground is a
+     * PU-surface package (Settings-family or package-installer), and it is
+     * skipped entirely while our own gate window is up — [handleEvent] kicks
+     * it early the moment the gate dismisses.
+     */
+    private fun startPuWatchdog() {
+        if (puWatchdogJob?.isActive == true) return
+        puWatchdogJob = serviceScope.launch {
+            while (true) {
+                try {
+                    puWatchdogTick()
+                } catch (t: Throwable) {
+                    // Never let a malformed probe kill the watchdog loop.
+                }
+                delay(PU_WATCHDOG_INTERVAL_MS)
+            }
+        }
+    }
+
+    /**
+     * One watchdog tick: if PU is on and the foreground is a PU-surface
+     * package (Settings-family or the package-installer), probe the active
+     * window and enforce the full guard surface on a page that is ALREADY
+     * active — our own a11y detail page raises the PU gate (Block screen
+     * first; dismissal bounces to HOME), and app-info / device-admin /
+     * force-stop / uninstall pages raise the gate too. This catches
+     * activations the event path misses: a page already open when the
+     * PU flag flips on, a detection that failed because the tree wasn't ready
+     * at the window-state-changed event, or a gate dismissed back onto the
+     * page. Kicks and gate launches are throttled (dedupe event floods) and
+     * never suppress a genuine re-activation.
+     *
+     * The tick never probes while our own gate window is foreground (the
+     * active tree is the gate's, not the protected page's) — [handleEvent]
+     * kicks it immediately when the gate dismisses onto a new window.
+     */
+    private fun puWatchdogTick() {
+        if (!cachedPuEnabled) return
+        var pkg = lastForegroundPkg
+        var cls = lastForegroundCls
+        if (pkg == null) {
+            // Service may have connected without a window-state-changed event
+            // yet; initialize the foreground identity from the active window.
+            val root = try {
+                rootInActiveWindow
+            } catch (t: Throwable) {
+                null
+            }
+            if (root != null) {
+                pkg = try {
+                    root.packageName?.toString()
+                } catch (t: Throwable) {
+                    null
+                }
+                cls = try {
+                    root.className?.toString()
+                } catch (t: Throwable) {
+                    null
+                }
+                recycle(root)
+                if (pkg != null) lastForegroundPkg = pkg
+                if (cls != null) lastForegroundCls = cls
+            }
+        }
+        if (pkg == null) return
+        val ownPackage = applicationContext.packageName ?: return
+        // Our own full-screen window (the block gate) is foreground — the
+        // active tree is the gate's, not the protected page's, so probing is
+        // pointless. Skip; [handleEvent] kicks a tick the moment the gate
+        // dismisses onto a new window.
+        if (pkg == ownPackage) return
+        if (!ProtectedSystemPages.isPuSurface(pkg)) return
+
+        val root = try {
+            rootInActiveWindow
+        } catch (t: Throwable) {
+            null
+        } ?: return
+        try {
+            // 1. Our own a11y detail page → raise the PU gate (Block screen)
+            //    first. Dismissing it bounces to HOME (see [handleEvent]), so
+            //    the cover is one-shot — never left looping over an
+            //    a11y-management screen (the a11y kill vector).
+            if (isOurA11yDetailPageInTree(root)) {
+                launchPuGate(pkg)
+                return
+            }
+            // 2. App Info / Device Admin / force-stop / uninstall pages → gate.
+            if (isOurUninstallTargetPageInTree(root, pkg, cls.orEmpty())) {
+                launchPuGate(pkg)
+            }
+        } finally {
             recycle(root)
+        }
+    }
+
+    /**
+     * Bounded node-tree substring search for [needle] (the app name). Every
+     * node obtained from the active window is recycled afterwards (required on
+     * API 26–32, a no-op on 33+). [root] may be a root the caller already
+     * holds (the PU watchdog tick) — it is then NOT recycled here and the
+     * caller keeps ownership.
+     *
+     * Throttled: this is the only framework-side search and must not run on
+     * every 2 s watchdog tick; the walked-texts checks in the shared core run
+     * unthrottled and catch genuine targets, so the throttle never delays a
+     * real activation.
+     */
+    private fun nodeTreeContainsText(needle: String, root: AccessibilityNodeInfo? = null): Boolean {
+        if (needle.isBlank()) return false
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastAppNameProbeMs < PU_APP_NAME_PROBE_THROTTLE_MS) return false
+        lastAppNameProbeMs = now
+        val owned = root == null
+        val actualRoot = root ?: runCatching { rootInActiveWindow }.getOrNull() ?: return false
+        val nodes = try {
+            actualRoot.findAccessibilityNodeInfosByText(needle)
+        } catch (t: Throwable) {
+            if (owned) recycle(actualRoot)
             return false
         }
         return try {
             nodes != null && nodes.isNotEmpty()
         } finally {
             if (nodes != null) nodes.forEach { recycle(it) }
-            recycle(root)
+            if (owned) recycle(actualRoot)
         }
     }
 
@@ -326,9 +556,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Evict our own a11y detail page: HOME + delayed toast. Delayed so the
-     * toast lands over the launcher, never over the a11y screen (a toast is
-     * still one of our windows — keep the zero-obscure discipline). Throttled.
+     * Evict our own a11y detail page: HOME + delayed toast. Used as the
+     * post-gate bounce-back — the PU gate is shown first (see
+     * [handlePreventUninstall] / [puWatchdogTick]); dismissing it lands here
+     * so the user never reaches the page and no cover lingers over an
+     * a11y-management screen. Delayed toast lands over the launcher, never
+     * over the a11y screen (a toast is still one of our windows — keep the
+     * zero-obscure discipline). Throttled.
      */
     private fun evictFromOurA11yServicePage() {
         val now = SystemClock.elapsedRealtime()
@@ -373,98 +607,130 @@ class SafeMeAccessibilityService : AccessibilityService() {
         cls: String,
     ): Boolean {
         return try {
+            val lowerText = collectTexts(event).joinToString(" ").lowercase(Locale.ROOT)
+            isOurUninstallTargetPage(pkg, cls, lowerText) {
+                isOurA11yServiceDetailPage(event)
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "isOurUninstallTargetPage failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * Event-free variant used by the PU watchdog: same detection as
+     * [isOurUninstallTargetPage], but the page texts come from [root]'s node
+     * tree, so a surface that is ALREADY active (no fresh window-state-changed
+     * event) is still gated. The root is NOT recycled here — the caller owns it.
+     */
+    private fun isOurUninstallTargetPageInTree(
+        root: AccessibilityNodeInfo,
+        pkg: String,
+        cls: String,
+    ): Boolean {
+        return try {
+            val lowerText = collectTextsFrom(root).joinToString(" ").lowercase(Locale.ROOT)
+            isOurUninstallTargetPage(pkg, cls, lowerText, probeRoot = root) {
+                isOurA11yDetailPageInTree(root)
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "isOurUninstallTargetPageInTree failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * Shared core of the app-info / device-admin / force-stop / uninstall
+     * detection. [lowerText] is the collected page text (event + tree for the
+     * event path, tree only for the watchdog) and [isOurA11yDetailPage] is the
+     * caller-appropriate detail-page check that keeps our own a11y page out of
+     * the gate. [probeRoot] is the active-window root when the caller already
+     * holds one (the watchdog tick) — the framework app-name probe reuses it
+     * instead of fetching a second root; the caller keeps ownership.
+     *
+     * The decision logic lives in [UninstallBlockers.isOurUninstallTargetPage]
+     * (pure + unit-tested); this wrapper gathers the framework-dependent inputs
+     * (resources, node-tree probe, Device Admin state) and owns the a11y-label
+     * eviction side effect.
+     */
+    private fun isOurUninstallTargetPage(
+        pkg: String,
+        cls: String,
+        lowerText: String,
+        probeRoot: AccessibilityNodeInfo? = null,
+        isOurA11yDetailPage: () -> Boolean,
+    ): Boolean {
+        return try {
             val lowerClass = cls.lowercase(Locale.ROOT)
             val appName = getString(R.string.app_name)
             if (appName.isBlank()) return false
             val appNameLower = appName.lowercase(Locale.ROOT)
 
-            val lowerText = collectTexts(event).joinToString(" ").lowercase(Locale.ROOT)
-            val appNameInText = lowerText.contains(appNameLower)
-            val appNameInNodeTree = if (appName.isNotEmpty() && !appNameInText) {
-                runCatching { nodeTreeContainsText(appName) }.getOrDefault(false)
-            } else {
-                false
-            }
-            val appIsOnPage = appNameInText || appNameInNodeTree
-
-            // [H1 fix] Removed redundant `|| appNameInNodeTree` — appIsOnPage
-            // already includes it via the definition above.
-
-            // Never cover a11y-management content for OUR service. Any page
+            // Never gate a11y-management content for OUR service. Any page
             // whose texts contain our SERVICE LABEL (distinct from the app
             // name) is the service's list row or detail page — on Android 16
             // the detail page is hosted in a generic SubSettings container
             // whose class carries no a11y marker and whose description text is
             // NOT exposed to the tree, so the description probes fail there.
-            // The label is the only reliable signal; covering the page would
-            // make Android auto-disable the service (the a11y kill vector).
+            // The label is the only reliable signal. The DETAIL page (with the
+            // detail-only "shortcut" row) is gated here as a fallback for
+            // devices the watchdog missed; the list row is never touched.
+            // Checked before the app-name probe so a11y pages never trigger it.
             val serviceLabelLower = getString(R.string.accessibility_service_label)
                 .lowercase(Locale.ROOT)
             if (serviceLabelLower.isNotBlank() && lowerText.contains(serviceLabelLower)) {
-                // Best-effort eviction of the DETAIL page: it also shows the
-                // detail-only "shortcut" row, which the list row lacks. Never
-                // blocks either way; eviction is throttled and fail-open.
                 if (lowerText.contains("shortcut")) {
-                    evictFromOurA11yServicePage()
+                    launchPuGate(pkg)
                 }
                 return false
             }
 
-            // The stock uninstall confirmation lives in the packageinstaller
-            // package (UninstallerActivity). Only that dialog surface may be
-            // gated there — its install/update screens must never be blocked.
+            val appNameInText = lowerText.contains(appNameLower)
+            val appNameInNodeTree = if (!appNameInText) {
+                // Throttled framework probe (see [nodeTreeContainsText]) — the
+                // walked-texts check above already ran, so this only rescues
+                // trees the walk missed; it never runs on a11y pages.
+                runCatching { nodeTreeContainsText(appName, probeRoot) }.getOrDefault(false)
+            } else {
+                false
+            }
+            val appIsOnPage = appNameInText || appNameInNodeTree
+
+            val matched = UninstallBlockers.isOurUninstallTargetPage(
+                pkg = pkg,
+                lowerClass = lowerClass,
+                lowerText = lowerText,
+                appIsOnPage = appIsOnPage,
+                isOurA11yDetailPage = isOurA11yDetailPage,
+                adminActive = DeviceAdminUtils.isActive(applicationContext),
+            )
             if (ProtectedSystemPages.isUninstallerPackage(pkg)) {
-                // The uninstall confirmation is reported either as the
-                // UninstallerActivity class or as a generic AlertDialog window
-                // (observed on Android 16). Both surfaces are gated on the
-                // "uninstall" text so install/update/permission dialogs in the
-                // packageinstaller are never blocked.
-                val isUninstallSurface = lowerClass.contains("uninstalleractivity") ||
-                    lowerClass.contains("alertdialog")
-                val hasUninstallText = lowerText.contains("uninstall")
-                val matched = isUninstallSurface && appIsOnPage && hasUninstallText
-                Log.d(TAG, "PU: packageinstaller pkg=$pkg cls=$lowerClass appIsOnPage=$appIsOnPage hasUninstallText=$hasUninstallText matched=$matched")
-                return matched
+                Log.d(
+                    TAG,
+                    "PU: packageinstaller pkg=$pkg cls=$lowerClass appIsOnPage=$appIsOnPage matched=$matched"
+                )
             }
-
-            if (lowerClass.contains("uninstalleractivity")) {
-                if (appIsOnPage) return true
-            }
-
-            if (!appIsOnPage) return false
-
-            // Never block our own a11y detail page (the eviction path handles it).
-            if (isOurA11yServiceDetailPage(event)) return false
-
-            // DeviceAdminAdd hosts BOTH the activation flow (admin NOT active)
-            // and the deactivation flow (admin active). The activation page
-            // must never be blocked — its text matches the "device admin" and
-            // "uninstall" markers ("device administrator", our own ADD
-            // explanation), so a stale PU flag would lock the user out of
-            // turning the feature on. Only deactivation is a tamper surface.
-            val adminActive = DeviceAdminUtils.isActive(applicationContext)
-            if (lowerClass.contains("deviceadminadd") && !adminActive) return false
-
-            val isAppInfoClass = UninstallBlockers.APP_INFO_CLASS_MARKERS.any { lowerClass.contains(it) }
-            val hasUninstallKeyword =
-                UninstallBlockers.UNINSTALL_KEYWORDS.any { lowerText.contains(it) }
-            if (isAppInfoClass || hasUninstallKeyword) return true
-
-            // The Device-admin texts can also appear on the administrators LIST
-            // page — block it only while our admin is actually active.
-            if (adminActive &&
-                UninstallBlockers.DEVICE_ADMIN_TEXTS_TO_MATCH.any { lowerText.contains(it) }
-            ) {
-                return true
-            }
-
-            if (UninstallBlockers.FORCE_STOP_TEXTS_TO_MATCH.any { lowerText.contains(it) }) return true
-
-            false
+            matched
         } catch (t: Throwable) {
             Log.w(TAG, "isOurUninstallTargetPage failed — fail open", t)
             false
         }
+    }
+
+    /**
+     * Raises the PU gate over [pkg]'s current window. Shares the same cooldown
+     * key as the event path, so a block raised by either path is deduped by
+     * the other and the watchdog never double-fires right after a
+     * window-state-changed block.
+     */
+    private fun launchPuGate(pkg: String) {
+        val appName = getString(R.string.app_name)
+        val key = "$pkg|pu"
+        val now = SystemClock.elapsedRealtime()
+        if (lastBlockKey == key && now - lastPuBlockAt < COOLDOWN_MS) return
+        lastBlockKey = key
+        lastPuBlockAt = now
+        launchGate(pkg, MatchResult(appName, "pu"))
     }
 
     /** Normalized (lowercased, spaces stripped) concatenation of the event text. */
@@ -516,10 +782,24 @@ class SafeMeAccessibilityService : AccessibilityService() {
         try {
             val root = rootInActiveWindow ?: return out.distinct()
             try {
-                walk(root, out, 0)
+                out.addAll(collectTextsFrom(root))
             } finally {
                 recycle(root)
             }
+        } catch (_: Throwable) {
+        }
+        return out.distinct()
+    }
+
+    /**
+     * Bounded walk of [root]'s node tree collecting visible text and
+     * contentDescription (capped by MAX_DEPTH/MAX_STRINGS). The root itself is
+     * NOT recycled — the caller owns it.
+     */
+    private fun collectTextsFrom(root: AccessibilityNodeInfo): List<String> {
+        val out = ArrayList<String>()
+        try {
+            walk(root, out, 0)
         } catch (_: Throwable) {
         }
         return out.distinct()
@@ -771,8 +1051,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
         const val COOLDOWN_MS = 4_000L
         const val MAX_DEPTH = 12
         const val MAX_STRINGS = 200
-        const val A11Y_PAGE_PROBE_THROTTLE_MS = 10_000L
-        const val A11Y_PAGE_KICK_THROTTLE_MS = 15_000L
+        // [PU watchdog] Short throttle windows: the a11y-detail eviction must
+        // fire on EVERY activation, so these only dedupe event floods — they
+        // never suppress a genuine reopen of the page.
+        const val A11Y_PAGE_PROBE_THROTTLE_MS = 2_000L
+        const val A11Y_PAGE_KICK_THROTTLE_MS = 2_000L
+        const val PU_WATCHDOG_INTERVAL_MS = 2_000L
+        // [PU watchdog] The app-name framework probe is throttled ABOVE the
+        // watchdog cadence so it does not run on every tick; the walked-texts
+        // checks run unthrottled and catch genuine targets, so this never
+        // delays a real activation.
+        const val PU_APP_NAME_PROBE_THROTTLE_MS = 5_000L
         const val PU_KICK_TOAST_THROTTLE_MS = 60_000L
         const val PU_KICK_TOAST_DELAY_MS = 700L
         const val SCHEDULE_COOLDOWN_MS = 4_000L

@@ -28,7 +28,6 @@ data class BlockScreenPrefsState(
     val dwell: Int = BLOCK_SCREEN_DEFAULT_DWELL,
     val message: String = "",
     val img: String = "",
-    val redirect: String = "",
     val whyOn: Boolean = true,
 )
 
@@ -37,7 +36,6 @@ private val Context.blockScreenDataStore by preferencesDataStore(name = "block_s
 val KEY_BLOCK_SCREEN_DWELL = intPreferencesKey("gate_dwell")
 val KEY_BLOCK_SCREEN_MESSAGE = stringPreferencesKey("gate_message")
 val KEY_BLOCK_SCREEN_IMG = stringPreferencesKey("gate_img")
-val KEY_BLOCK_SCREEN_REDIRECT = stringPreferencesKey("gate_redirect")
 val KEY_BLOCK_SCREEN_WHY_ON = booleanPreferencesKey("gate_why_on")
 
 fun Context.blockScreenPrefs(): Flow<BlockScreenPrefsState> =
@@ -51,7 +49,6 @@ fun Context.blockScreenPrefs(): Flow<BlockScreenPrefsState> =
                     .coerceIn(BLOCK_SCREEN_MIN_DWELL, BLOCK_SCREEN_MAX_DWELL),
                 message = prefs[KEY_BLOCK_SCREEN_MESSAGE] ?: "",
                 img = prefs[KEY_BLOCK_SCREEN_IMG] ?: "",
-                redirect = prefs[KEY_BLOCK_SCREEN_REDIRECT] ?: "",
                 whyOn = prefs[KEY_BLOCK_SCREEN_WHY_ON] ?: true,
             )
         }
@@ -62,7 +59,6 @@ suspend fun Context.writeBlockScreenPrefs(state: BlockScreenPrefsState) {
         prefs[KEY_BLOCK_SCREEN_DWELL] = state.dwell.coerceIn(BLOCK_SCREEN_MIN_DWELL, BLOCK_SCREEN_MAX_DWELL)
         prefs[KEY_BLOCK_SCREEN_MESSAGE] = state.message
         prefs[KEY_BLOCK_SCREEN_IMG] = state.img
-        prefs[KEY_BLOCK_SCREEN_REDIRECT] = state.redirect
         prefs[KEY_BLOCK_SCREEN_WHY_ON] = state.whyOn
     }
 }

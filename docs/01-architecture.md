@@ -69,7 +69,7 @@ One `preferencesDataStore` per domain (each is a separate file on disk):
 | `onboarding_prefs` | onboarding-complete flag, theme preference |
 | `a11y_protection_prefs` | protection master switch, protected component set |
 | `safeme_pu_prefs` | prevent-uninstall switch |
-| `block_screen_prefs` | block-gate appearance: dwell countdown, custom message, motivation image, redirect URL, "why" toggle |
+| `block_screen_prefs` | block-gate appearance: dwell countdown, custom message, motivation image, "why" toggle |
 | `vpn_prefs` | enabled, preset, custom v4/v6, whitelist, notification mode/copy |
 | `activity_log_prefs` | recent-activity entries (capped at 50, deduped) |
 
@@ -172,7 +172,7 @@ MainActivity.onCreate
 └─ onResume → a11y self-heal + ensureWatching (no-ops when protection off)
 
 BlockGateActivity (raised by the a11y service over an offending app)
-└─ BlockOverlay (dwell countdown, "why on" toggle, optional redirect) + blockedToday++
+└─ BlockOverlay (dwell countdown, "why on" toggle) + blockedToday++
 ```
 
 ## 5. Key data flows

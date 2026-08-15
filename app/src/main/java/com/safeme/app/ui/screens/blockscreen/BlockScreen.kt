@@ -63,12 +63,10 @@ fun BlockScreen(onBack: () -> Unit) {
     val dwell by vm.dwell.collectAsState()
     val message by vm.message.collectAsState()
     val img by vm.img.collectAsState()
-    val redirect by vm.redirect.collectAsState()
     val whyOn by vm.whyOn.collectAsState()
 
     var showImgSheet by remember { mutableStateOf(false) }
     var showMsgSheet by remember { mutableStateOf(false) }
-    var showUrlSheet by remember { mutableStateOf(false) }
     var showOverlay by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
@@ -168,41 +166,6 @@ fun BlockScreen(onBack: () -> Unit) {
                             SecondarySmallButton("+") { vm.stepDwell(1) }
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.line))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.bs_redirect_url),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.ink
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (redirect.isEmpty()) {
-                                    stringResource(R.string.bs_redirect_sub_none)
-                                } else redirect,
-                                fontSize = 12.5.sp,
-                                color = colors.ink2,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        GhostSmallButton(stringResource(R.string.bs_clear)) {
-                            vm.clearRedirect()
-                            Toast.makeText(
-                                context, R.string.bs_toast_redirect_cleared, Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        SecondarySmallButton(stringResource(R.string.bs_edit)) { showUrlSheet = true }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -272,15 +235,9 @@ fun BlockScreen(onBack: () -> Unit) {
                 dwell = dwell,
                 msg = message,
                 whyOn = whyOn,
-                redirect = redirect,
                 onClose = {
                     showOverlay = false
-                    val text = if (redirect.isEmpty()) {
-                        context.getString(R.string.bs_toast_back_app)
-                    } else {
-                        context.getString(R.string.bs_toast_redirecting, redirect)
-                    }
-                    Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, R.string.bs_toast_back_app, Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -317,22 +274,6 @@ fun BlockScreen(onBack: () -> Unit) {
         )
     }
 
-    if (showUrlSheet) {
-        RedirectUrlSheet(
-            current = redirect,
-            onCancel = { showUrlSheet = false },
-            onSave = { value ->
-                showUrlSheet = false
-                vm.setRedirect(value)
-                val text = if (value.isEmpty()) {
-                    context.getString(R.string.bs_toast_redirect_cleared)
-                } else {
-                    context.getString(R.string.bs_toast_redirect_set, value)
-                }
-                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
 }
 
 @Composable
@@ -544,20 +485,6 @@ private fun SecondarySmallButton(text: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(text = text, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = colors.brandDark)
-    }
-}
-
-@Composable
-private fun GhostSmallButton(text: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .height(38.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = text, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = LocalAppColors.current.ink2)
     }
 }
 

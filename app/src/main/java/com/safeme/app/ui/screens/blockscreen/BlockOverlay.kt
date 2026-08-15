@@ -53,7 +53,6 @@ fun BlockOverlay(
     dwell: Int,
     msg: String,
     whyOn: Boolean,
-    redirect: String,
     onClose: () -> Unit,
     whyReason: String? = null,
 ) {

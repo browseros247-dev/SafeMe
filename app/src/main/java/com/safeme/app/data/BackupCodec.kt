@@ -329,7 +329,6 @@ object BackupCodec {
         o.put("dwell", dwell)
         o.put("message", message)
         o.put("img", img)
-        o.put("redirect", redirect)
         o.put("whyOn", whyOn)
         return o
     }
@@ -341,7 +340,6 @@ object BackupCodec {
             .coerceIn(BLOCK_SCREEN_MIN_DWELL, BLOCK_SCREEN_MAX_DWELL),
         message = string("message") ?: "",
         img = string("img") ?: "",
-        redirect = string("redirect") ?: "",
         whyOn = boolean("whyOn", true),
     )
 

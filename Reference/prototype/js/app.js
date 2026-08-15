@@ -341,9 +341,6 @@
       const mi=document.getElementById('bsMsgInput'); if(mi) mi.value=bsMsg;
       document.querySelectorAll('#bsMsgChips .chip').forEach((b,i)=>b.classList.toggle('on',i===0));
     }
-    if(id==='sheetBsUrl'){
-      const ui=document.getElementById('bsUrlInput'); if(ui) ui.value=bsRedirect;
-    }
   }
   function closeSheets(){
     document.getElementById('scrim').classList.remove('show');
@@ -443,7 +440,7 @@
   function cancelDelay(){ if(delayTimer){clearInterval(delayTimer); delayTimer=null;} closeSheets(); toast('Change cancelled'); }
 
   // ---------- Block overlay ----------
-  let bsDwell=5, bsMsg='Stay safe, Alex. You chose this.', bsImg='', bsRedirect='';
+  let bsDwell=5, bsMsg='Stay safe, Alex. You chose this.', bsImg='';
   function renderBlockPreview(){
     const msg=document.getElementById('bsPreviewMsg'); if(msg) msg.textContent=bsMsg;
     const cnt=document.getElementById('bsPreviewCount'); if(cnt) cnt.textContent='Closing in '+bsDwell+'s…';
@@ -451,7 +448,6 @@
     const is=document.getElementById('bsImgSub'); if(is) is.textContent=bsImg?(bsImg+' · persistable'):'None · SAF persistable URI';
     const pi=document.getElementById('bsPreviewImg'); if(pi){ if(bsImg){ pi.style.display='block'; pi.className='img-'+bsImg; } else { pi.style.display='none'; pi.className=''; } }
     const ms=document.getElementById('bsMsgSub'); if(ms) ms.textContent='"'+bsMsg+'"';
-    const rs=document.getElementById('bsRedirectSub'); if(rs) rs.textContent=bsRedirect||'None — returns to the app';
     const bm=document.getElementById('boMsg'); if(bm) bm.textContent=bsMsg;
     const why=document.getElementById('boWhy'); const sw=document.getElementById('bsWhySw'); if(why&&sw) why.style.display=sw.classList.contains('on')?'':'none';
   }
@@ -477,14 +473,6 @@
     if(!v){ toast('Message can’t be empty'); return; }
     bsMsg=v; renderBlockPreview(); closeSheets(); toast('Message saved');
   }
-  function saveUrl(){
-    const v=(document.getElementById('bsUrlInput').value||'').trim();
-    if(v && !/^https?:\/\/.+/i.test(v)){ toast('Enter a valid URL (https://…)'); return; }
-    bsRedirect=v; renderBlockPreview(); closeSheets(); toast(v?'Redirect set to '+v:'Redirect cleared');
-  }
-  function clearRedirect(){
-    bsRedirect=''; renderBlockPreview(); toast('Redirect cleared');
-  }
   function openBlockov(){
     renderBlockPreview();
     document.getElementById('blockov').classList.add('show');
@@ -495,14 +483,14 @@
       if(n<=0){ clearInterval(t); close.classList.add('ready'); close.classList.remove('locked'); }
     },1000);
   }
-  function closeBlockov(){ document.getElementById('blockov').classList.remove('show'); toast(bsRedirect?('Redirecting to '+bsRedirect):'Back to the app'); }
+  function closeBlockov(){ document.getElementById('blockov').classList.remove('show'); toast('Back to the app'); }
   // Block-screen settings persist to localStorage (simulates SAF persistence),
   // mirroring the app's Save changes button on the Block Screen.
   const BS_KEY='safeme_blockscreen';
   function saveBlockScreen(){
     try{
       const sw=document.getElementById('bsWhySw');
-      localStorage.setItem(BS_KEY, JSON.stringify({dwell:bsDwell,msg:bsMsg,img:bsImg,redirect:bsRedirect,why:sw?sw.classList.contains('on'):true}));
+      localStorage.setItem(BS_KEY, JSON.stringify({dwell:bsDwell,msg:bsMsg,img:bsImg,why:sw?sw.classList.contains('on'):true}));
     }catch(e){}
     toast('Changes saved');
   }
@@ -513,7 +501,6 @@
       if(Number.isFinite(s.dwell)) bsDwell=Math.max(3,Math.min(120,s.dwell));
       if(typeof s.msg==='string' && s.msg) bsMsg=s.msg;
       if(typeof s.img==='string') bsImg=s.img;
-      if(typeof s.redirect==='string') bsRedirect=s.redirect;
       const sw=document.getElementById('bsWhySw');
       if(sw) sw.classList.toggle('on', !!s.why);
     }catch(e){}

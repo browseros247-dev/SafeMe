@@ -43,8 +43,7 @@ class BackupCodecTest {
             protectionEnabled = true, protectedComponents = setOf("com.pkg/com.pkg.Service"),
         ),
         blockScreen = BlockScreenPrefsState(
-            dwell = 12, message = "Stay safe, Alex.", img = "sunset",
-            redirect = "https://example.com", whyOn = false,
+            dwell = 12, message = "Stay safe, Alex.", img = "sunset", whyOn = false,
         ),
     )
 
@@ -212,7 +211,6 @@ class BackupCodecTest {
         assertEquals(120, snapshot.blockScreen?.dwell) // clamped to the valid range
         assertEquals("Focus", snapshot.blockScreen?.message)
         assertEquals("", snapshot.blockScreen?.img)
-        assertEquals("", snapshot.blockScreen?.redirect)
         assertEquals(true, snapshot.blockScreen?.whyOn)
     }
 

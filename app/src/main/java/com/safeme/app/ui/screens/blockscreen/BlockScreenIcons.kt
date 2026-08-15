@@ -78,21 +78,6 @@ val MessageIcon: ImageVector by lazy {
     }.build()
 }
 
-val LinkIcon: ImageVector by lazy {
-    iconBuilder("Link").apply {
-        strokePath {
-            moveTo(17f, 7f)
-            lineToRelative(5f, 5f)
-            lineToRelative(-5f, 5f)
-        }
-        strokePath {
-            moveTo(7f, 17f)
-            lineToRelative(-5f, -5f)
-            lineToRelative(5f, -5f)
-        }
-    }.build()
-}
-
 val InfoIcon: ImageVector by lazy {
     iconBuilder("Info").apply {
         strokePath {

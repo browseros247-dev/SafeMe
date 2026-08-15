@@ -32,7 +32,7 @@ JSONC file and restores it atomically with validation and rollback.
                "autoLock": … },
   "preventUninstall": { "enabled": … },
   "a11yProtection": { "enabled": …, "protectedComponents": […] },
-  "blockScreen": { "dwell": …, "message": …, "img": …, "redirect": …, "whyOn": … }
+  "blockScreen": { "dwell": …, "message": …, "img": …, "whyOn": … }
 }
 ```
 

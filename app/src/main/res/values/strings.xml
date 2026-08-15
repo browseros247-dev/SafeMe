@@ -52,9 +52,6 @@
     <string name="bs_close_gate">Close-gate policy</string>
     <string name="bs_dwell">Dwell countdown</string>
     <string name="bs_dwell_sub">Time before Close unlocks • 3-120s</string>
-    <string name="bs_redirect_url">Redirect URL after close</string>
-    <string name="bs_redirect_sub_none">None - returns to the app</string>
-    <string name="bs_clear">Clear</string>
 
     <string name="bs_why">"Why am I seeing this?"</string>
     <string name="bs_why_sub">Show the explanation toggle</string>
@@ -70,18 +67,11 @@
     <string name="bs_suggestions">Suggestions</string>
     <string name="bs_img_sub_sheet">Shown on the block screen behind your message • simulates SAF persistence.</string>
     <string name="bs_msg_sub_sheet">Shown on the block screen.</string>
-    <string name="bs_url_sub_sheet">Where to go after the countdown finishes.</string>
-    <string name="bs_url_placeholder">https://example.com</string>
-    <string name="bs_url_note">Leave empty to return to the app after closing.</string>
-
     <string name="bs_toast_msg_saved">Message saved</string>
-    <string name="bs_toast_redirect_set">Redirect set to %1$s</string>
-    <string name="bs_toast_redirect_cleared">Redirect cleared</string>
     <string name="bs_toast_img_set">Motivation image set to %1$s</string>
     <string name="bs_toast_img_none">No motivation image</string>
     <string name="bs_toast_changes_saved">Changes saved</string>
     <string name="bs_toast_save_failed">Couldn\'t save. Please try again.</string>
-    <string name="bs_toast_redirecting">Redirecting to %1$s</string>
     <string name="bs_toast_back_app">Back to the app</string>
     <string name="bs_toast_rate">Play Store rating prompt</string>
     <string name="bs_toast_why">Why: matched keyword blocked by SafeMe</string>

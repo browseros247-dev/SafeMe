@@ -81,20 +81,16 @@ The engine merges three sources per category:
 On a match, the service launches `BlockGateActivity` with
 `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS` and extras
 (package, matched value, block type: `keyword` / `website` / `title` /
-`schedule` / `pu` / `redirect`).
+`schedule` / `pu`).
 
 - Renders the self-contained `BlockOverlay` (dwell countdown, "why blocked"
-  toggle, optional redirect URI when supplied, "Close" gated until the dwell
-  elapses).
+  toggle, "Close" gated until the dwell elapses).
 - **blockedToday counter**: incremented once per gate creation
   (`savedInstanceState == null` only — never re-incremented on rotation or
   recreation).
 - **Activity feed**: one `block` entry per gate with a human title
   ("Website blocked", "Keyword blocked", "Settings page blocked",
   "Blocked <label>", "Uninstall blocked").
-- **Redirect**: when the a11y service supplies a `redirect` value (e.g. the
-  Settings-page flow), Close resolves to an `ACTION_VIEW` intent (scheme-less
-  values get `https://`), otherwise it just finishes back to the previous app.
 - The engine skips SafeMe's own package, so the gate itself never re-triggers
   a block.
 

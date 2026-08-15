@@ -34,9 +34,6 @@ class BlockScreenViewModel(application: Application) : AndroidViewModel(applicat
     private val _img = MutableStateFlow("")
     val img: StateFlow<String> = _img.asStateFlow()
 
-    private val _redirect = MutableStateFlow("")
-    val redirect: StateFlow<String> = _redirect.asStateFlow()
-
     private val _whyOn = MutableStateFlow(true)
     val whyOn: StateFlow<Boolean> = _whyOn.asStateFlow()
 
@@ -49,7 +46,6 @@ class BlockScreenViewModel(application: Application) : AndroidViewModel(applicat
                 app.getString(R.string.bs_preview_msg_default)
             }
             _img.value = stored.img
-            _redirect.value = stored.redirect
             _whyOn.value = stored.whyOn
         }
     }
@@ -64,14 +60,6 @@ class BlockScreenViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setImg(value: String) {
         _img.value = value
-    }
-
-    fun setRedirect(value: String) {
-        _redirect.value = value
-    }
-
-    fun clearRedirect() {
-        _redirect.value = ""
     }
 
     fun toggleWhy() {
@@ -90,7 +78,6 @@ class BlockScreenViewModel(application: Application) : AndroidViewModel(applicat
                 dwell = _dwell.value,
                 message = _message.value,
                 img = _img.value,
-                redirect = _redirect.value,
                 whyOn = _whyOn.value,
             )
         )

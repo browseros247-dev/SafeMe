@@ -266,6 +266,7 @@ private fun PermissionCard(
                     ),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                     color = if (granted) colors.success else colors.warning,
                 )
             }
@@ -316,6 +317,7 @@ private fun PermissionCard(
                     Text(
                         text = command,
                         fontSize = 12.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.brandDark,
                     )

@@ -217,10 +217,11 @@ private fun PreventUninstallCard(
         ) {
             Text(
                 text = stringResource(
-                    if (adminActive) R.string.at_card_btn_active else R.string.at_activate,
+                    if (adminActive) R.string.at_deactivate else R.string.at_activate,
                 ),
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
                 color = colors.brandDark,
             )
         }

@@ -72,9 +72,6 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private var titleScopeWarned: Boolean = false
 
     @Volatile
-    private var lastA11yPageProbeMs: Long = 0L
-
-    @Volatile
     private var lastA11yPageKickMs: Long = 0L
 
     /** Last app-name framework probe timestamp — throttles [nodeTreeContainsText] on watchdog ticks. */
@@ -294,20 +291,22 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     /**
      * True when the visible settings window is SafeMe's OWN accessibility
-     * service DETAIL page. Layer 1 is a cheap scan of the event text; if that
+     * service DETAIL page. The event text carries the window title — the
+     * detail page's title is our service label while the a11y LIST page's is
+     * "Accessibility" — so a cheap label-prefix scan fires first; if that
      * misses (Android 16 does not expose the description to the event) the
      * active-window tree is probed via the shared [isOurA11yDetailPageInTree].
      */
     private fun isOurA11yServiceDetailPage(event: AccessibilityEvent): Boolean {
         return try {
-            val description = getString(R.string.accessibility_service_description)
-            val summary = getString(R.string.accessibility_service_summary)
-            val marker = ProtectedSystemPages.detailOnlyFingerprint(
-                ProtectedSystemPages.normalize(description),
-                ProtectedSystemPages.normalize(summary)
+            val labelNorm = ProtectedSystemPages.normalize(
+                getString(R.string.accessibility_service_label)
             )
-            if (marker.length < 8) return false // fail open: can't distinguish detail from list
-            if (eventTextNormalized(event).contains(marker)) return true
+            if (labelNorm.length >= 4 &&
+                eventTextNormalized(event).startsWith(labelNorm)
+            ) {
+                return true
+            }
 
             val root = rootInActiveWindow ?: return false
             try {
@@ -327,17 +326,24 @@ class SafeMeAccessibilityService : AccessibilityService() {
      * exposed) and the PU watchdog (which has no event at all). [root] is the
      * active-window root and is NOT recycled here — the caller owns it.
      *
-     * Layers (cheap first):
-     *  1. Window title (API 33+) — the detail page's window title is our
-     *     service label, while the a11y LIST window's title is "Accessibility".
-     *  2. Detail-only description fingerprint in the walked node texts
-     *     (pre-Android-16: the description IS exposed to the tree).
-     *  3. The detail-only "shortcut" row ("<label> shortcut") — Android 16
-     *     hosts the detail page in a generic SubSettings container whose
-     *     description is not exposed; the shortcut row is the only
-     *     label-carrier the list row lacks.
-     *  4. Bounded framework substring probe (throttled — it is the only
-     *     framework-side search and a stream of events must cost nothing).
+     * Every signal is chosen so the a11y LIST page — which renders the service
+     * label exactly once (the row title) plus the summary/description — can
+     * never match:
+     *  1. Window title (API 33+) contains our service label. The detail
+     *     page's title IS the label; the list's is "Accessibility".
+     *  2. The label appears in two or more distinct walked texts. The detail
+     *     page renders it in the "Use <label>" toggle row, the
+     *     "<label> shortcut" row and the "About <label>" row; the list
+     *     renders it once. Locale-robust: the label is SafeMe's own string,
+     *     never localized by the system.
+     *  3. A single walked text contains the label and "shortcut" — the
+     *     "<label> shortcut" row. Catches devices where the toggle row text
+     *     doesn't carry the label.
+     *
+     * The old description-fingerprint layers are intentionally gone: some OEM
+     * a11y LISTS render the full service description, so matching the
+     * description could never distinguish detail from list — it gated the
+     * whole list page.
      */
     private fun isOurA11yDetailPageInTree(root: AccessibilityNodeInfo): Boolean {
         // Layer 1: window title (cheap, no tree walk).
@@ -352,56 +358,24 @@ class SafeMeAccessibilityService : AccessibilityService() {
             }
         }
 
-        val description = getString(R.string.accessibility_service_description)
-        val summary = getString(R.string.accessibility_service_summary)
-        val marker = ProtectedSystemPages.detailOnlyFingerprint(
-            ProtectedSystemPages.normalize(description),
-            ProtectedSystemPages.normalize(summary)
-        )
         val label = getString(R.string.accessibility_service_label)
         val labelLower = label.lowercase(Locale.ROOT)
+        if (labelLower.isBlank()) return false // fail open: can't match anything
+        val labelNorm = ProtectedSystemPages.normalize(label)
 
         // Layers 2 + 3 share one bounded walk of the node tree.
-        if (marker.length >= 8 || labelLower.isNotBlank()) {
-            val texts = collectTextsFrom(root)
-            if (marker.length >= 8 &&
-                texts.any { ProtectedSystemPages.normalize(it).contains(marker) }
-            ) {
-                return true
+        val texts = collectTextsFrom(root)
+        if (texts.count { ProtectedSystemPages.normalize(it).contains(labelNorm) } >= 2) {
+            return true
+        }
+        if (texts.any {
+                val t = it.lowercase(Locale.ROOT)
+                t.contains(labelLower) && t.contains("shortcut")
             }
-            if (labelLower.isNotBlank() && texts.any {
-                    val t = it.lowercase(Locale.ROOT)
-                    t.contains(labelLower) && t.contains("shortcut")
-                }
-            ) {
-                return true
-            }
+        ) {
+            return true
         }
-
-        // Layer 4: findAccessibilityNodeInfosByText matches the RAW node text
-        // (spaces intact), so the normalized marker can never match. Probe with
-        // the spaced detail-only suffix — it appears on the detail page (full
-        // description) but never on the list row (summary only). Throttled.
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastA11yPageProbeMs < A11Y_PAGE_PROBE_THROTTLE_MS) return false
-        lastA11yPageProbeMs = now
-        val spacedProbe = if (description.startsWith(summary)) {
-            description.removePrefix(summary).trim()
-        } else {
-            description.drop(40).trim()
-        }
-        if (spacedProbe.length < 8) return false
-        val needle = spacedProbe.take(30)
-        val nodes = try {
-            root.findAccessibilityNodeInfosByText(needle)
-        } catch (t: Throwable) {
-            null
-        }
-        return try {
-            nodes != null && nodes.isNotEmpty()
-        } finally {
-            if (nodes != null) nodes.forEach { recycle(it) }
-        }
+        return false
     }
 
     /**
@@ -672,14 +646,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // the detail page is hosted in a generic SubSettings container
             // whose class carries no a11y marker and whose description text is
             // NOT exposed to the tree, so the description probes fail there.
-            // The label is the only reliable signal. The DETAIL page (with the
-            // detail-only "shortcut" row) is gated here as a fallback for
-            // devices the watchdog missed; the list row is never touched.
-            // Checked before the app-name probe so a11y pages never trigger it.
+            // The tree-based detail detector is the only reliable signal — the
+            // DETAIL page is gated here as a fallback for devices the watchdog
+            // missed; the LIST page (label row + summary/description) never
+            // matches it, so it is never gated. Checked before the app-name
+            // probe so a11y pages never trigger it.
             val serviceLabelLower = getString(R.string.accessibility_service_label)
                 .lowercase(Locale.ROOT)
             if (serviceLabelLower.isNotBlank() && lowerText.contains(serviceLabelLower)) {
-                if (lowerText.contains("shortcut")) {
+                if (isOurA11yDetailPage()) {
                     launchPuGate(pkg)
                 }
                 return false
@@ -1051,10 +1026,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
         const val COOLDOWN_MS = 4_000L
         const val MAX_DEPTH = 12
         const val MAX_STRINGS = 200
-        // [PU watchdog] Short throttle windows: the a11y-detail eviction must
-        // fire on EVERY activation, so these only dedupe event floods — they
-        // never suppress a genuine reopen of the page.
-        const val A11Y_PAGE_PROBE_THROTTLE_MS = 2_000L
+        // [PU watchdog] Short throttle window: the a11y-detail eviction must
+        // fire on EVERY activation, so it only dedupes event floods — it
+        // never suppresses a genuine reopen of the page.
         const val A11Y_PAGE_KICK_THROTTLE_MS = 2_000L
         const val PU_WATCHDOG_INTERVAL_MS = 2_000L
         // [PU watchdog] The app-name framework probe is throttled ABOVE the

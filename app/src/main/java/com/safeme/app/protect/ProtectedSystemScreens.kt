@@ -99,24 +99,4 @@ object ProtectedSystemPages {
     /** Normalize free-form page/description text: lowercase, spaces stripped. */
     fun normalize(text: String): String =
         text.lowercase(Locale.ROOT).replace(" ", "")
-
-    /**
-     * A normalized fingerprint that appears ONLY on our accessibility service's
-     * DETAIL page, never on the services LIST row (the list shows the summary,
-     * a prefix of the description). Returns "" when the inputs can't yield a
-     * distinctive marker — the caller then fails open (no blocking).
-     */
-    fun detailOnlyFingerprint(
-        serviceDescriptionNormalized: String,
-        serviceSummaryNormalized: String,
-    ): String {
-        val suffix = if (serviceSummaryNormalized.length >= 8 &&
-            serviceDescriptionNormalized.startsWith(serviceSummaryNormalized)
-        ) {
-            serviceDescriptionNormalized.removePrefix(serviceSummaryNormalized)
-        } else {
-            serviceDescriptionNormalized.drop(40)
-        }
-        return suffix.take(40)
-    }
 }

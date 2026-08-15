@@ -164,6 +164,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update {
             it.copy(
                 masterProtection = blocking.blockingEnabled,
+                // Keep the banner in sync with the cached system state on
+                // every rebuild, not only after an explicit refresh().
+                a11yEnabled = a11yEnabled,
                 blockedToday = blocking.blockedToday.toString(),
                 scheduleCount = enabledSchedules.toString(),
                 heroProgress = if (paused) 0f else layers.progress,

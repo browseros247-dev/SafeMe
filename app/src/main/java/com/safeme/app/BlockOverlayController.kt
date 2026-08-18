@@ -156,9 +156,22 @@ object BlockOverlayController {
      * removes the window — leaving `showing` true with no gate on screen.
      * Re-adding the same view restores it (dwell restarts — safe).
      */
-    fun reassertIfShowing() {
+    fun reassertIfShowing(serviceContext: Context? = null) {
         if (!showing) return
+        if (serviceContext != null) {
+            // A service reconnect gets a new accessibility window token. Keep
+            // the pending gate tied to the current service, not the dead one.
+            lastContext = serviceContext
+            wm = serviceContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        }
         refreshOverlay()
+    }
+
+    /** Clears a gate whose accessibility service connection has gone away. */
+    fun onAccessibilityServiceDisconnected() {
+        mainHandler.post {
+            removeOverlay()
+        }
     }
 
     /**
@@ -350,8 +363,12 @@ object BlockOverlayController {
 
     /** Full re-attach (fresh window) using the last-show parameters. */
     private fun reattachOverlay() {
+        val ctx = lastContext ?: return
+        val pkg = lastPkg
+        val matched = lastMatched
+        val type = lastType
+        val prefs = lastPrefs ?: BlockScreenPrefsState()
         try {
-            val ctx = lastContext ?: return
             try {
                 overlayView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
             } catch (_: Throwable) {
@@ -361,10 +378,10 @@ object BlockOverlayController {
             overlayLp = null
             lifecycleOwner?.destroy()
             lifecycleOwner = null
-            attachOverlay(ctx, lastPkg, lastMatched, lastType, lastPrefs ?: BlockScreenPrefsState())
-        } catch (_: Throwable) {
+            attachOverlay(ctx, pkg, matched, type, prefs)
+        } catch (t: Throwable) {
             removeOverlay()
-            launchFallbackActivity(lastContext ?: return, lastPkg, lastMatched, lastType)
+            launchFallbackActivity(ctx, pkg, matched, type)
         }
     }
 
@@ -520,18 +537,18 @@ internal fun blockActivitySub(type: String, matched: String): String = when {
 internal fun blockGateMessage(custom: String, defaultMessage: String): String =
     custom.ifEmpty { defaultMessage }
 
-/** "Why am I seeing this?" reason — mirrors BlockGateActivity.BlockGate. */
+/** Single source of truth for the inline "Why am I seeing this?" explanation. */
 internal fun blockGateWhyReason(
     type: String,
     matched: String,
     puMessage: String,
     scheduleMessage: String,
-): String? = when (type) {
+): String = when (type) {
     "website" ->
         if (matched.isNotEmpty()) "Why: website blocked by SafeMe ($matched)" else "Why: website blocked by SafeMe"
     "title" ->
         if (matched.isNotEmpty()) "Why: Settings page blocked by SafeMe ($matched)" else "Why: Settings page blocked by SafeMe"
     "pu" -> puMessage
     "schedule" -> scheduleMessage
-    else -> if (matched.isNotEmpty()) "Why: $matched blocked by SafeMe" else null
+    else -> if (matched.isNotEmpty()) "Why: $matched blocked by SafeMe" else "Why: this content or action was blocked by an active SafeMe rule"
 }

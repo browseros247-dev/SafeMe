@@ -1,6 +1,5 @@
 package com.safeme.app.ui.screens.blockscreen
 
-import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,7 +33,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -58,7 +56,7 @@ fun BlockOverlay(
 ) {
     var remaining by remember { mutableIntStateOf(dwell) }
     var ready by remember { mutableStateOf(dwell <= 0) }
-    val context = LocalContext.current
+    var whyVisible by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val colors = LocalAppColors.current
     val logoBrush = remember(density, colors.brandDark, colors.brand) {
@@ -134,13 +132,7 @@ fun BlockOverlay(
                     Box(
                         modifier = Modifier
                             .background(colors.brand.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
-                            .clickable {
-                                Toast.makeText(
-                                    context,
-                                    whyReason ?: context.getString(R.string.bs_toast_why),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                            .clickable { whyVisible = !whyVisible }
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         Text(
@@ -148,6 +140,17 @@ fun BlockOverlay(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = colors.iconDarkFg
+                        )
+                    }
+                    if (whyVisible) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = whyReason ?: stringResource(R.string.bs_why_fallback),
+                            fontSize = 13.sp,
+                            lineHeight = 19.sp,
+                            color = colors.previewMsg,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }

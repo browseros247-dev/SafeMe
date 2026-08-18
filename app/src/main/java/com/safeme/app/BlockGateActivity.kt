@@ -152,18 +152,9 @@ private fun BlockGate(
     val msg = remember(prefs.message, defaultMessage, locale) {
         prefs.message.ifEmpty { defaultMessage }
     }
-    // The block context moves to the "Why am I seeing this?" toast.
+    // The block context is rendered inline by the shared overlay.
     val whyReason = remember(pkg, matched, type, puGateMessage, scheduleGateMessage, locale) {
-        when (type) {
-            "website" ->
-                if (matched.isNotEmpty()) "Why: website blocked by SafeMe ($matched)" else "Why: website blocked by SafeMe"
-            "title" ->
-                if (matched.isNotEmpty()) "Why: Settings page blocked by SafeMe ($matched)" else "Why: Settings page blocked by SafeMe"
-            "pu" -> puGateMessage
-            "schedule" -> scheduleGateMessage
-            else ->
-                if (matched.isNotEmpty()) "Why: $matched blocked by SafeMe" else null
-        }
+        blockGateWhyReason(type, matched, puGateMessage, scheduleGateMessage)
     }
     BlockOverlay(
         dwell = prefs.dwell,

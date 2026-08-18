@@ -3,6 +3,7 @@ package com.safeme.app
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -55,5 +56,14 @@ class BlockGateActivityTest {
         rule.waitUntil(timeoutMillis = 10_000) {
             rule.activityRule.scenario.state == Lifecycle.State.DESTROYED
         }
+    }
+
+    @Test
+    fun whyButtonRevealsInlineExplanation() {
+        rule.onNodeWithText("Why am I seeing this?").performClick()
+
+        rule.onNodeWithText(
+            "Why: this content or action was blocked by an active SafeMe rule",
+        ).assertIsDisplayed()
     }
 }

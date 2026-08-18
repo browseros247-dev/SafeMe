@@ -75,6 +75,7 @@
     <string name="bs_toast_back_app">Back to the app</string>
     <string name="bs_toast_rate">Play Store rating prompt</string>
     <string name="bs_toast_why">Why: matched keyword blocked by SafeMe</string>
+    <string name="bs_why_fallback">Why: this content or action was blocked by an active SafeMe rule</string>
 
     <string name="bs_overlay_why">Why am I seeing this?</string>
     <string name="bs_overlay_label">Close-gate • dwell countdown</string>

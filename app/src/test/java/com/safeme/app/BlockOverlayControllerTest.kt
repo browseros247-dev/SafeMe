@@ -121,7 +121,10 @@ class BlockOverlayControllerTest {
     }
 
     @Test
-    fun keywordWhyWithoutMatchIsNull() {
-        assertEquals(null, blockGateWhyReason("", "", "pu", "sched"))
+    fun unknownWhyWithoutMatchUsesNeutralFallback() {
+        assertEquals(
+            "Why: this content or action was blocked by an active SafeMe rule",
+            blockGateWhyReason("", "", "pu", "sched")
+        )
     }
 }

@@ -211,7 +211,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // [Overlay gate] a11y overlay windows belong to the service connection;
         // if the system reset it (OEM rebind), the window is silently removed
         // while the controller still thinks it is showing — re-assert it now.
-        BlockOverlayController.reassertIfShowing()
+        BlockOverlayController.reassertIfShowing(this)
         // Re-arm the accessibility-protection guard + self-heal (background;
         // no-op when the protection toggle is off).
         A11yProtectionUtils.selfHealAllAsync(this)
@@ -1543,6 +1543,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // [M3 fix] Cancel any pending eviction toast before destroying.
         pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
         pendingToastRunnable = null
+        BlockOverlayController.onAccessibilityServiceDisconnected()
         if (instance === this) instance = null
         // Re-arm on the shared heal executor (survives serviceScope.cancel())
         // — an unbind may be the precursor to the service being disabled.
@@ -1556,6 +1557,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // [M3 fix] Cancel any pending eviction toast before destroying.
         pendingToastRunnable?.let { Handler(Looper.getMainLooper()).removeCallbacks(it) }
         pendingToastRunnable = null
+        BlockOverlayController.onAccessibilityServiceDisconnected()
         if (instance === this) instance = null
         A11yProtectionUtils.selfHealAllAsync(this)
         serviceScope.cancel()

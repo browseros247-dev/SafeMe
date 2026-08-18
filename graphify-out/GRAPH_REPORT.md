@@ -1,237 +1,610 @@
-# Graph Report - .  (2026-08-05)
+# Graph Report - SafeMe  (2026-08-18)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 149 files · ~122,819 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 892 nodes · 1707 edges · 53 communities (44 shown, 9 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 67 edges (avg confidence: 0.8)
+- 2203 nodes · 4107 edges · 150 communities (114 shown, 36 thin omitted)
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 331 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `cfaabd90`
+- Built from commit: `f908b88c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Community 0
-- Community 1
-- Community 2
-- Community 3
-- Community 4
-- Community 5
-- Community 6
-- Community 7
-- Community 8
-- Community 9
-- Community 10
-- Community 11
-- Community 12
-- Community 13
-- Community 14
-- Community 15
-- Community 16
-- Community 17
-- Community 18
-- Community 19
-- Community 20
-- Community 21
-- Community 22
-- Community 23
-- Community 24
-- Community 25
-- Community 26
-- Community 27
-- Community 28
-- Community 29
-- Community 30
-- Community 31
-- Community 32
-- Community 33
-- Community 34
-- Community 35
-- Community 36
-- Community 37
-- Community 38
-- Community 39
-- Community 40
+- TcpConnection
+- BlockingRulesTest
+- KeywordManagerViewModel
+- SafeMeVpnService
+- BlockingPrefs.kt
+- prototype/js/app.js
+- IpPacket.kt
+- DnsVpnViewModel
+- .onCreate
+- FocusScreen.kt
+- BlockingScreen.kt
+- HomeScreen.kt
+- VpnRelayIntegrationTest
+- IpPacketTest
+- BlockScreen
+- SafeMeAccessibilityService
+- ScheduleScreen.kt
+- toast
+- ToastHost
+- saveLock
+- DnsCodec
+- DnsMessageTest
+- BlockScreenViewModel
+- NavItem
+- TcpSeqTest
+- addKeyword
+- checkUnlock
+- InternetChecksumTest
+- VpnBootReceiver
+- OnboardingViewModel
+- VpnValidationTest
+- saveSchedule
+- blurredShadow
+- DnsVpnIcons.kt
+- grantPerm
+- openSheet
+- BlockScreenIcons.kt
+- PermissionIcons.kt
+- VpnStatusStore
+- gradlew
+- Color.kt
+- Reference/prototype/js/app.js
+- QuickActionType
+- A11yProtectionPrefsState
+- A11yProtectionUtils
+- BackupCodecTest
+- toast
+- BackupScreen
+- BackupStateStore
+- BlockOverlayControllerTest
+- BlockOverlayController
+- ScheduleEvaluatorTest
+- AppCategory
+- ScheduleEditViewModel
+- AppCatalogTest
+- BackupCodec
+- AntiTamperViewModel
+- Part 1 — NopoX 1.0.53 reverse engineering
+- LockType
+- BackupSection
+- ScheduleSheets.kt
+- 02 — Design philosophy
+- .seededStores
+- TitleBlockViewModel
+- AppLockManager
+- AppLockScreen.kt
+- ScheduleViewModel
+- SafeMeTextField
+- UninstallBlockersTest
+- 01 — Architecture
+- 12 — WRITE_SECURE_SETTINGS protection plan
+- VpnAppsSheet
+- A11yProtectionUtilsTest
+- ProtectedSystemPagesTest
+- saveLock
+- Teck Stack ,Name & Details.md
+- AppLockManagerTest
+- 03 — UI design system
+- 11 — Development guide
+- SchedulePrefs.kt
+- SafeMeApp
+- ScheduleEngine
+- AppLockUnlockOverlay
+- AppLockViewModel
+- HomeViewModel
+- ScheduleEditScreen
+- 04 — Security architecture
+- AppLockPrefs.kt
+- BlockingPrefsState
+- A11yProtectionGuard
+- IpHeader
+- 05 — Blocking engine (accessibility service)
+- 07 — VPN / DNS filtering
+- renderAppPicker
+- AutoLockDelay
+- ScheduleBlock
+- shouldShowA11yWarning
+- Intent
+- JsoncTest
+- JSONArray
+- OnboardingNavHost
+- 08 — Backup & Restore
+- 2. Principles
+- TitleBlockScreen
+- ProtectionLayersTest
+- Release signing
+- SafeMe
+- addKeyword
+- checkUnlock
+- BackupError
+- MainScreen
+- AppLockGateController
+- IpBuilder
+- SafeMe Bundled Blocking Dataset (Engine-Only · Hidden from UI)
+- 06 — Schedule-based blocking
+- ScheduleMode
+- ProtectedSystemPages
+- ScheduleAlarmReceiver
+- FragmentReassembler
+- Outcome
+- 09 — App Picker
+- BlockScreenPrefsState
+- A11yBootReceiver
+- InternetChecksum
+- TunnelRestartPolicyTest
+- saveSchedule
+- AppLockBiometrics
+- grantPerm
+- AntiTamperIcons.kt
+- AppLockIcons.kt
+- BackupIcons.kt
+- PermissionScreen
+- IpPacket
+- BlockGateActivityTest
+- Jsonc
+- UninstallBlockers
+- WelcomeScreen
 
 ## God Nodes (most connected - your core abstractions)
-1. `toast()` - 33 edges
-2. `TcpConnection` - 30 edges
-3. `DnsVpnViewModel` - 28 edges
-4. `SafeMeVpnService` - 24 edges
-5. `KeywordManagerViewModel` - 22 edges
-6. `BlockedCategory` - 21 edges
-7. `TcpRelay` - 21 edges
-8. `UdpRelay` - 19 edges
-9. `VpnRelayIntegrationTest` - 19 edges
-10. `BlockingRulesTest` - 18 edges
+1. `SafeMeAccessibilityService` - 48 edges
+2. `toast()` - 36 edges
+3. `DnsVpnViewModel` - 33 edges
+4. `BackupCodecTest` - 33 edges
+5. `toast()` - 33 edges
+6. `SafeMeVpnService` - 30 edges
+7. `TcpConnection` - 28 edges
+8. `ScheduleEvaluatorTest` - 24 edges
+9. `QuickActionType` - 23 edges
+10. `KeywordManagerViewModel` - 22 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `saveWebsite()` --calls--> `normalizeDomain()`  [INFERRED]
-  app/src/main/java/com/safeme/app/ui/screens/keywords/KeywordManagerScreen.kt → app/src/main/java/com/safeme/app/data/BlockingPrefs.kt
-- `setVpnPreset()` --references--> `DnsPreset`  [EXTRACTED]
-  app/src/main/java/com/safeme/app/data/VpnPrefs.kt → app/src/main/java/com/safeme/app/vpn/VpnConfig.kt
-- `BlockingScreen()` --calls--> `ToastHost()`  [INFERRED]
-  app/src/main/java/com/safeme/app/ui/screens/blocking/BlockingScreen.kt → app/src/main/java/com/safeme/app/ui/components/ToastHost.kt
-- `HomeScreen()` --calls--> `ToastHost()`  [INFERRED]
-  app/src/main/java/com/safeme/app/ui/screens/home/HomeScreen.kt → app/src/main/java/com/safeme/app/ui/components/ToastHost.kt
-- `KeywordManagerScreen()` --calls--> `ToastHost()`  [INFERRED]
-  app/src/main/java/com/safeme/app/ui/screens/keywords/KeywordManagerScreen.kt → app/src/main/java/com/safeme/app/ui/components/ToastHost.kt
+- `BlockGate()` --calls--> `BlockScreenPrefsState`  [INFERRED]
+  app/src/main/java/com/safeme/app/BlockGateActivity.kt → app/src/main/java/com/safeme/app/data/BlockScreenPrefs.kt
+- `createBackup()` --calls--> `a11yProtectionPrefs()`  [INFERRED]
+  app/src/main/java/com/safeme/app/data/BackupManager.kt → app/src/main/java/com/safeme/app/data/A11yProtectionPrefs.kt
+- `createBackup()` --calls--> `appLockPrefs()`  [INFERRED]
+  app/src/main/java/com/safeme/app/data/BackupManager.kt → app/src/main/java/com/safeme/app/data/AppLockPrefs.kt
+- `createBackup()` --calls--> `BackupSnapshot`  [INFERRED]
+  app/src/main/java/com/safeme/app/data/BackupManager.kt → app/src/main/java/com/safeme/app/data/BackupCodec.kt
+- `createBackup()` --calls--> `blockingPrefs()`  [INFERRED]
+  app/src/main/java/com/safeme/app/data/BackupManager.kt → app/src/main/java/com/safeme/app/data/BlockingPrefs.kt
 
 ## Import Cycles
 - None detected.
 
-## Communities (53 total, 9 thin omitted)
+## Communities (150 total, 36 thin omitted)
 
-### Community 0 - "Community 0"
+### Community 0 - "TcpConnection"
 Cohesion: 0.08
-Nodes (17): TcpHeader, ByteArrayBuffer, FlowKey, ByteArray, InetAddress, Socket, parseWindowScale(), TcpConnection (+9 more)
+Nodes (13): TcpHeader, ByteArrayBuffer, FlowKey, parseWindowScale(), TcpConnection, TcpRelay, TcpSeq, TcpState (+5 more)
 
-### Community 1 - "Community 1"
-Cohesion: 0.07
-Nodes (29): AccessibilityEvent, AccessibilityNodeInfo, AccessibilityService, addBlockedKeyword(), addBlockedWebsite(), addTrustedWebsite(), addWhitelistKeyword(), BlockedKeyword (+21 more)
+### Community 2 - "KeywordManagerViewModel"
+Cohesion: 0.09
+Nodes (33): BlockedCategory, ADULT, CUSTOM, DISTRACTION, GAMBLING, SHOPPING, SOCIAL_MEDIA, ActionButton() (+25 more)
 
-### Community 2 - "Community 2"
+### Community 3 - "SafeMeVpnService"
 Cohesion: 0.08
-Nodes (34): BlockedCategory, ADULT, CUSTOM, DISTRACTION, GAMBLING, SHOPPING, SOCIAL_MEDIA, ActionButton() (+26 more)
+Nodes (16): DnsVpnSettings, Flow, setVpnEnabled(), setVpnPreset(), writeVpnSettings(), applyScheduledBlocks(), Context, IBinder (+8 more)
 
-### Community 3 - "Community 3"
-Cohesion: 0.08
-Nodes (17): DnsVpnSettings, setVpnEnabled(), setVpnPreset(), InetAddress, Intent, java, SafeMeVpnService, BlockingRules (+9 more)
+### Community 4 - "BlockingPrefs.kt"
+Cohesion: 0.20
+Nodes (18): addTitleBlockRule(), addTrustedWebsite(), addWhitelistKeyword(), blockedTodayFlow(), blockingEnabled(), blockingPrefs(), deleteTitleBlockRule(), Flow (+10 more)
 
-### Community 4 - "Community 4"
-Cohesion: 0.08
-Nodes (20): blockedTodayFlow(), blockingEnabled(), onboardingComplete(), setThemePref(), ThemePref, DARK, LIGHT, SYSTEM (+12 more)
-
-### Community 5 - "Community 5"
+### Community 5 - "prototype/js/app.js"
 Cohesion: 0.06
 Nodes (32): a11yStatus(), applyTheme(), back(), editTitle(), fmt12h(), groups, h12(), initTheme() (+24 more)
 
-### Community 6 - "Community 6"
-Cohesion: 0.10
-Nodes (13): ByteOrder, InternetChecksum, IpConstants, IpHeader, IpPacket, ByteArray, InetAddress, TcpFlags (+5 more)
+### Community 6 - "IpPacket.kt"
+Cohesion: 0.15
+Nodes (6): ByteOrder, IpConstants, TcpFlags, TcpPacket, UdpHeader, UdpPacket
 
-### Community 7 - "Community 7"
-Cohesion: 0.09
-Nodes (35): DnsPresetList(), DnsVpnScreen(), GroupLabel(), androidx, Color, Modifier, NotifSeg(), VpnDivider() (+27 more)
+### Community 7 - "DnsVpnViewModel"
+Cohesion: 0.06
+Nodes (31): DnsPresetList(), DnsVpnScreen(), GroupLabel(), androidx, Color, Modifier, NotifSeg(), VpnDivider() (+23 more)
 
-### Community 8 - "Community 8"
-Cohesion: 0.07
-Nodes (26): android, BlockGate(), BlockGateActivity, Bundle, ComponentActivity, incrementBlockedToday(), Bundle, ComponentActivity (+18 more)
+### Community 8 - ".onCreate"
+Cohesion: 0.21
+Nodes (6): BlockGate(), BlockGateActivity, Bundle, incrementBlockedToday(), BlockOverlay(), ComponentActivity
 
-### Community 9 - "Community 9"
-Cohesion: 0.10
-Nodes (28): HostToast, Modifier, ToastHost(), ToastPill(), cardShape(), FocusScreen(), HeroCard(), IconBox() (+20 more)
+### Community 9 - "FocusScreen.kt"
+Cohesion: 0.12
+Nodes (24): cardShape(), FocusScreen(), HeroCard(), IconBox(), Color, Dp, ImageVector, Modifier (+16 more)
 
-### Community 10 - "Community 10"
+### Community 10 - "BlockingScreen.kt"
 Cohesion: 0.11
 Nodes (28): BlockingScreen(), cardShape(), IconBox(), IconVariant, Amber, Dark, Green, Red (+20 more)
 
-### Community 11 - "Community 11"
-Cohesion: 0.11
-Nodes (26): A11yBanner(), cardShape(), FeedCard(), FeedRow(), HeroCard(), HeroRing(), HeroRings(), HomeHeaderRow() (+18 more)
+### Community 11 - "HomeScreen.kt"
+Cohesion: 0.08
+Nodes (42): ActivityEntry, activityFromJson(), activityLog(), activityToJson(), addActivity(), appendActivity(), formatActivityTime(), Flow (+34 more)
 
-### Community 12 - "Community 12"
-Cohesion: 0.15
-Nodes (9): Addr, ByteArray, java, Socket, SocketProtector, TunWriter, ByteArray, VpnRelayIntegrationTest (+1 more)
+### Community 12 - "VpnRelayIntegrationTest"
+Cohesion: 0.09
+Nodes (8): Addr, SocketProtector, TunWriter, Flow, FlowKey, Outbound, UdpRelay, VpnRelayIntegrationTest
 
-### Community 13 - "Community 13"
-Cohesion: 0.12
-Nodes (7): Fragment, FragmentReassembler, IpBuilder, Key, ByteArray, InetAddress, IpPacketTest
-
-### Community 14 - "Community 14"
+### Community 14 - "BlockScreen"
 Cohesion: 0.14
 Nodes (26): BlockScreen(), bsImgColors(), CustomSwitch(), GhostBlockButton(), GhostSmallButton(), GradientTile(), GroupLabel(), HeaderRow() (+18 more)
 
-### Community 15 - "Community 15"
-Cohesion: 0.14
-Nodes (5): DnsVpnUiState, DnsVpnViewModel, AndroidViewModel, SharedFlow, StateFlow
+### Community 15 - "SafeMeAccessibilityService"
+Cohesion: 0.09
+Nodes (14): AccessibilityEvent, AccessibilityNodeInfo, AccessibilityService, consumeGateDismissedPending(), EventSnapshot, isWithinPostDismissalWindow(), Intent, Job (+6 more)
 
-### Community 16 - "Community 16"
-Cohesion: 0.13
-Nodes (23): cardShape(), HeroCard(), HeroPill(), HeroRings(), IconBox(), Color, Dp, ImageVector (+15 more)
+### Community 16 - "ScheduleScreen.kt"
+Cohesion: 0.22
+Nodes (18): A11yWarningBanner(), cardShape(), HeroCard(), HeroPill(), HeroRings(), IconBox(), Color, Dp (+10 more)
 
-### Community 17 - "Community 17"
+### Community 17 - "toast"
 Cohesion: 0.13
 Nodes (25): addTitle(), appsDone(), cancelDelay(), clearRedirect(), closeBlockov(), closeSheets(), delTitle(), dwellStep() (+17 more)
 
-### Community 18 - "Community 18"
-Cohesion: 0.22
-Nodes (23): cardShape(), DeleteButton(), DeleteDialog(), Footer(), GroupLabel(), IconBox(), IdentityCard(), Color (+15 more)
+### Community 18 - "ToastHost"
+Cohesion: 0.06
+Nodes (53): Flow, onboardingComplete(), setThemePref(), ThemePref, DARK, LIGHT, SYSTEM, HostToast (+45 more)
 
-### Community 19 - "Community 19"
+### Community 19 - "saveLock"
 Cohesion: 0.17
 Nodes (15): getWizCode(), openLockSetup(), patTap(), pinBackS(), refreshWizBtn(), renderDotsId(), resetWiz(), saveLock() (+7 more)
 
-### Community 20 - "Community 20"
-Cohesion: 0.38
-Nodes (4): DnsCodec, DnsQuery, DnsQuestion, ByteArray
+### Community 20 - "DnsCodec"
+Cohesion: 0.33
+Nodes (3): DnsCodec, DnsQuery, DnsQuestion
 
-### Community 22 - "Community 22"
+### Community 22 - "BlockScreenViewModel"
 Cohesion: 0.20
 Nodes (3): BlockScreenViewModel, AndroidViewModel, StateFlow
 
-### Community 23 - "Community 23"
-Cohesion: 0.42
-Nodes (7): BadgeDot(), BottomNavBar(), Modifier, NavDestination, NavItem(), MainScreen(), PlaceholderScreen()
+### Community 23 - "NavItem"
+Cohesion: 0.73
+Nodes (5): BadgeDot(), BottomNavBar(), Modifier, NavDestination, NavItem()
 
-### Community 25 - "Community 25"
+### Community 25 - "addKeyword"
 Cohesion: 0.25
 Nodes (9): addKeyword(), addSite(), applyKwFilter(), applySiteFilter(), filterKwAll(), filterSites(), openManage(), removeRow() (+1 more)
 
-### Community 26 - "Community 26"
+### Community 26 - "checkUnlock"
 Cohesion: 0.25
 Nodes (9): checkUnlock(), closeLockov(), lockNow(), methodLabel(), patUnlock(), pickAuto(), renderLock(), renderUnlock() (+1 more)
 
-### Community 28 - "Community 28"
+### Community 28 - "VpnBootReceiver"
 Cohesion: 0.33
-Nodes (4): Context, Intent, VpnBootReceiver, BroadcastReceiver
+Nodes (4): BroadcastReceiver, Context, Intent, VpnBootReceiver
 
-### Community 29 - "Community 29"
-Cohesion: 0.33
-Nodes (3): StateFlow, OnboardingViewModel, ViewModel
+### Community 29 - "OnboardingViewModel"
+Cohesion: 0.20
+Nodes (12): ManagePermissionsFlow(), StateFlow, OnboardingViewModel, AccessibilityPermissionStep(), BatteryPermissionStep(), hasNotificationsPermission(), Context, NotificationPermissionStep() (+4 more)
 
-### Community 31 - "Community 31"
+### Community 31 - "saveSchedule"
 Cohesion: 0.33
 Nodes (6): daysLabel(), delSchedule(), modeTxt(), saveSchedule(), schedCardHTML(), schedCount()
 
-### Community 32 - "Community 32"
+### Community 32 - "blurredShadow"
 Cohesion: 0.40
 Nodes (4): blurredShadow(), Color, Dp, Modifier
 
-### Community 34 - "Community 34"
+### Community 34 - "grantPerm"
 Cohesion: 0.40
 Nodes (5): finishOnboard(), grantPerm(), permAdvance(), permStatus(), skipPerm()
 
-### Community 35 - "Community 35"
+### Community 35 - "openSheet"
 Cohesion: 0.40
 Nodes (5): openKwEdit(), openSheet(), openSiteEdit(), startDelay(), testDelay()
 
-### Community 39 - "Community 39"
+### Community 39 - "gradlew"
 Cohesion: 0.83
 Nodes (3): gradlew script, die(), warn()
 
+### Community 53 - "Reference/prototype/js/app.js"
+Cohesion: 0.06
+Nodes (35): a11yStatus(), applyTheme(), appPickSel, back(), DEFAULT_APP_SEL, editTitle(), fmt12h(), groups (+27 more)
+
+### Community 54 - "QuickActionType"
+Cohesion: 0.09
+Nodes (28): fromId(), Flow, quickActionPrefs(), quickActionsFromJson(), quickActionsToJson(), QuickActionType, APPLOCK, BACKUP (+20 more)
+
+### Community 55 - "A11yProtectionPrefsState"
+Cohesion: 0.07
+Nodes (26): AccessibilityProtectionCopyTest, a11yProtectionPrefs(), A11yProtectionPrefsState, Flow, writeA11yProtectionPrefs(), AccessibilityProtectionScreen(), cardShape(), copyToClipboard() (+18 more)
+
+### Community 56 - "A11yProtectionUtils"
+Cohesion: 0.15
+Nodes (10): A11yProtectionStateHolder, A11yProtectionUtils, Context, ProtectedServiceEntry, DeviceAdminUtils, Context, Intent, SafeMeDeviceAdminReceiver (+2 more)
+
+### Community 58 - "toast"
+Cohesion: 0.10
+Nodes (29): addTitle(), appsDone(), cancelDelay(), closeBlockov(), closeSheets(), delTitle(), dwellStep(), openBlockov() (+21 more)
+
+### Community 59 - "BackupScreen"
+Cohesion: 0.11
+Nodes (21): BackupFile, createBackup(), Flow, preventUninstallPrefs(), PreventUninstallPrefsState, ActionPill(), BackupActionCard(), BackupHeader() (+13 more)
+
+### Community 60 - "BackupStateStore"
+Cohesion: 0.12
+Nodes (10): A11yProtectionStore, AppLockStore, BackupStateStore, backupStores(), BlockingStore, BlockScreenStore, PreventUninstallStore, QuickActionsStore (+2 more)
+
+### Community 61 - "BlockOverlayControllerTest"
+Cohesion: 0.13
+Nodes (5): blockActivitySub(), blockActivityTitle(), blockGateMessage(), blockGateWhyReason(), BlockOverlayControllerTest
+
+### Community 62 - "BlockOverlayController"
+Cohesion: 0.17
+Nodes (9): BlockOverlayController, Context, OverlayLifecycleOwner, Lifecycle, LifecycleOwner, SavedStateRegistry, SavedStateRegistryOwner, View (+1 more)
+
+### Community 64 - "AppCategory"
+Cohesion: 0.13
+Nodes (16): AppCatalog, AppCategory, GAMES, MESSAGING, NEWS_PROD, OTHER, PAYMENT, SHOPPING (+8 more)
+
+### Community 65 - "ScheduleEditViewModel"
+Cohesion: 0.11
+Nodes (8): Factory, AndroidViewModel, SharedFlow, StateFlow, T, ScheduleEditUiState, ScheduleEditViewModel, ViewModelProvider
+
+### Community 67 - "BackupCodec"
+Cohesion: 0.28
+Nodes (4): BackupCodec, InvalidBackupException, T, Exception
+
+### Community 68 - "AntiTamperViewModel"
+Cohesion: 0.14
+Nodes (13): AntiTamperScreen(), cardShape(), Header(), Dp, Modifier, Note(), PreventUninstallCard(), ProtectBtn() (+5 more)
+
+### Community 69 - "Part 1 — NopoX 1.0.53 reverse engineering"
+Cohesion: 0.11
+Nodes (18): 1.1 Architecture overview, 1.2 Components and permissions (manifest), 1.3 Accessibility service configuration, 1.4 The detection core (`MyAccessibilityService.checkPreventUninstall`), 1.5 Execution flow (detection → protection), 1.6 Timing characteristics (static analysis), 1.7 Live measurement attempt, 1.8 Weaknesses, race conditions, bypasses, edge cases (+10 more)
+
+### Community 70 - "LockType"
+Cohesion: 0.23
+Nodes (17): LockType, OFF, PASSWORD, PATTERN, PIN, AppLockSetupSheet(), AutoLockSheet(), CheckBox() (+9 more)
+
+### Community 71 - "BackupSection"
+Cohesion: 0.14
+Nodes (14): BackupParseResult, BackupSection, A11Y_PROTECTION, APP_LOCK, BLOCK_SCREEN, BLOCKING, PREVENT_UNINSTALL, QUICK_ACTIONS (+6 more)
+
+### Community 72 - "ScheduleSheets.kt"
+Cohesion: 0.22
+Nodes (17): AppPickerSheet(), AppRow(), CheckBox(), GrabBar(), h12(), Modifier, PrimaryPill(), SecondaryButton() (+9 more)
+
+### Community 73 - "02 — Design philosophy"
+Cohesion: 0.11
+Nodes (18): 02 — Design philosophy, 1.1 Fail open, never fail closed on detection, 1.2 Add-only writes for system settings, 1.3 Never lock the user out, 1.4 Idempotent coordinators, 1.5 Never crash on the user's data, 1.6 Mirror the prototype, not the reference code, 1. Core principles (+10 more)
+
+### Community 74 - ".seededStores"
+Cohesion: 0.26
+Nodes (3): executeRestore(), BackupManagerTest, FakeStore
+
+### Community 75 - "TitleBlockViewModel"
+Cohesion: 0.16
+Nodes (9): TitleMatchMode, CONTAINS, EXACT, STARTS_WITH, AndroidViewModel, SharedFlow, StateFlow, TitleBlockUiState (+1 more)
+
+### Community 76 - "AppLockManager"
+Cohesion: 0.29
+Nodes (3): AppLockManager, Context, ByteArray
+
+### Community 77 - "AppLockScreen.kt"
+Cohesion: 0.21
+Nodes (16): AppLockScreen(), autoLockValue(), Chevron(), DisableButton(), Header(), HeroCard(), androidx, Color (+8 more)
+
+### Community 78 - "ScheduleViewModel"
+Cohesion: 0.17
+Nodes (8): scheduleTimeLabel(), scheduleWindowLabel(), AndroidViewModel, SharedFlow, StateFlow, ScheduleCard, ScheduleUiState, ScheduleViewModel
+
+### Community 79 - "SafeMeTextField"
+Cohesion: 0.24
+Nodes (15): Modifier, SafeMeTextField(), FocusRequester, PasswordField(), SearchField(), NameField(), SearchField(), ImageVector (+7 more)
+
+### Community 81 - "01 — Architecture"
+Cohesion: 0.12
+Nodes (16): 01 — Architecture, 1. Big picture, 2. Layer map, 3. Module-by-module, 4. Startup sequence, 5. Key data flows, 6. Process components and receivers, 7. State holders (process-wide caches) (+8 more)
+
+### Community 82 - "12 — WRITE_SECURE_SETTINGS protection plan"
+Cohesion: 0.12
+Nodes (16): 12 — WRITE_SECURE_SETTINGS protection plan, 1. Goal and the honest answer, 2. Threat model: who can revoke today, 3.1 Module-level change list, 3.2 APIs, 3. Phase 1 — watchdog + in-app password gating (no new privileges), 4.1 Manifest & provisioning, 4.2 New `protect/DeviceOwnerManager.kt` (+8 more)
+
+### Community 83 - "VpnAppsSheet"
+Cohesion: 0.25
+Nodes (14): AppRow(), CustomDnsSheet(), androidx, FocusRequester, Modifier, VpnAppsSheet(), VpnCheckbox(), VpnDoneButton() (+6 more)
+
+### Community 86 - "saveLock"
+Cohesion: 0.17
+Nodes (15): getWizCode(), openLockSetup(), patTap(), pinBackS(), refreshWizBtn(), renderDotsId(), resetWiz(), saveLock() (+7 more)
+
+### Community 87 - "Teck Stack ,Name & Details.md"
+Cohesion: 0.13
+Nodes (14): Android App, Architecture, Background Processing, Build System, CI/CD, Code Quality, Dependency Injection, Dependency Management (+6 more)
+
+### Community 89 - "03 — UI design system"
+Cohesion: 0.14
+Nodes (13): 03 — UI design system, 1. Theme, 2. Shared components (`ui/components/`), 3. Navigation, 4. Home screen anatomy (reference screen), 5. Writing a new screen, Card language, Colors (`ui/theme/Color.kt`) (+5 more)
+
+### Community 90 - "11 — Development guide"
+Cohesion: 0.14
+Nodes (14): 11 — Development guide, 1. Build & toolchain, 2. Unit testing, 3. Conventions, 4. Adding a feature (workflow), 5. Constraints checklist (do not break), 6. CI/CD, Comments (+6 more)
+
+### Community 91 - "SchedulePrefs.kt"
+Cohesion: 0.32
+Nodes (11): addSchedule(), deleteSchedule(), fromName(), Flow, schedulePrefs(), SchedulePrefsState, schedulesFromJson(), schedulesToJson() (+3 more)
+
+### Community 92 - "SafeMeApp"
+Cohesion: 0.15
+Nodes (5): Bundle, MainActivity, SafeMeApp, Application, FragmentActivity
+
+### Community 94 - "AppLockUnlockOverlay"
+Cohesion: 0.27
+Nodes (11): KeyCircle(), Modifier, PatternGrid(), PinDots(), PinKeypad(), shakeEffect(), AppLockGateHost(), AppLockUnlockOverlay() (+3 more)
+
+### Community 95 - "AppLockViewModel"
+Cohesion: 0.19
+Nodes (5): AppLockUiState, AppLockViewModel, AndroidViewModel, SharedFlow, StateFlow
+
+### Community 96 - "HomeViewModel"
+Cohesion: 0.19
+Nodes (6): HomeUiState, HomeViewModel, AndroidViewModel, SharedFlow, StateFlow, PrefsSnapshot
+
+### Community 97 - "ScheduleEditScreen"
+Cohesion: 0.28
+Nodes (12): AppsCard(), appSummary(), DayCircles(), DeleteButton(), GroupLabel(), Header(), Modifier, ModeSegment() (+4 more)
+
+### Community 98 - "04 — Security architecture"
+Cohesion: 0.15
+Nodes (13): 04 — Security architecture, 1. Permissions model, 2. App Lock, 3. Prevent Uninstall & Device Admin, 4. Protection layers summary, 5. Accessibility protection (self-heal), Accessibility guards (`service/SafeMeAccessibilityService.handlePreventUninstall`), Device Admin (`protect/DeviceAdminUtils.kt`) (+5 more)
+
+### Community 99 - "AppLockPrefs.kt"
+Cohesion: 0.23
+Nodes (7): appLockPrefs(), AppLockPrefsState, fromStorage(), Flow, setAppLock(), setAppLockAutoLock(), writeAppLockPrefs()
+
+### Community 100 - "BlockingPrefsState"
+Cohesion: 0.27
+Nodes (10): addBlockedWebsite(), BlockedWebsite, BlockingPrefsState, normalizeDomain(), removeBlockedWebsite(), updateBlockedWebsite(), websitesFromJson(), websitesToJson() (+2 more)
+
+### Community 101 - "A11yProtectionGuard"
+Cohesion: 0.33
+Nodes (3): A11yProtectionGuard, getInstance(), Context
+
+### Community 103 - "05 — Blocking engine (accessibility service)"
+Cohesion: 0.17
+Nodes (12): 05 — Blocking engine (accessibility service), 1. Event pipeline, 2. Rule sources, 3. Matching semantics, 4. Block gate (`BlockGateActivity`), 5. Robustness guarantees, 6. Relationship to other features, Cooldowns & dedup (+4 more)
+
+### Community 104 - "07 — VPN / DNS filtering"
+Cohesion: 0.17
+Nodes (12): 07 — VPN / DNS filtering, 1. Architecture: DNS-delegated filtering, 2. Tunnel modes, 3. Lifecycle, 4. Watchdog (`vpn/TunnelRestartPolicy.kt`), 5. Schedule integration, 6. Boot re-arm & status, 7. UI (`ui/screens/vpn/`) (+4 more)
+
+### Community 105 - "renderAppPicker"
+Cohesion: 0.26
+Nodes (12): APP_CATS, appChip(), APPS, classifyApp(), deselectAllApps(), deselectAllVpnApps(), refreshAppPicker(), renderAppPicker() (+4 more)
+
+### Community 106 - "AutoLockDelay"
+Cohesion: 0.20
+Nodes (8): AutoLockDelay, AFTER_15S, AFTER_1M, AFTER_30S, AFTER_5M, IMMEDIATELY, OFF, AppLockStateHolder
+
+### Community 107 - "ScheduleBlock"
+Cohesion: 0.25
+Nodes (4): newScheduleId(), ScheduleBlock, ActiveRules, ScheduleEvaluator
+
+### Community 108 - "shouldShowA11yWarning"
+Cohesion: 0.36
+Nodes (3): requiresAccessibility(), shouldShowA11yWarning(), ScheduleWarningTest
+
+### Community 109 - "Intent"
+Cohesion: 0.29
+Nodes (7): Context, IBinder, Intent, SafeMeProtectionService, start(), stop(), Service
+
+### Community 112 - "JSONArray"
+Cohesion: 0.42
+Nodes (8): addBlockedKeyword(), BlockedKeyword, keywordsFromJson(), keywordsToJson(), removeBlockedKeyword(), updateBlockedKeyword(), JSONArray, JSONObject
+
+### Community 113 - "OnboardingNavHost"
+Cohesion: 0.29
+Nodes (7): hasNotificationsPermission(), Modifier, OnboardingNavHost(), OnResumeEffect(), requiredPermissionsGranted(), isAccessibilityEnabled(), Context
+
+### Community 114 - "08 — Backup & Restore"
+Cohesion: 0.20
+Nodes (9): 08 — Backup & Restore, 1. Files & responsibilities, 2. File format, 3. Export, 4. Import & validation, 5. UX flow, 6. Notes & behavior verified on-device, Restore (`executeRestore`) (+1 more)
+
+### Community 115 - "2. Principles"
+Cohesion: 0.20
+Nodes (10): 10 — Performance, 1. Measured results (baseline → after), 2. Principles, 3. What is deliberately NOT optimized further, 4. Verification workflow, Bound every per-event cost, Compose hygiene, Gate background work by need (+2 more)
+
+### Community 116 - "TitleBlockScreen"
+Cohesion: 0.42
+Nodes (8): EmptyCard(), Header(), HeroCard(), modeLabel(), RuleRow(), Seg(), Switch(), TitleBlockScreen()
+
+### Community 118 - "Release signing"
+Cohesion: 0.22
+Nodes (8): CI (recommended for releases), Local (developer machine), Reference build (local, 2026-08-15), Release key identity, Release signing, Rules, Signing sources, Verify an APK locally
+
+### Community 119 - "SafeMe"
+Cohesion: 0.22
+Nodes (9): Constraints at a glance, Documentation, Feature overview, Getting started, Optional ADB grants, Protection layers, Release signing, Repository layout (+1 more)
+
+### Community 120 - "addKeyword"
+Cohesion: 0.25
+Nodes (9): addKeyword(), addSite(), applyKwFilter(), applySiteFilter(), filterKwAll(), filterSites(), openManage(), removeRow() (+1 more)
+
+### Community 121 - "checkUnlock"
+Cohesion: 0.25
+Nodes (9): checkUnlock(), closeLockov(), lockNow(), methodLabel(), patUnlock(), pickAuto(), renderLock(), renderUnlock() (+1 more)
+
+### Community 122 - "BackupError"
+Cohesion: 0.25
+Nodes (8): BackupError, EMPTY, INVALID_STRUCTURE, NOT_JSON, NOT_SAFEME, ROLLBACK_FAILED, UNSUPPORTED_VERSION, WRITE_FAILED
+
+### Community 123 - "MainScreen"
+Cohesion: 0.39
+Nodes (6): MasterSwitch(), PickerRow(), SearchField(), ServicePickerScreen(), MainScreen(), PlaceholderScreen()
+
+### Community 126 - "SafeMe Bundled Blocking Dataset (Engine-Only · Hidden from UI)"
+Cohesion: 0.25
+Nodes (7): ADULT — Keywords (21), ADULT — Websites (93), Dataset totals (ADULT ONLY), IMPORTANT — Engine-Only Usage, Integrity, Integrity footer, SafeMe Bundled Blocking Dataset (Engine-Only · Hidden from UI)
+
+### Community 127 - "06 — Schedule-based blocking"
+Cohesion: 0.25
+Nodes (8): 06 — Schedule-based blocking, 1. Data model (`data/SchedulePrefs.kt`), 2. Pure decision core (`protect/ScheduleEvaluator.kt`), 3. Coordinator (`protect/ScheduleEngine.kt`), 4. Alarm & boot (`protect/ScheduleAlarmReceiver.kt`), 5. Safety ticker (`SafeMeApp`), 6. Enforcement surfaces, 7. Editing flow (`ui/screens/schedule/`)
+
+### Community 128 - "ScheduleMode"
+Cohesion: 0.29
+Nodes (5): ScheduleMode, BOTH, INTERNET, LAUNCH, scheduleModeLabel()
+
+### Community 130 - "ScheduleAlarmReceiver"
+Cohesion: 0.38
+Nodes (5): BroadcastReceiver, Context, Intent, ScheduleAlarmReceiver, scheduleBoundary()
+
+### Community 131 - "FragmentReassembler"
+Cohesion: 0.52
+Nodes (3): Fragment, FragmentReassembler, Key
+
+### Community 132 - "Outcome"
+Cohesion: 0.33
+Nodes (4): Outcome, KEEP_WAITING, TUNNEL_DEAD, TunnelRestartPolicy
+
+### Community 133 - "09 — App Picker"
+Cohesion: 0.29
+Nodes (7): 09 — App Picker, 1. Discovery (`data/AppCatalog.kt`), 2. Category taxonomy, 3. Grouping & search, 4. Presentation (`ui/components/GroupedAppPicker.kt`), 5. Consumers, Classification precedence (`categorize`)
+
+### Community 134 - "BlockScreenPrefsState"
+Cohesion: 0.47
+Nodes (4): blockScreenPrefs(), BlockScreenPrefsState, Flow, writeBlockScreenPrefs()
+
+### Community 135 - "A11yBootReceiver"
+Cohesion: 0.33
+Nodes (4): A11yBootReceiver, BroadcastReceiver, Context, Intent
+
+### Community 138 - "saveSchedule"
+Cohesion: 0.33
+Nodes (6): daysLabel(), delSchedule(), modeTxt(), saveSchedule(), schedCardHTML(), schedCount()
+
+### Community 140 - "grantPerm"
+Cohesion: 0.50
+Nodes (5): finishOnboard(), grantPerm(), permAdvance(), permStatus(), skipPerm()
+
+### Community 144 - "PermissionScreen"
+Cohesion: 0.50
+Nodes (3): Color, ImageVector, PermissionScreen()
+
 ## Knowledge Gaps
-- **36 isolated node(s):** `ADULT`, `GAMBLING`, `SOCIAL_MEDIA`, `SHOPPING`, `DISTRACTION` (+31 more)
+- **266 isolated node(s):** `SCREENS`, `ORDER`, `stack`, `groups`, `ptb` (+261 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **9 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **36 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ToastHost()` connect `Community 9` to `Community 2`, `Community 4`, `Community 7`, `Community 10`, `Community 11`, `Community 16`, `Community 18`?**
-  _High betweenness centrality (0.240) - this node is a cross-community bridge._
-- **Why does `Flow` connect `Community 4` to `Community 1`, `Community 3`, `Community 9`?**
-  _High betweenness centrality (0.217) - this node is a cross-community bridge._
-- **Why does `MainScreen()` connect `Community 23` to `Community 2`, `Community 7`, `Community 9`, `Community 10`, `Community 11`, `Community 14`, `Community 16`, `Community 18`?**
-  _High betweenness centrality (0.111) - this node is a cross-community bridge._
-- **What connects `ADULT`, `GAMBLING`, `SOCIAL_MEDIA` to the rest of the system?**
-  _36 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.08322026232473993 - nodes in this community are weakly interconnected._
-- **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.06605222734254992 - nodes in this community are weakly interconnected._
-- **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.08326530612244898 - nodes in this community are weakly interconnected._
+- **Why does `MainScreen()` connect `MainScreen` to `ScheduleEditScreen`, `KeywordManagerViewModel`, `AntiTamperViewModel`, `DnsVpnViewModel`, `FocusScreen.kt`, `BlockingScreen.kt`, `HomeScreen.kt`, `AppLockScreen.kt`, `BlockScreen`, `ScheduleScreen.kt`, `ToastHost`, `NavItem`, `TitleBlockScreen`, `QuickActionType`, `A11yProtectionPrefsState`, `BackupScreen`, `OnboardingViewModel`?**
+  _High betweenness centrality (0.137) - this node is a cross-community bridge._
+- **Why does `ToastHost()` connect `ToastHost` to `ScheduleEditScreen`, `KeywordManagerViewModel`, `AntiTamperViewModel`, `DnsVpnViewModel`, `FocusScreen.kt`, `BlockingScreen.kt`, `HomeScreen.kt`, `VpnRelayIntegrationTest`, `AppLockScreen.kt`, `ScheduleScreen.kt`, `TitleBlockScreen`, `A11yProtectionPrefsState`, `BackupScreen`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
+- **Why does `Flow` connect `VpnRelayIntegrationTest` to `ToastHost`, `SafeMeVpnService`, `BlockingPrefs.kt`?**
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+- **What connects `SCREENS`, `ORDER`, `stack` to the rest of the system?**
+  _266 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `TcpConnection` be split into smaller, more focused modules?**
+  _Cohesion score 0.08090117767537122 - nodes in this community are weakly interconnected._
+- **Should `KeywordManagerViewModel` be split into smaller, more focused modules?**
+  _Cohesion score 0.08503401360544217 - nodes in this community are weakly interconnected._
+- **Should `SafeMeVpnService` be split into smaller, more focused modules?**
+  _Cohesion score 0.08069381598793364 - nodes in this community are weakly interconnected._

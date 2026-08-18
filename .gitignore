@@ -15,7 +15,7 @@ build/
 # Reference project checked out alongside the app (own git repo)
 # Debug artifacts (screenshots, UI dumps, temp prefs)
 # graphify tool cache stamp (graphify-out itself is tracked)
-/graphify-out/cache/last_query_stamp
+/graphify-out
 /tmp_conn.txt
 /tmp_prefs.bin
 /nav1.png
@@ -26,6 +26,7 @@ build/
 /screenshot_now.png
 /ui9.xml
 /ui_dump.xml
+/graphify-out
 /vpn_screen_check.png
 .claude\worktrees
 .codebuff-index

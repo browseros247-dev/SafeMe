@@ -35,6 +35,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+internal const val SCHEDULE_RECHECK_THROTTLE_MS = 5_000L
+
+internal fun shouldThrottleScheduleRecheck(
+    lastRecheckMs: Long,
+    nowMs: Long,
+    force: Boolean,
+): Boolean = !force && nowMs - lastRecheckMs < SCHEDULE_RECHECK_THROTTLE_MS
+
 /**
  * Core blocking engine.
  *
@@ -1509,9 +1517,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
      * a block that starts while the app is already open still takes effect.
      * Throttled.
      */
-    private fun recheckScheduleBlock() {
+    private fun recheckScheduleBlock(force: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastScheduleRecheckMs < SCHEDULE_RECHECK_THROTTLE_MS) return
+        if (shouldThrottleScheduleRecheck(lastScheduleRecheckMs, now, force)) return
         lastScheduleRecheckMs = now
         try {
             val root = rootInActiveWindow ?: return
@@ -1658,8 +1666,6 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // short enough that a genuine re-activation gates immediately after.
         const val POST_DISMISSAL_EVICT_WINDOW_MS = 1_500L
         const val SCHEDULE_COOLDOWN_MS = 4_000L
-        const val SCHEDULE_RECHECK_THROTTLE_MS = 5_000L
-
         @Volatile
         private var instance: SafeMeAccessibilityService? = null
 
@@ -1716,12 +1722,14 @@ class SafeMeAccessibilityService : AccessibilityService() {
         /**
          * Pokes the live service to re-check the current foreground window.
          * Called by [ScheduleEngine] when the active launch-block set changes.
+         * This bypasses the normal recheck throttle so a newly active schedule
+         * gates an already-open targeted app without waiting several seconds.
          */
         fun onScheduleSetsChanged() {
             val service = instance ?: return
             try {
                 Handler(Looper.getMainLooper()).post {
-                    runCatching { service.recheckScheduleBlock() }
+                    runCatching { service.recheckScheduleBlock(force = true) }
                 }
             } catch (_: Throwable) {
             }

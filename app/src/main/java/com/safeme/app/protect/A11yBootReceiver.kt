@@ -4,13 +4,18 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.safeme.app.data.a11yProtectionPrefs
+import com.safeme.app.data.preventUninstallPrefs
+import com.safeme.app.service.SafeMeProtectionService
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 /**
  * Restores the configured Accessibility Service protection after device boot
  * or an app update. Runs the settings writes synchronously inside onReceive
- * (the receiver's background-start window) and re-arms the watcher.
+ * (the receiver's background-start window), re-arms the watcher, and starts
+ * the foreground keep-alive service while ANY protection feature is on so an
+ * OEM battery killer cannot take the process (and the a11y service with it)
+ * down silently.
  */
 class A11yBootReceiver : BroadcastReceiver() {
 
@@ -26,6 +31,15 @@ class A11yBootReceiver : BroadcastReceiver() {
         }.getOrNull() ?: return
         A11yProtectionStateHolder.protectionEnabled = state.protectionEnabled
         A11yProtectionStateHolder.protectedComponents = state.protectedComponents
+        // Start the keep-alive synchronously inside onReceive (the
+        // background-start exemption only lasts for the duration of onReceive,
+        // mirroring VpnBootReceiver).
+        val puEnabled = runCatching {
+            runBlocking { context.preventUninstallPrefs().first() }
+        }.getOrNull()?.preventUninstallEnabled == true
+        if (state.protectionEnabled || puEnabled) {
+            SafeMeProtectionService.start(context)
+        }
         if (state.protectionEnabled) {
             A11yProtectionUtils.selfHealAllAsync(context)
             A11yProtectionGuard.getInstance().ensureWatching(context)

@@ -4,6 +4,7 @@ import android.app.Application
 import com.safeme.app.data.ThemePref
 import com.safeme.app.data.a11yProtectionPrefs
 import com.safeme.app.data.appLockPrefs
+import com.safeme.app.data.preventUninstallPrefs
 import com.safeme.app.data.schedulePrefs
 import com.safeme.app.data.themePref
 import com.safeme.app.protect.A11yProtectionGuard
@@ -11,6 +12,7 @@ import com.safeme.app.protect.A11yProtectionStateHolder
 import com.safeme.app.protect.A11yProtectionUtils
 import com.safeme.app.protect.AppLockStateHolder
 import com.safeme.app.protect.ScheduleEngine
+import com.safeme.app.service.SafeMeProtectionService
 import com.safeme.app.ui.screens.applock.AppLockGateController
 import com.safeme.app.ui.theme.ThemePrefHolder
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -64,6 +67,28 @@ class SafeMeApp : Application() {
                         A11yProtectionGuard.getInstance().stopWatching()
                     }
                 }
+            } catch (_: Throwable) {
+            }
+        }
+        // Keep-alive: while EITHER protection feature (Accessibility
+        // Protection or Prevent Uninstall) is on, run the foreground
+        // keep-alive service so OEM battery killers (Vivo/FuntouchOS) cannot
+        // silently kill the process hosting the accessibility service, the
+        // guard's poll and the self-heal. Started when the app runs with a
+        // feature on, and at boot via [A11yBootReceiver].
+        appScope.launch {
+            try {
+                app.a11yProtectionPrefs()
+                    .combine(app.preventUninstallPrefs()) { a11y, pu ->
+                        a11y.protectionEnabled || pu.preventUninstallEnabled
+                    }
+                    .collect { keepAlive ->
+                        if (keepAlive) {
+                            SafeMeProtectionService.start(app)
+                        } else {
+                            SafeMeProtectionService.stop(app)
+                        }
+                    }
             } catch (_: Throwable) {
             }
         }

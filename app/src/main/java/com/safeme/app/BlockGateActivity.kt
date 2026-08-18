@@ -19,6 +19,7 @@ import com.safeme.app.data.BlockScreenPrefsState
 import com.safeme.app.data.addActivity
 import com.safeme.app.data.blockScreenPrefs
 import com.safeme.app.data.incrementBlockedToday
+import com.safeme.app.service.SafeMeAccessibilityService
 import com.safeme.app.ui.screens.blockscreen.BlockOverlay
 import com.safeme.app.ui.theme.SafeMeApp
 import kotlinx.coroutines.launch
@@ -90,6 +91,17 @@ class BlockGateActivity : ComponentActivity() {
             else -> "Blocked by SafeMe"
         }
         addActivity(ACTIVITY_BLOCK, title, sub)
+    }
+
+    override fun onDestroy() {
+        // [Fix] Signal the accessibility service that the gate finished. This
+        // is the ONLY dismissal signal independent of accessibility-event
+        // delivery (OEMs drop or delay those events), so the PU + keyword
+        // cooldowns are re-armed and a rapid re-open of the protected page is
+        // gated again immediately instead of being suppressed by the 4 s dedupe
+        // window. Runs on every finish (Close, BACK, task removal, rotation).
+        SafeMeAccessibilityService.onGateDismissed()
+        super.onDestroy()
     }
 
     private fun closeGate() {

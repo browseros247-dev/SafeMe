@@ -456,6 +456,10 @@
     <string name="vpn_app_loading">Loading apps…</string>
     <string name="vpn_done">Done</string>
     <string name="vpn_fgs_subtype">DNS &amp; VPN filtering</string>
+    <string name="ps_fgs_subtype">Protection keep-alive</string>
+    <string name="ps_notif_channel">SafeMe protection</string>
+    <string name="ps_notif_title">SafeMe protection is active</string>
+    <string name="ps_notif_text">Keeping SafeMe\'s accessibility protection running.</string>
     <string name="vpn_notif_channel">DNS &amp; VPN filtering</string>
     <string name="vpn_notif_title">VPN filtering is on</string>
     <string name="vpn_notif_active">Filtering your traffic. Tap to open SafeMe.</string>

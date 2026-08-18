@@ -33,3 +33,7 @@ build/
 # Release signing — never commit the keystore or its credentials
 /keystore.properties
 /keystore/
+/Reference/apk-extracted
+/Reference/jadx-out
+/Reference/jadx-res
+/Reference/smali

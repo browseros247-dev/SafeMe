@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -57,12 +58,15 @@ data class SchedulePrefsState(
     val schedules: List<ScheduleBlock> = emptyList(),
     /** User dismissed the "Accessibility Service required" banner. */
     val a11yWarningDismissed: Boolean = false,
+    /** Global exclusion list: packages never blocked by any schedule. */
+    val excludedApps: Set<String> = emptySet(),
 )
 
 private val Context.scheduleDataStore by preferencesDataStore(name = "schedule_prefs")
 
 val KEY_SCHEDULES_JSON = stringPreferencesKey("schedules_json")
 val KEY_A11Y_WARN_DISMISSED = booleanPreferencesKey("a11y_warn_dismissed")
+val KEY_EXCLUDED_APPS = stringSetPreferencesKey("excluded_apps")
 
 /** Prototype day order: Mon … Sun. */
 val SCHEDULE_DAY_NAMES = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -74,6 +78,7 @@ fun Context.schedulePrefs(): Flow<SchedulePrefsState> =
             SchedulePrefsState(
                 schedules = schedulesFromJson(prefs[KEY_SCHEDULES_JSON]),
                 a11yWarningDismissed = prefs[KEY_A11Y_WARN_DISMISSED] ?: false,
+                excludedApps = prefs[KEY_EXCLUDED_APPS] ?: emptySet(),
             )
         }
 
@@ -81,6 +86,13 @@ fun Context.schedulePrefs(): Flow<SchedulePrefsState> =
 suspend fun Context.setA11yWarningDismissed(dismissed: Boolean) {
     scheduleDataStore.edit { prefs ->
         prefs[KEY_A11Y_WARN_DISMISSED] = dismissed
+    }
+}
+
+/** Persist the global schedule-exclusion list. */
+suspend fun Context.setExcludedApps(apps: Set<String>) {
+    scheduleDataStore.edit { prefs ->
+        prefs[KEY_EXCLUDED_APPS] = apps
     }
 }
 
@@ -191,6 +203,7 @@ suspend fun Context.writeSchedulePrefs(state: SchedulePrefsState) {
     scheduleDataStore.edit { prefs ->
         prefs[KEY_SCHEDULES_JSON] = schedulesToJson(state.schedules)
         prefs[KEY_A11Y_WARN_DISMISSED] = state.a11yWarningDismissed
+        prefs[KEY_EXCLUDED_APPS] = state.excludedApps
     }
 }
 

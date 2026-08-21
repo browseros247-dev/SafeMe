@@ -258,12 +258,20 @@ object BackupCodec {
         val o = JSONObject()
         o.put("schedules", JSONArray(schedulesToJson(schedules)))
         o.put("a11yWarningDismissed", a11yWarningDismissed)
+        o.put("excludedApps", JSONArray(excludedApps.toList()))
         return o
     }
 
     private fun JSONObject.parseSchedules(): SchedulePrefsState = SchedulePrefsState(
         schedules = schedulesFromJson(jsonArray("schedules")?.toString()),
         a11yWarningDismissed = boolean("a11yWarningDismissed", false),
+        excludedApps = buildSet {
+            val a = optJSONArray("excludedApps")
+            if (a != null) for (i in 0 until a.length()) {
+                val p = a.optString(i).trim()
+                if (p.isNotEmpty()) add(p)
+            }
+        },
     )
 
     private fun DnsVpnSettings.toJson(): JSONObject {

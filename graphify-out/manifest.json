@@ -45,8 +45,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeVpnService.kt": {
-    "mtime": 1786336251.1660407,
-    "ast_hash": "c983f13c1f661ee8d9ff63e5cbae65ad",
+    "mtime": 1787287693.5924528,
+    "ast_hash": "4bf11d0873f2a42c151ce17357417a07",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/VpnBootReceiver.kt": {
@@ -205,13 +205,13 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/schedule/ScheduleScreen.kt": {
-    "mtime": 1786956096.2040133,
-    "ast_hash": "61b6092e2b80e9d16c2dbc3ed81da650",
+    "mtime": 1787291148.467113,
+    "ast_hash": "64c8c324177f4d80d2442ed6ef4f0f8a",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/schedule/ScheduleViewModel.kt": {
-    "mtime": 1787111125.3763816,
-    "ast_hash": "abee20fe89a644117e214acf2c186c9b",
+    "mtime": 1787287717.46268,
+    "ast_hash": "90553095c2d7a175ec0cc32a05dc0aa4",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/vpn/DnsVpnIcons.kt": {
@@ -310,8 +310,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/SafeMeApp.kt": {
-    "mtime": 1787280473.5742142,
-    "ast_hash": "f23f869826cebbc39714b59e2dcc07a1",
+    "mtime": 1787287684.451335,
+    "ast_hash": "fa413a4c97b2b13369a452bad0e7c461",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/A11yProtectionPrefs.kt": {
@@ -335,8 +335,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BackupCodec.kt": {
-    "mtime": 1786755777.730164,
-    "ast_hash": "4a18fa7019f104a1fcdd5e9ccd7f03ed",
+    "mtime": 1787287784.0111015,
+    "ast_hash": "d6f7bacd1083634639af63c40c774b71",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BackupManager.kt": {
@@ -365,8 +365,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/SchedulePrefs.kt": {
-    "mtime": 1787111136.6939292,
-    "ast_hash": "4e73da72d2179421f3352d93adf676af",
+    "mtime": 1787287663.3096678,
+    "ast_hash": "672a78808dfbc18f8221b2df870c09f3",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/A11yBootReceiver.kt": {
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/ScheduleEngine.kt": {
-    "mtime": 1786335989.479694,
-    "ast_hash": "f4f7085cb464b579eeefccd68c125e66",
+    "mtime": 1787287677.7373002,
+    "ast_hash": "aeebd7e350052d881d47294254548762",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/ScheduleEvaluator.kt": {
@@ -555,13 +555,13 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/schedule/ScheduleEditViewModel.kt": {
-    "mtime": 1786630779.1158206,
-    "ast_hash": "a9ef259aeedb62575c246312fab3d2d0",
+    "mtime": 1787287776.7503266,
+    "ast_hash": "18c7e213f2fd65a78fa73f8208af8e96",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/schedule/ScheduleSheets.kt": {
-    "mtime": 1786632334.3998752,
-    "ast_hash": "571a253921de8db55a3f5c583455b8f6",
+    "mtime": 1787287728.0949676,
+    "ast_hash": "d994068c9a138a4bb9557fb0425490c6",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/titleblock/TitleBlockScreen.kt": {
@@ -595,8 +595,8 @@
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/BackupCodecTest.kt": {
-    "mtime": 1786755802.8650346,
-    "ast_hash": "1154bdc49a2f22d49f571fc950f0ab44",
+    "mtime": 1787287798.4659078,
+    "ast_hash": "4dc1787c6f634be761fe7e6a21f378cc",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/BackupManagerTest.kt": {
@@ -762,6 +762,11 @@
   "app/src/main/java/com/safeme/app/vpn/PrivateDnsFilter.kt": {
     "mtime": 1787284454.679808,
     "ast_hash": "c1e61299aae057093b30a93d44547cf1",
+    "semantic_hash": ""
+  },
+  "exclude-card-redesigned.png": {
+    "mtime": 1787291272.651606,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   }
 }

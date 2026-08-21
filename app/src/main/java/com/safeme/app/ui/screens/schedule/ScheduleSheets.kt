@@ -295,6 +295,8 @@ fun AppPickerSheet(
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
     onDone: () -> Unit,
+    title: String? = null,
+    subtitle: String? = null,
     onDismiss: () -> Unit,
 ) {
     val colors = LocalAppColors.current
@@ -319,14 +321,14 @@ fun AppPickerSheet(
         ) {
             GrabBar()
             Text(
-                text = stringResource(R.string.sche_apps_sheet_title),
+                text = title ?: stringResource(R.string.sche_apps_sheet_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.ink,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.sche_apps_sheet_sub),
+                text = subtitle ?: stringResource(R.string.sche_apps_sheet_sub),
                 fontSize = 13.sp,
                 color = colors.ink2,
             )

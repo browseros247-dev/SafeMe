@@ -111,7 +111,7 @@ class SafeMeApp : Application() {
             try {
                 app.schedulePrefs().collect { state ->
                     hasEnabledSchedules = state.schedules.any { it.enabled }
-                    ScheduleEngine.apply(app, state.schedules)
+                    ScheduleEngine.apply(app, state.schedules, state.excludedApps)
                 }
             } catch (_: Throwable) {
             }

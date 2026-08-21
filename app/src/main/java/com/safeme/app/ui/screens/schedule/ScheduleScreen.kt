@@ -32,6 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -87,6 +91,8 @@ fun ScheduleScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
+        var showExcludeSheet by remember { mutableStateOf(false) }
+        var excludeSelection by remember { mutableStateOf(setOf<String>()) }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -112,6 +118,15 @@ fun ScheduleScreen(
                     onDismiss = viewModel::dismissA11yWarning
                 )
             }
+            Spacer(Modifier.height(12.dp))
+            ExcludeAppsCard(
+                count = state.excludedApps.size,
+                onManage = {
+                    viewModel.ensureAppsLoaded()
+                    excludeSelection = state.excludedApps
+                    showExcludeSheet = true
+                }
+            )
             SectionTitle(text = stringResource(R.string.sch_your_schedules))
             ScheduleList(
                 cards = state.cards,
@@ -126,6 +141,28 @@ fun ScheduleScreen(
             flow = viewModel.toasts,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp)
         )
+        if (showExcludeSheet) {
+            AppPickerSheet(
+                apps = state.installedApps,
+                selected = excludeSelection,
+                onToggle = { pkg ->
+                    excludeSelection = if (pkg in excludeSelection) excludeSelection - pkg else excludeSelection + pkg
+                },
+                onSelectAll = {
+                    excludeSelection = excludeSelection + state.installedApps.map { it.packageName }.toSet()
+                },
+                onDeselectAll = {
+                    excludeSelection = excludeSelection - state.installedApps.map { it.packageName }.toSet()
+                },
+                onDone = {
+                    viewModel.setExcludedApps(excludeSelection)
+                    showExcludeSheet = false
+                },
+                onDismiss = { showExcludeSheet = false },
+                title = stringResource(R.string.sch_exclude_sheet_title),
+                subtitle = stringResource(R.string.sch_exclude_sheet_sub),
+            )
+        }
     }
 }
 
@@ -346,6 +383,73 @@ private fun A11yWarningBanner(onEnable: () -> Unit, onDismiss: () -> Unit) {
                 .clickable(onClick = onDismiss)
                 .padding(3.dp)
         )
+    }
+}
+
+@Composable
+private fun ExcludeAppsCard(
+    count: Int,
+    onManage: () -> Unit,
+) {
+    val colors = LocalAppColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShape(radius = 20.dp)
+            .clickable(onClick = onManage)
+            .padding(16.dp)
+    ) {
+        // Mirrors VpnWhitelistCard's "icon · title · count-as-subtitle · Manage"
+        // row: a single trailing action keeps the text column full-width, so the
+        // subtitle never wraps into a cramped stack between two pills.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBox(
+                icon = SchInfoIcon,
+                background = colors.brandSoft,
+                tint = colors.brand,
+                size = 40.dp,
+                iconSize = 20.dp,
+                radius = 13.dp
+            )
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.sch_exclude_title),
+                    fontSize = 15.sp,
+                    lineHeight = 19.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (count == 0) {
+                        stringResource(R.string.sch_exclude_sub)
+                    } else {
+                        pluralStringResource(R.plurals.sch_exclude_count, count, count)
+                    },
+                    fontSize = 12.5.sp,
+                    color = colors.ink2,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .height(38.dp)
+                    .clip(CircleShape)
+                    .background(colors.brandSoft)
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.sch_exclude_manage),
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.brandDark
+                )
+            }
+        }
     }
 }
 

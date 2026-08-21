@@ -73,7 +73,8 @@ class ScheduleEditViewModel(
             }
         }
         viewModelScope.launch {
-            val apps = withContext(Dispatchers.Default) { enumerateApps() }
+            val excluded = getApplication<Application>().schedulePrefs().first().excludedApps
+            val apps = withContext(Dispatchers.Default) { enumerateApps().filter { it.packageName !in excluded } }
             _uiState.update { it.copy(installedApps = apps, appsLoaded = true) }
         }
     }

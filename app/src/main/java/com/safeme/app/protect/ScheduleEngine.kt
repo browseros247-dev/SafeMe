@@ -42,13 +42,20 @@ object ScheduleEngine {
     @Volatile
     private var launchBlockAll = false
 
+    /** Packages excluded from every schedule (never blocked, internet or launch). */
+    @Volatile
+    private var excludedPackages: Set<String> = emptySet()
+
     /** True when [pkg] must not launch right now (launch / UI blocking). */
     fun isLaunchBlocked(pkg: String): Boolean =
-        launchBlockAll || pkg in launchBlockedPackages
+        !isExcluded(pkg) && (launchBlockAll || pkg in launchBlockedPackages)
 
     /** True when [pkg] must not reach the internet right now. */
     fun isInternetBlocked(pkg: String): Boolean =
-        internetBlockAll || pkg in internetBlockedPackages
+        !isExcluded(pkg) && (internetBlockAll || pkg in internetBlockedPackages)
+
+    /** True when [pkg] is on the global schedule-exclusion list. */
+    fun isExcluded(pkg: String): Boolean = pkg in excludedPackages
 
     fun hasLaunchBlock(): Boolean = launchBlockAll || launchBlockedPackages.isNotEmpty()
 
@@ -66,8 +73,8 @@ object ScheduleEngine {
      * every persisted change and by [ScheduleAlarmReceiver] at boundaries.
      */
     suspend fun reevaluate(context: Context, nowMillis: Long = System.currentTimeMillis()) {
-        val schedules = context.schedulePrefs().first().schedules
-        apply(context, schedules, nowMillis)
+        val state = context.schedulePrefs().first()
+        apply(context, state.schedules, state.excludedApps, nowMillis)
     }
 
     /**
@@ -78,18 +85,28 @@ object ScheduleEngine {
     fun apply(
         context: Context,
         schedules: List<ScheduleBlock>,
+        excludedApps: Set<String> = emptySet(),
         nowMillis: Long = System.currentTimeMillis(),
     ) {
         try {
             val active = ScheduleEvaluator.evaluate(schedules, nowMillis)
+            // Capture the prior exclusion set so a change to ONLY the exclusion
+            // list (while a block is active) is detected and re-applied.
+            val prevExcluded = excludedPackages
+            excludedPackages = excludedApps
+            // Filter the evaluator's active sets so excluded packages are never
+            // enforced by any schedule (including "block all" schedules).
+            val filteredInternet = active.internetBlockedPackages - excludedApps
+            val filteredLaunch = active.launchBlockedPackages - excludedApps
 
             // Accessibility (launch / UI blocking): push the new set and poke
             // the service to re-check the current foreground window so a block
             // that starts while the app is already open takes effect.
             val launchChanged =
-                active.launchBlockedPackages != launchBlockedPackages ||
-                    active.launchBlockAll != launchBlockAll
-            launchBlockedPackages = active.launchBlockedPackages
+                filteredLaunch != launchBlockedPackages ||
+                    active.launchBlockAll != launchBlockAll ||
+                    excludedApps != prevExcluded
+            launchBlockedPackages = filteredLaunch
             launchBlockAll = active.launchBlockAll
             if (launchChanged) {
                 SafeMeAccessibilityService.onScheduleSetsChanged()
@@ -97,14 +114,16 @@ object ScheduleEngine {
 
             // VPN (internet blocking): restart only when the active set changed.
             val internetChanged =
-                active.internetBlockedPackages != internetBlockedPackages ||
-                    active.internetBlockAll != internetBlockAll
-            internetBlockedPackages = active.internetBlockedPackages
+                filteredInternet != internetBlockedPackages ||
+                    active.internetBlockAll != internetBlockAll ||
+                    excludedApps != prevExcluded
+            internetBlockedPackages = filteredInternet
             internetBlockAll = active.internetBlockAll
             if (internetChanged) {
                 SafeMeVpnService.applyScheduledBlocks(
-                    active.internetBlockedPackages,
+                    filteredInternet,
                     active.internetBlockAll,
+                    excludedApps,
                     context,
                 )
             }
@@ -115,8 +134,8 @@ object ScheduleEngine {
 
             // Activity feed: log when a block actually turns ON (deduped by
             // the store, so re-applies and the safety ticker stay quiet).
-            val launchOn = active.launchBlockAll || active.launchBlockedPackages.isNotEmpty()
-            val internetOn = active.internetBlockAll || active.internetBlockedPackages.isNotEmpty()
+            val launchOn = active.launchBlockAll || filteredLaunch.isNotEmpty()
+            val internetOn = active.internetBlockAll || filteredInternet.isNotEmpty()
             if (launchChanged && launchOn) {
                 logScheduleEvent(context, "Launch blocking active", "Scheduled apps can't open")
             }

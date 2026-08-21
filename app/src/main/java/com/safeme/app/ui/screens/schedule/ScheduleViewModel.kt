@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.safeme.app.R
+import com.safeme.app.data.AppCatalog
+import com.safeme.app.data.InstalledApp
 import com.safeme.app.data.SCHEDULE_DAY_NAMES
 import com.safeme.app.data.ScheduleBlock
 import com.safeme.app.data.scheduleDaysLabel
@@ -12,11 +14,13 @@ import com.safeme.app.data.schedulePrefs
 import com.safeme.app.data.scheduleTimeLabel
 import com.safeme.app.data.scheduleWindowLabel
 import com.safeme.app.data.setA11yWarningDismissed
+import com.safeme.app.data.setExcludedApps
 import com.safeme.app.data.shouldShowA11yWarning
 import com.safeme.app.data.toggleSchedule
 import com.safeme.app.protect.ScheduleEvaluator
 import com.safeme.app.ui.util.isAccessibilityEnabled
 import java.util.Calendar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -25,6 +29,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class ScheduleCard(
     val id: String,
@@ -43,6 +48,9 @@ data class ScheduleUiState(
     val heroPill: String = "",
     val nextBoundary: String = "",
     val showA11yWarning: Boolean = false,
+    val excludedApps: Set<String> = emptySet(),
+    val installedApps: List<InstalledApp> = emptyList(),
+    val appsLoaded: Boolean = false,
 )
 
 class ScheduleViewModel(application: Application) : AndroidViewModel(application) {
@@ -65,7 +73,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 lastSchedules = state.schedules
                 lastA11yWarningDismissed = state.a11yWarningDismissed
                 _uiState.update {
-                    buildUiState(state.schedules, state.a11yWarningDismissed)
+                    buildUiState(state.schedules, state.a11yWarningDismissed, state.excludedApps)
                 }
             }
         }
@@ -74,6 +82,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private fun buildUiState(
         schedules: List<ScheduleBlock>,
         a11yWarningDismissed: Boolean,
+        excludedApps: Set<String>,
     ): ScheduleUiState {
         val app = getApplication<Application>()
         val enabled = schedules.count { it.enabled }
@@ -141,6 +150,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 isAccessibilityEnabled(app),
                 a11yWarningDismissed,
             ),
+            excludedApps = excludedApps,
         )
     }
 
@@ -149,6 +159,26 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             getApplication<Application>().setA11yWarningDismissed(true)
         }
+    }
+
+    /**
+     * Lazily loads the installed-app catalog (used by the Exclude Apps sheet).
+     * Mirrors [com.safeme.app.ui.screens.vpn.DnsVpnViewModel.loadInstalledApps]:
+     * package queries are slow, so they run off the main thread and the result
+     * is cached in state until the next process death.
+     */
+    fun ensureAppsLoaded() {
+        if (_uiState.value.appsLoaded) return
+        viewModelScope.launch {
+            val apps = withContext(Dispatchers.Default) { AppCatalog.load(getApplication()) }
+            _uiState.update { it.copy(installedApps = apps, appsLoaded = true) }
+        }
+    }
+
+    /** Persists the global schedule-exclusion list. */
+    fun setExcludedApps(apps: Set<String>) {
+        val app = getApplication<Application>()
+        viewModelScope.launch { app.setExcludedApps(apps) }
     }
 
     /**

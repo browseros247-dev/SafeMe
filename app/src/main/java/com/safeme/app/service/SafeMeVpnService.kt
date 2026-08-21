@@ -94,6 +94,15 @@ class SafeMeVpnService : VpnService() {
         var scheduledBlockAll: Boolean = false
 
         /**
+         * Global schedule exclusions: apps that must never be blocked by any
+         * schedule. In block-all mode they are disallowed from the TUN alongside
+         * SafeMe and the whitelist; targeted mode never lists them because the
+         * engine filters them out before applying.
+         */
+        @Volatile
+        var scheduledExcludeApps: Set<String> = emptySet()
+
+        /**
          * Applies the current scheduled internet-block set. Updates the
          * service-side state, then:
          *  - tunnel already running → restarts it so it rebuilds in the mode
@@ -104,9 +113,10 @@ class SafeMeVpnService : VpnService() {
          *    can do silently, so the start is skipped);
          *  - nothing active → leaves the tunnel as-is.
          */
-        fun applyScheduledBlocks(packages: Set<String>, blockAll: Boolean, context: Context) {
+        fun applyScheduledBlocks(packages: Set<String>, blockAll: Boolean, excluded: Set<String>, context: Context) {
             scheduledBlockApps = packages
             scheduledBlockAll = blockAll
+            scheduledExcludeApps = excluded
             val intent = Intent(context, SafeMeVpnService::class.java)
             when {
                 isActive || VpnStatusStore.active.value -> intent.setAction(ACTION_RESTART)
@@ -302,6 +312,10 @@ class SafeMeVpnService : VpnService() {
                     // Block everything except SafeMe + the VPN whitelist.
                     runCatching { builder.addDisallowedApplication(packageName) }
                     vpnSettings.whitelist.forEach { pkg ->
+                        runCatching { builder.addDisallowedApplication(pkg) }
+                    }
+                    // Excluded apps are also exempt from the block-all tunnel.
+                    scheduledExcludeApps.forEach { pkg ->
                         runCatching { builder.addDisallowedApplication(pkg) }
                     }
                 } else {

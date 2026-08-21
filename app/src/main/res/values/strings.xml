@@ -288,6 +288,16 @@
     <string name="sch_warn_a11y_enable">Enable</string>
     <string name="sch_warn_a11y_dismiss">Dismiss warning</string>
 
+    <string name="sch_exclude_title">Exclude Apps</string>
+    <string name="sch_exclude_sub">Never blocked by any schedule</string>
+    <string name="sch_exclude_manage">Manage</string>
+    <string name="sch_exclude_sheet_title">Exclude apps</string>
+    <string name="sch_exclude_sheet_sub">Excluded apps are skipped by every schedule and hidden from schedule app pickers.</string>
+    <plurals name="sch_exclude_count">
+        <item quantity="one">%d app excluded</item>
+        <item quantity="other">%d apps excluded</item>
+    </plurals>
+
     <string name="sche_title_new">New Schedule</string>
     <string name="sche_title_edit">Edit Schedule</string>
     <string name="sche_name_placeholder">Schedule name (e.g. Study)</string>

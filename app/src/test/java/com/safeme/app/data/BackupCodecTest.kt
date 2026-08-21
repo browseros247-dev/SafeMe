@@ -28,6 +28,7 @@ class BackupCodecTest {
                 )
             ),
             a11yWarningDismissed = true,
+            excludedApps = setOf("com.example.x"),
         ),
         vpn = DnsVpnSettings(
             enabled = true, preset = DnsPreset.ADGUARD_FAMILY, customV4 = "1.1.1.1", customV6 = "",

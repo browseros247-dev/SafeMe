@@ -55,13 +55,13 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/components/BottomNavBar.kt": {
-    "mtime": 1786419612.5112607,
-    "ast_hash": "15b5200a03bce169f270786fbd8439a2",
+    "mtime": 1787293913.044644,
+    "ast_hash": "104c539199005dbddfe6113611392546",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/components/BottomNavIcons.kt": {
-    "mtime": 1786077400.7248416,
-    "ast_hash": "1fe5324dc4eb56d06ec6cb364482f6af",
+    "mtime": 1787293918.248843,
+    "ast_hash": "494d3e29e64e39c8ad471a39e66541a1",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/components/Effects.kt": {
@@ -114,34 +114,19 @@
     "ast_hash": "b64d471a58c12c1e06293ce5ce8874a2",
     "semantic_hash": ""
   },
-  "app/src/main/java/com/safeme/app/ui/screens/focus/FocusIcons.kt": {
-    "mtime": 1786077400.736621,
-    "ast_hash": "409336346d937abb9e2b1627c9f83384",
-    "semantic_hash": ""
-  },
-  "app/src/main/java/com/safeme/app/ui/screens/focus/FocusScreen.kt": {
-    "mtime": 1786077400.736621,
-    "ast_hash": "938020b179b161580c2c65dd9e6cab60",
-    "semantic_hash": ""
-  },
-  "app/src/main/java/com/safeme/app/ui/screens/focus/FocusViewModel.kt": {
-    "mtime": 1786077400.7381327,
-    "ast_hash": "322868e0c76feaa23b41742904af2d5a",
-    "semantic_hash": ""
-  },
   "app/src/main/java/com/safeme/app/ui/screens/home/HomeIcons.kt": {
-    "mtime": 1786379319.0840037,
-    "ast_hash": "d90157972c0b775a25ef6c4378d16935",
+    "mtime": 1787294022.6588476,
+    "ast_hash": "8d3fc482625afe24ef1ccdecb1628d1c",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/home/HomeScreen.kt": {
-    "mtime": 1787280496.7428458,
-    "ast_hash": "14d8d133b5a85dbdc4a17d59a5b0790f",
+    "mtime": 1787294076.1375144,
+    "ast_hash": "5bcce28bccb14e0de0f4d5ef5ecbb374",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/home/HomeViewModel.kt": {
-    "mtime": 1787280496.7443516,
-    "ast_hash": "b1832a7b1dcfee56b32d2bafe5841104",
+    "mtime": 1787294004.1782455,
+    "ast_hash": "1afb7506bbed9415042b19eee60b215d",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/keywords/KeywordIcons.kt": {
@@ -160,8 +145,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/main/MainScreen.kt": {
-    "mtime": 1786956096.2024987,
-    "ast_hash": "8392236aaf950bbd5af3e85591bda02b",
+    "mtime": 1787301300.3760562,
+    "ast_hash": "4f3ea44269dab6e6e1174bc25fd3fbe7",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/permissions/OnboardingNavHost.kt": {
@@ -175,23 +160,23 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/permissions/PermissionIcons.kt": {
-    "mtime": 1786114211.0818553,
+    "mtime": 1787301260.4485025,
     "ast_hash": "2ac204fad1eac9fab2b2f8b9b7796fa5",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/permissions/PermissionScreen.kt": {
-    "mtime": 1786446709.789071,
+    "mtime": 1787301260.449509,
     "ast_hash": "d3b653fa79f7c4860a5d560dd6117e87",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/profile/ProfileIcons.kt": {
-    "mtime": 1786450165.1906834,
-    "ast_hash": "c36d017c5d2b93994c631dd75da65aed",
+    "mtime": 1787302157.8278055,
+    "ast_hash": "3ceb328d1d8fa67cd645e4cc0fb82642",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/profile/ProfileScreen.kt": {
-    "mtime": 1786611952.2217493,
-    "ast_hash": "323a65acdddadd24241b1b506b8a0c8f",
+    "mtime": 1787295609.2846553,
+    "ast_hash": "70e6fb652a2f59eb8bf669f2f5b0e265",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/profile/ProfileViewModel.kt": {
@@ -240,8 +225,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/theme/Color.kt": {
-    "mtime": 1786450165.1860762,
-    "ast_hash": "f116a1d84ec4b42fab324530ce69adab",
+    "mtime": 1787296300.1081219,
+    "ast_hash": "25272a3e272870ee5c1062693af6b2b5",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/theme/Theme.kt": {
@@ -290,7 +275,7 @@
     "semantic_hash": ""
   },
   "Reference/prototype/js/app.js": {
-    "mtime": 1786755815.6313195,
+    "mtime": 1787299744.943255,
     "ast_hash": "e749162d882e1e3a9dfc9fb78eff8a4a",
     "semantic_hash": ""
   },
@@ -360,8 +345,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/QuickActionsPrefs.kt": {
-    "mtime": 1786373532.3314767,
-    "ast_hash": "580707c999e1ce33eb83d7f8ea073233",
+    "mtime": 1787302457.6778893,
+    "ast_hash": "f0b2ed78501c61d2f2da8440c73b2720",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/SchedulePrefs.kt": {
@@ -534,13 +519,8 @@
     "ast_hash": "1c271cd75e72ac714437633e0d596134",
     "semantic_hash": ""
   },
-  "app/src/main/java/com/safeme/app/ui/screens/permissions/ManagePermissionsFlow.kt": {
-    "mtime": 1786446691.0703607,
-    "ast_hash": "9a2aa562a6f7e9f45f17c725e22b4e9f",
-    "semantic_hash": ""
-  },
   "app/src/main/java/com/safeme/app/ui/screens/permissions/PermissionSteps.kt": {
-    "mtime": 1786956096.2024987,
+    "mtime": 1787301260.449509,
     "ast_hash": "6d5b26d9f3c75b3b33ce3a0b57ce3f30",
     "semantic_hash": ""
   },
@@ -595,13 +575,13 @@
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/BackupCodecTest.kt": {
-    "mtime": 1787287798.4659078,
-    "ast_hash": "4dc1787c6f634be761fe7e6a21f378cc",
+    "mtime": 1787294111.519192,
+    "ast_hash": "48ca1eeb4435763d9ab2ca84fec3918b",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/BackupManagerTest.kt": {
-    "mtime": 1786628836.7934601,
-    "ast_hash": "c82f002175c62b841d254ba911e71e89",
+    "mtime": 1787294127.8056147,
+    "ast_hash": "c90f2ad067c19020cf84caca8c9396ba",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/JsoncTest.kt": {
@@ -610,8 +590,8 @@
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/QuickActionsPrefsTest.kt": {
-    "mtime": 1786379413.1612117,
-    "ast_hash": "a8023e4063638d1a8b7cfefe830b2439",
+    "mtime": 1787294191.314464,
+    "ast_hash": "289313b49a021801951875555f36ba94",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/ScheduleWarningTest.kt": {
@@ -665,12 +645,12 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1786956096.189229,
-    "ast_hash": "194567dab94af6399c6279d52c499dfd",
+    "mtime": 1787294319.4899035,
+    "ast_hash": "5ea1a625e044dc54b3a21c2d49ee5b29",
     "semantic_hash": ""
   },
   "Reference/prototype/index.html": {
-    "mtime": 1786755815.6163502,
+    "mtime": 1787299739.2029128,
     "ast_hash": "5c1839ad14868789e18825269c1b980b",
     "semantic_hash": ""
   },
@@ -690,8 +670,8 @@
     "semantic_hash": ""
   },
   "docs/01-architecture.md": {
-    "mtime": 1786898674.1360514,
-    "ast_hash": "e93f560d957e4da6bfe8c36fb84317c1",
+    "mtime": 1787294325.3415873,
+    "ast_hash": "cea8cf6a94c2b51ddb3cd87a3309d2cc",
     "semantic_hash": ""
   },
   "docs/02-design-philosophy.md": {
@@ -700,8 +680,8 @@
     "semantic_hash": ""
   },
   "docs/03-ui-design-system.md": {
-    "mtime": 1786535725.8818176,
-    "ast_hash": "48d1b6426045cefc1f8b7435192bb852",
+    "mtime": 1787294369.8577473,
+    "ast_hash": "86df55b748533e16f4f25c176dff1518",
     "semantic_hash": ""
   },
   "docs/04-security-architecture.md": {
@@ -725,8 +705,8 @@
     "semantic_hash": ""
   },
   "docs/08-backup-restore.md": {
-    "mtime": 1786755837.9673436,
-    "ast_hash": "bc9fe77a7018b8c0e71231696e2f7799",
+    "mtime": 1787294374.3617232,
+    "ast_hash": "92f58dbc3a6fab65ba99b074ec089f7f",
     "semantic_hash": ""
   },
   "docs/09-app-picker.md": {
@@ -764,9 +744,9 @@
     "ast_hash": "c1e61299aae057093b30a93d44547cf1",
     "semantic_hash": ""
   },
-  "exclude-card-redesigned.png": {
-    "mtime": 1787291272.651606,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+  "app/src/main/java/com/safeme/app/ui/screens/permissions/ManagePermissionsFlow.kt": {
+    "mtime": 1787301260.4469876,
+    "ast_hash": "da8538d7540c098b88b483efb3699568",
     "semantic_hash": ""
   }
 }

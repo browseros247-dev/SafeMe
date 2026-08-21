@@ -48,10 +48,12 @@ import com.safeme.app.R
 import com.safeme.app.data.NOTIF_CUSTOM
 import com.safeme.app.data.NOTIF_DEFAULT
 import com.safeme.app.data.NOTIF_HIDE
+import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.ui.components.SafeMeTextField
 import com.safeme.app.ui.components.ToastHost
 import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.vpn.DnsPreset
+import com.safeme.app.vpn.PrivateDnsFilter
 
 @Composable
 fun DnsVpnScreen(
@@ -103,6 +105,10 @@ fun DnsVpnScreen(
                 customV4 = state.customV4,
                 customV6 = state.customV6,
                 exemptCount = state.whitelist.size,
+                systemDns = state.enabled &&
+                    PrivateDnsFilter.dotHostname(state.preset) != null &&
+                    PrivateDnsFilter.hasPermission(context),
+                scheduleBlocking = remember { ScheduleEngine.hasInternetBlock() },
                 onToggle = viewModel::toggle,
             )
 
@@ -230,6 +236,8 @@ private fun VpnStatusCard(
     customV4: String,
     customV6: String,
     exemptCount: Int,
+    systemDns: Boolean,
+    scheduleBlocking: Boolean,
     onToggle: () -> Unit,
 ) {
     val colors = LocalAppColors.current
@@ -261,7 +269,15 @@ private fun VpnStatusCard(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = vpnStatusSub(running, preset, customV4, customV6, exemptCount),
+                    text = vpnStatusSub(
+                        running,
+                        preset,
+                        customV4,
+                        customV6,
+                        exemptCount,
+                        systemDns,
+                        scheduleBlocking,
+                    ),
                     fontSize = 12.5.sp,
                     color = colors.brandDark,
                 )
@@ -279,6 +295,8 @@ private fun vpnStatusSub(
     customV4: String,
     customV6: String,
     exemptCount: Int,
+    systemDns: Boolean,
+    scheduleBlocking: Boolean,
 ): String {
     if (!running) return stringResource(R.string.vpn_status_re_enable)
     val base = if (preset == DnsPreset.CUSTOM && customV4.isNotBlank()) {
@@ -290,7 +308,13 @@ private fun vpnStatusSub(
     } else {
         preset.label
     }
-    return stringResource(R.string.vpn_sub_exempt, base, exemptCount)
+    val scoped = if (systemDns) stringResource(R.string.vpn_sub_system_prefix, base) else base
+    val withExempt = stringResource(R.string.vpn_sub_exempt, scoped, exemptCount)
+    return if (scheduleBlocking) {
+        stringResource(R.string.vpn_sub_schedule_suffix, withExempt)
+    } else {
+        withExempt
+    }
 }
 
 @Composable

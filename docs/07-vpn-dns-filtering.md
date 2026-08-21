@@ -30,6 +30,31 @@ Because no traffic flows through the TUN, the app cannot block encrypted DNS
 DNS) can bypass filtering — the same limitation the reference project
 accepts. On-screen URL/keyword blocking is the accessibility service's job.
 
+### System-wide layer: Private DNS (`vpn/PrivateDnsFilter.kt`)
+
+The tunnel can serve exactly one master: DNS-filter mode cannot black-hole a
+schedule-targeted app, and per-app-block mode excludes everyone else from the
+VPN — their DNS goes to the router and the presets silently stop applying
+(the "DNS presets not working with a 24/7 schedule" report).
+
+When filtering is enabled, the app therefore ALSO points the system resolver
+at the preset's family DoT hostname via Private DNS strict mode (requires the
+WRITE_SECURE_SETTINGS grant the anti-tamper flow already sets up):
+
+| Preset | Private DNS specifier |
+|---|---|
+| `CLOUDFLARE_FAMILY` | `family.cloudflare-dns.com` |
+| `ADGUARD_FAMILY` | `family.adguard-dns.com` |
+| `CUSTOM` | none — DoT needs a hostname with a valid TLS identity; custom stays VPN-only |
+
+This makes filtering independent of the tunnel: schedule blocking keeps the
+per-app tunnel while every other app resolves through the family resolver.
+The user's original Private DNS settings are backed up in `vpn_prefs` and
+restored on disable / CUSTOM switch; `VpnBootReceiver` re-asserts the
+specifier on boot / package-replace (and clears it when filtering is
+persisted off). Strict mode is fail-closed — if the DoT hostname is
+unreachable, resolution fails rather than leaking unfiltered.
+
 ## 2. Tunnel modes
 
 ### DNS-FILTER (normal)

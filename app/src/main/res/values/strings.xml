@@ -422,6 +422,8 @@
     <string name="vpn_custom_status_v4">Custom · %1$s</string>
     <string name="vpn_custom_status_v4v6">Custom · %1$s · %2$s</string>
     <string name="vpn_sub_exempt">%1$s · %2$d exempt</string>
+    <string name="vpn_sub_system_prefix">System-wide · %1$s</string>
+    <string name="vpn_sub_schedule_suffix">%1$s · schedule block active</string>
     <string name="vpn_status_re_enable">Tap to re-enable protection</string>
     <string name="vpn_group_dns">DNS preset</string>
     <string name="vpn_group_notification">Notification</string>

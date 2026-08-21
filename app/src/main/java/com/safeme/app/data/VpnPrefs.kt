@@ -10,6 +10,7 @@ import com.safeme.app.vpn.DnsPreset
 import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.vpnDataStore by preferencesDataStore(name = "vpn_prefs")
@@ -21,6 +22,12 @@ val KEY_VPN_CUSTOM_V6 = stringPreferencesKey("vpn_custom_v6")
 val KEY_VPN_WHITELIST = stringSetPreferencesKey("vpn_whitelist")
 val KEY_VPN_NOTIF_MODE = stringPreferencesKey("vpn_notif_mode")
 val KEY_VPN_NOTIF_CUSTOM = stringPreferencesKey("vpn_notif_custom")
+val KEY_PRIVATE_DNS_BACKED_UP = booleanPreferencesKey("private_dns_backed_up")
+val KEY_PRIVATE_DNS_PREV_MODE = stringPreferencesKey("private_dns_prev_mode")
+val KEY_PRIVATE_DNS_PREV_SPECIFIER = stringPreferencesKey("private_dns_prev_specifier")
+
+/** The user's original Private DNS settings, captured before SafeMe overrides them. */
+data class PrivateDnsBackup(val mode: String?, val specifier: String?)
 
 data class DnsVpnSettings(
     val enabled: Boolean = false,
@@ -93,7 +100,45 @@ suspend fun Context.writeVpnSettings(settings: DnsVpnSettings) {
         prefs[KEY_VPN_CUSTOM_V4] = settings.customV4
         prefs[KEY_VPN_CUSTOM_V6] = settings.customV6
         prefs[KEY_VPN_WHITELIST] = settings.whitelist
-        prefs[KEY_VPN_NOTIF_MODE] = settings.notifMode.takeIf { it in VALID_NOTIF_MODES } ?: NOTIF_DEFAULT
+        prefs[KEY_VPN_NOTIF_MODE] = settings.notifMode.takeIf { m -> m in VALID_NOTIF_MODES } ?: NOTIF_DEFAULT
         prefs[KEY_VPN_NOTIF_CUSTOM] = settings.notifCustom
+    }
+}
+
+/** Reads the backed-up Private DNS settings, or null when nothing was backed up. */
+suspend fun readPrivateDnsBackup(context: Context): PrivateDnsBackup? =
+    context.vpnDataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            if (prefs[KEY_PRIVATE_DNS_BACKED_UP] != true) {
+                null
+            } else {
+                PrivateDnsBackup(
+                    mode = prefs[KEY_PRIVATE_DNS_PREV_MODE],
+                    specifier = prefs[KEY_PRIVATE_DNS_PREV_SPECIFIER],
+                )
+            }
+        }
+        .first()
+
+/** Stores the user's original Private DNS settings (mode/specifier may be null = unset). */
+suspend fun savePrivateDnsBackup(context: Context, mode: String?, specifier: String?) {
+    context.vpnDataStore.edit { prefs ->
+        prefs[KEY_PRIVATE_DNS_BACKED_UP] = true
+        if (mode != null) prefs[KEY_PRIVATE_DNS_PREV_MODE] = mode else prefs.remove(KEY_PRIVATE_DNS_PREV_MODE)
+        if (specifier != null) {
+            prefs[KEY_PRIVATE_DNS_PREV_SPECIFIER] = specifier
+        } else {
+            prefs.remove(KEY_PRIVATE_DNS_PREV_SPECIFIER)
+        }
+    }
+}
+
+/** Drops the backup so a later [readPrivateDnsBackup] reports "nothing to restore". */
+suspend fun clearPrivateDnsBackup(context: Context) {
+    context.vpnDataStore.edit { prefs ->
+        prefs.remove(KEY_PRIVATE_DNS_BACKED_UP)
+        prefs.remove(KEY_PRIVATE_DNS_PREV_MODE)
+        prefs.remove(KEY_PRIVATE_DNS_PREV_SPECIFIER)
     }
 }

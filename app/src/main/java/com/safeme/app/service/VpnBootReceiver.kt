@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.safeme.app.data.dnsVpnSettings
+import com.safeme.app.vpn.PrivateDnsFilter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -23,7 +24,18 @@ class VpnBootReceiver : BroadcastReceiver() {
         // ForegroundServiceStartNotAllowedException on Android 12+.
         val settings = runCatching { runBlocking { context.dnsVpnSettings().first() } }
             .getOrNull() ?: return
-        if (!settings.enabled) return
+        if (!settings.enabled) {
+            // Filtering is off — make sure a Private DNS override from an
+            // earlier session never outlives the user's intent.
+            runCatching { runBlocking { PrivateDnsFilter.restore(context) } }
+            return
+        }
+        // Re-assert the system-wide DoT filter so the specifier always matches
+        // the persisted preset (Private DNS survives reboots on its own, but a
+        // preset change that never reached the settings would linger).
+        if (PrivateDnsFilter.dotHostname(settings.preset) != null) {
+            runCatching { runBlocking { PrivateDnsFilter.apply(context, settings.preset) } }
+        }
         val start = Intent(context, SafeMeVpnService::class.java)
             .setAction(SafeMeVpnService.ACTION_START)
         context.startForegroundService(start)

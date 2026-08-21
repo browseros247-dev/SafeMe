@@ -17,6 +17,7 @@ import com.safeme.app.data.setVpnPreset
 import com.safeme.app.data.setVpnWhitelist
 import com.safeme.app.service.SafeMeVpnService
 import com.safeme.app.vpn.DnsPreset
+import com.safeme.app.vpn.PrivateDnsFilter
 import com.safeme.app.vpn.VpnStatusStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -197,8 +198,10 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
         pendingEnable = false
         optimisticEnabled = true
         viewModelScope.launch {
-            getApplication<Application>().setVpnEnabled(true)
+            val app = getApplication<Application>()
+            app.setVpnEnabled(true)
             startService()
+            applySystemDnsFor(_uiState.value.preset)
             _uiState.update { it.copy(enabled = true) }
             checkRunning()
             showToast("VPN filtering enabled")
@@ -208,8 +211,10 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
     private fun disable() {
         optimisticEnabled = false
         viewModelScope.launch {
+            val app = getApplication<Application>()
             stopService()
-            getApplication<Application>().setVpnEnabled(false)
+            app.setVpnEnabled(false)
+            PrivateDnsFilter.restore(app)
             _uiState.update { it.copy(enabled = false, running = false) }
             showToast("VPN filtering disabled")
         }
@@ -239,7 +244,24 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             getApplication<Application>().setVpnPreset(preset)
             _uiState.update { it.copy(preset = preset) }
+            if (_uiState.value.enabled) applySystemDnsFor(preset)
             restartIfRunning()
+        }
+    }
+
+    /**
+     * Keeps the system-wide Private DNS filter in step with the preset while
+     * filtering is on: family presets map to a DoT hostname, CUSTOM cannot
+     * (an IP has no TLS identity) so the previous system settings come back
+     * and filtering falls back to the VPN-advertised resolver only.
+     */
+    private suspend fun applySystemDnsFor(preset: DnsPreset) {
+        val app = getApplication<Application>()
+        val applied = PrivateDnsFilter.apply(app, preset)
+        if (!applied && PrivateDnsFilter.dotHostname(preset) != null) {
+            if (!PrivateDnsFilter.hasPermission(app)) {
+                showToast("Grant WRITE_SECURE_SETTINGS for system-wide filtering")
+            }
         }
     }
 
@@ -255,11 +277,13 @@ class DnsVpnViewModel(application: Application) : AndroidViewModel(application) 
             return false
         }
         viewModelScope.launch {
-            getApplication<Application>().setVpnCustomDns(cleanV4, cleanV6)
-            getApplication<Application>().setVpnPreset(DnsPreset.CUSTOM)
+            val app = getApplication<Application>()
+            app.setVpnCustomDns(cleanV4, cleanV6)
+            app.setVpnPreset(DnsPreset.CUSTOM)
             _uiState.update {
                 it.copy(customV4 = cleanV4, customV6 = cleanV6, preset = DnsPreset.CUSTOM)
             }
+            if (_uiState.value.enabled) PrivateDnsFilter.restore(app)
             restartIfRunning()
             showToast("Custom DNS saved")
         }

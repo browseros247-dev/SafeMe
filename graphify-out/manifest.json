@@ -5,8 +5,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/BlockGateActivity.kt": {
-    "mtime": 1786973134.5055025,
-    "ast_hash": "ff9d76ff48d82eabd3a7f732ac8b6552",
+    "mtime": 1787063060.8876832,
+    "ast_hash": "52a43ce8e6493879241f3e52a74536a3",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/MainActivity.kt": {
@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeAccessibilityService.kt": {
-    "mtime": 1787054937.3358102,
-    "ast_hash": "c232d90bb7fc193f015a154269d6996e",
+    "mtime": 1787063663.3862574,
+    "ast_hash": "75cfe39927cebb079a7fed9fb07862cd",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeVpnService.kt": {
@@ -90,8 +90,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/blockscreen/BlockOverlay.kt": {
-    "mtime": 1786973134.507012,
-    "ast_hash": "b72cdf8859c20748020475dc064fd5d9",
+    "mtime": 1787063078.4106193,
+    "ast_hash": "fedec1a74470b0349c15c032be0e3f07",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/blockscreen/BlockScreen.kt": {
@@ -135,13 +135,13 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/home/HomeScreen.kt": {
-    "mtime": 1786379439.8029618,
-    "ast_hash": "2332888f4658ac0225131e87d92cd9dd",
+    "mtime": 1787066479.901923,
+    "ast_hash": "14d8d133b5a85dbdc4a17d59a5b0790f",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/home/HomeViewModel.kt": {
-    "mtime": 1786759323.8566375,
-    "ast_hash": "c2ba964ae527c2a1e45a85882c422829",
+    "mtime": 1787109455.8973267,
+    "ast_hash": "ef4122adb2d5228bd171c9f5e5e22d4a",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/keywords/KeywordIcons.kt": {
@@ -210,8 +210,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/schedule/ScheduleViewModel.kt": {
-    "mtime": 1786334669.7937129,
-    "ast_hash": "abee20fe89a644117e214acf2c186c9b",
+    "mtime": 1787065017.1223257,
+    "ast_hash": "91b3752a3816f3155cd0a9505e992c84",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/vpn/DnsVpnIcons.kt": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "app/src/androidTest/java/com/safeme/app/BlockGateActivityTest.kt": {
-    "mtime": 1786681497.5024934,
-    "ast_hash": "39b778ec50cd93977c5ab4a07dc4bd19",
+    "mtime": 1787063122.544564,
+    "ast_hash": "cfa2d9982cbf84a76738c57e997e2e25",
     "semantic_hash": ""
   },
   "app/src/androidTest/java/com/safeme/app/ui/screens/antitamper/AccessibilityProtectionCopyTest.kt": {
@@ -305,8 +305,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/BlockOverlayController.kt": {
-    "mtime": 1787054470.263367,
-    "ast_hash": "3c3bc509ccf8eef1f46870d5c5f6acb3",
+    "mtime": 1787063663.3181393,
+    "ast_hash": "4d13a0bb886462d729255589b576c44e",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/SafeMeApp.kt": {
@@ -365,8 +365,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/SchedulePrefs.kt": {
-    "mtime": 1786413044.8158455,
-    "ast_hash": "573613704e02d66df6677084bc6d49c0",
+    "mtime": 1787064590.5133584,
+    "ast_hash": "663ffc3f4587e6ebe0890eac4260f0ba",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/A11yBootReceiver.kt": {
@@ -580,8 +580,8 @@
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/BlockOverlayControllerTest.kt": {
-    "mtime": 1786973148.6072295,
-    "ast_hash": "91b064b009b7a81ad243d8651d13c5ae",
+    "mtime": 1787063078.4562576,
+    "ast_hash": "de40390521b5bc9e38f3784dc5cb7d3b",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/ActivityLogTest.kt": {
@@ -615,8 +615,8 @@
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/data/ScheduleWarningTest.kt": {
-    "mtime": 1786334710.4504693,
-    "ast_hash": "556bc062be7b7d655f7ce87f6491df85",
+    "mtime": 1787064590.563617,
+    "ast_hash": "8e1de131cd89c4da407170838460c4b6",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/protect/A11yProtectionUtilsTest.kt": {
@@ -752,6 +752,11 @@
   "docs/prevent-uninstall-comparison-nopox-1.0.53.md": {
     "mtime": 1786957694.7779539,
     "ast_hash": "86e3f385123c87238cd526adf4595755",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/ui/screens/home/HomeA11yStateTest.kt": {
+    "mtime": 1787109467.7844372,
+    "ast_hash": "b5c9825b54baf62505f34e6aeeb32cf3",
     "semantic_hash": ""
   }
 }

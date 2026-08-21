@@ -120,7 +120,7 @@ fun HomeScreen(
                 subtitle = state.heroSubtitle,
                 onReviewShield = onReviewShield
             )
-            if (!state.a11yEnabled) {
+            if (!state.a11yEnabled && state.a11yStateKnown && !state.a11yChecking) {
                 Spacer(Modifier.height(12.dp))
                 A11yBanner(onOpenAccessibility = onOpenAccessibility)
             }

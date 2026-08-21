@@ -39,11 +39,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val masterProtection: Boolean = true,
     val a11yEnabled: Boolean = false,
+    val a11yStateKnown: Boolean = false,
+    val a11yChecking: Boolean = true,
     val greeting: String = "",
     val dateLine: String = "",
     val blockedToday: String = "0",
@@ -63,9 +68,23 @@ data class HomeUiState(
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = application
+    private val initialA11yEnabled = isAccessibilityEnabled(app)
+
+    @Volatile
+    private var a11yStatus = A11yStatus(
+        enabled = initialA11yEnabled,
+        stateKnown = initialA11yEnabled,
+        checking = !initialA11yEnabled,
+    )
 
     private val _uiState = MutableStateFlow(
-        HomeUiState(greeting = currentGreeting(), dateLine = currentDateLine())
+        HomeUiState(
+            greeting = currentGreeting(),
+            dateLine = currentDateLine(),
+            a11yEnabled = initialA11yEnabled,
+            a11yStateKnown = initialA11yEnabled,
+            a11yChecking = !initialA11yEnabled,
+        )
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -76,9 +95,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _quickActions = MutableStateFlow<List<QuickActionType>>(emptyList())
     val quickActions: StateFlow<List<QuickActionType>> = _quickActions.asStateFlow()
 
-    // One-shot device checks (no DataStore flow exists for these) — re-read on
-    // resume so the hero reflects the real system state.
-    @Volatile private var a11yEnabled = isAccessibilityEnabled(app)
+    private var a11yRefreshJob: Job? = null
+    private var a11yRefreshGeneration = 0L
     @Volatile private var deviceAdminActive = DeviceAdminUtils.isActive(app)
     @Volatile private var vpnConsentGranted = VpnService.prepare(app) == null
 
@@ -122,13 +140,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             app.quickActionPrefs().collect { _quickActions.value = it }
         }
+        refresh()
     }
 
     private fun rebuild() {
         val blocking = lastBlocking
+        val a11y = a11yStatus
         val layers = ProtectionLayersEvaluator.evaluate(
             masterBlocking = blocking.blockingEnabled,
-            accessibilityEnabled = a11yEnabled,
+            accessibilityEnabled = a11y.enabled,
             vpnEnabled = lastVpn.enabled && vpnConsentGranted,
             appLockEnabled = lastAppLock.lockType != LockType.OFF,
             a11yProtectionEnabled = lastA11yProt.protectionEnabled,
@@ -166,7 +186,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 masterProtection = blocking.blockingEnabled,
                 // Keep the banner in sync with the cached system state on
                 // every rebuild, not only after an explicit refresh().
-                a11yEnabled = a11yEnabled,
+                a11yEnabled = a11y.enabled,
+                a11yStateKnown = a11y.stateKnown,
+                a11yChecking = a11y.checking,
                 blockedToday = blocking.blockedToday.toString(),
                 scheduleCount = enabledSchedules.toString(),
                 heroProgress = if (paused) 0f else layers.progress,
@@ -195,13 +217,56 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refresh() {
-        a11yEnabled = isAccessibilityEnabled(app)
-        deviceAdminActive = DeviceAdminUtils.isActive(app)
-        vpnConsentGranted = VpnService.prepare(app) == null
+        a11yRefreshJob?.cancel()
+        val generation = ++a11yRefreshGeneration
+        val previous = a11yStatus
+        val keepKnownEnabled = previous.stateKnown && previous.enabled
+        a11yStatus = previous.copy(
+            stateKnown = keepKnownEnabled,
+            checking = true,
+        )
         _uiState.update {
-            it.copy(a11yEnabled = a11yEnabled, dateLine = currentDateLine())
+            it.copy(
+                a11yEnabled = previous.enabled,
+                a11yStateKnown = keepKnownEnabled,
+                a11yChecking = true,
+            )
         }
-        rebuild()
+        a11yRefreshJob = viewModelScope.launch {
+            // AccessibilityManager can report a false negative during process
+            // startup while the already-enabled service is still binding.
+            delay(A11Y_STATE_SETTLE_MS)
+            val readings = buildList {
+                for (index in 0 until A11Y_NEGATIVE_CONFIRMATIONS) {
+                    val enabled = isAccessibilityEnabled(app)
+                    add(enabled)
+                    if (enabled) break
+                    if (index < A11Y_NEGATIVE_CONFIRMATIONS - 1) {
+                        delay(A11Y_FALSE_CONFIRM_DELAY_MS)
+                    }
+                }
+            }
+            val enabledNow = !isStableA11yDisabled(readings, A11Y_NEGATIVE_CONFIRMATIONS)
+            if (!isActive || generation != a11yRefreshGeneration) return@launch
+            a11yStatus = A11yStatus(enabled = enabledNow, stateKnown = true, checking = false)
+            deviceAdminActive = DeviceAdminUtils.isActive(app)
+            vpnConsentGranted = VpnService.prepare(app) == null
+            _uiState.update {
+                it.copy(
+                    a11yEnabled = enabledNow,
+                    a11yStateKnown = true,
+                    a11yChecking = false,
+                    dateLine = currentDateLine(),
+                )
+            }
+            rebuild()
+        }
+    }
+
+    private companion object {
+        const val A11Y_STATE_SETTLE_MS = 250L
+        const val A11Y_FALSE_CONFIRM_DELAY_MS = 250L
+        const val A11Y_NEGATIVE_CONFIRMATIONS = 4
     }
 
     private fun currentGreeting(): String {
@@ -226,3 +291,12 @@ private data class PrefsSnapshot(
     val pu: PreventUninstallPrefsState,
     val vpn: DnsVpnSettings,
 )
+
+private data class A11yStatus(
+    val enabled: Boolean,
+    val stateKnown: Boolean,
+    val checking: Boolean,
+)
+
+internal fun isStableA11yDisabled(readings: List<Boolean>, requiredReads: Int): Boolean =
+    readings.size >= requiredReads && readings.takeLast(requiredReads).none { it }

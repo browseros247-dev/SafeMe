@@ -407,17 +407,6 @@
     <issue
         id="UseOfNonLambdaOffsetOverload"
         message="State backed values should use the lambda overload of Modifier.offset"
-        errorLine1="                .offset(x = 3.dp + thumbOffset)"
-        errorLine2="                 ~~~~~~">
-        <location
-            file="src/main/java/com/safeme/app/ui/screens/focus/FocusScreen.kt"
-            line="478"
-            column="18"/>
-    </issue>
-
-    <issue
-        id="UseOfNonLambdaOffsetOverload"
-        message="State backed values should use the lambda overload of Modifier.offset"
         errorLine1="                .offset(x = thumbOffset)"
         errorLine2="                 ~~~~~~">
         <location

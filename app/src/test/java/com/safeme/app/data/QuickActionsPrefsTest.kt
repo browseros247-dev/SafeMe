@@ -16,7 +16,7 @@ class QuickActionsPrefsTest {
     @Test
     fun jsonRoundTripPreservesOrder() {
         val actions = listOf(
-            QuickActionType.FOCUS,
+            QuickActionType.KEYWORD,
             QuickActionType.VPN,
             QuickActionType.HISTORY,
             QuickActionType.BACKUP,
@@ -31,8 +31,10 @@ class QuickActionsPrefsTest {
 
     @Test
     fun unknownIdsAreDroppedWithoutCrash() {
+        // "focus" is a legacy id from before the Focus tab removal — it must be
+        // dropped exactly like any other unknown id.
         assertEquals(
-            listOf(QuickActionType.FOCUS, QuickActionType.VPN),
+            listOf(QuickActionType.VPN),
             quickActionsFromJson("[\"focus\",\"bogus\",\"vpn\"]")
         )
     }
@@ -43,7 +45,7 @@ class QuickActionsPrefsTest {
     }
 
     @Test
-    fun allEightTypesRoundTrip() {
+    fun allTypesRoundTrip() {
         val all = QuickActionType.entries
         assertEquals(all, quickActionsFromJson(quickActionsToJson(all)))
     }

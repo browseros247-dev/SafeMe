@@ -24,13 +24,13 @@ internal val ProfShareIcon: ImageVector by lazy {
             strokeLineCap = StrokeCap.Round,
             strokeLineJoin = StrokeJoin.Round
         ) {
-            moveTo(6f, 12f)
+            moveTo(6f, 9f)
             arcToRelative(3f, 3f, 0f, false, true, 0f, 6f)
             arcToRelative(3f, 3f, 0f, false, true, 0f, -6f)
-            moveTo(18f, 6f)
+            moveTo(18f, 3f)
             arcToRelative(3f, 3f, 0f, false, true, 0f, 6f)
             arcToRelative(3f, 3f, 0f, false, true, 0f, -6f)
-            moveTo(18f, 18f)
+            moveTo(18f, 15f)
             arcToRelative(3f, 3f, 0f, false, true, 0f, 6f)
             arcToRelative(3f, 3f, 0f, false, true, 0f, -6f)
             moveTo(8.7f, 10.7f)
@@ -58,7 +58,7 @@ internal val ProfMoonIcon: ImageVector by lazy {
             strokeLineJoin = StrokeJoin.Round
         ) {
             moveTo(21f, 12.8f)
-            arcTo(8.5f, 8.5f, 0f, false, true, 11.2f, 3f)
+            arcTo(8.5f, 8.5f, 0f, true, true, 11.2f, 3f)
             arcTo(6.5f, 6.5f, 0f, false, false, 21f, 12.8f)
             close()
         }
@@ -261,44 +261,6 @@ internal val ProfPlayCircleIcon: ImageVector by lazy {
             lineTo(16f, 12f)
             lineTo(10f, 16f)
             close()
-        }
-    }.build()
-}
-
-internal val ProfCrashIcon: ImageVector by lazy {
-    ImageVector.Builder(
-        name = "ProfCrash",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f
-    ).apply {
-        val stroke = SolidColor(Color.Black)
-        path(
-            fill = null,
-            stroke = stroke,
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round,
-            strokeLineJoin = StrokeJoin.Round
-        ) {
-            moveTo(8f, 2f)
-            lineTo(9.88f, 3.88f)
-            moveTo(14.12f, 3.88f)
-            lineTo(16f, 2f)
-            moveTo(9f, 7.13f)
-            verticalLineTo(6.13f)
-            arcToRelative(3.003f, 3.003f, 0f, false, true, 6f, 0f)
-            verticalLineTo(7.13f)
-            moveTo(12f, 20f)
-            curveToRelative(-3.3f, 0f, -6f, -2.7f, -6f, -6f)
-            verticalLineTo(11f)
-            arcToRelative(4f, 4f, 0f, false, true, 4f, -4f)
-            horizontalLineTo(14f)
-            arcToRelative(4f, 4f, 0f, false, true, 4f, 4f)
-            verticalLineTo(14f)
-            curveToRelative(0f, 3.3f, -2.7f, 6f, -6f, 6f)
-            moveTo(12f, 20f)
-            verticalLineTo(11f)
         }
     }.build()
 }

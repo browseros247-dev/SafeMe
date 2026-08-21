@@ -18,7 +18,6 @@ import org.json.JSONException
  * re-added from the editor.
  */
 enum class QuickActionType(val id: String) {
-    FOCUS("focus"),
     KEYWORD("keyword"),
     SCHEDULE("schedule"),
     BACKUP("backup"),
@@ -33,9 +32,9 @@ enum class QuickActionType(val id: String) {
     }
 }
 
-/** The original four actions, in their original order — used when no prefs exist yet. */
+/** The default actions, in their original order — used when no prefs exist yet. */
 val DEFAULT_QUICK_ACTIONS: List<QuickActionType> =
-    listOf(QuickActionType.FOCUS, QuickActionType.KEYWORD, QuickActionType.SCHEDULE, QuickActionType.BACKUP)
+    listOf(QuickActionType.KEYWORD, QuickActionType.SCHEDULE, QuickActionType.BACKUP, QuickActionType.APPLOCK)
 
 private val Context.quickActionsDataStore by preferencesDataStore(name = "quick_actions_prefs")
 

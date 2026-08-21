@@ -34,7 +34,7 @@ class BackupCodecTest {
             enabled = true, preset = DnsPreset.ADGUARD_FAMILY, customV4 = "1.1.1.1", customV6 = "",
             whitelist = setOf("com.example.app"), notifMode = NOTIF_CUSTOM, notifCustom = "Filtering on",
         ),
-        quickActions = listOf(QuickActionType.FOCUS, QuickActionType.VPN),
+        quickActions = listOf(QuickActionType.HISTORY, QuickActionType.VPN),
         appLock = AppLockPrefsState(
             lockType = LockType.PIN, storedHash = "salt:hash", credentialLength = 4,
             biometricEnabled = true, forgotPasswordDisabled = false, autoLock = AutoLockDelay.AFTER_1M,
@@ -223,9 +223,11 @@ class BackupCodecTest {
 
     @Test
     fun unknownQuickActionIdsAreDropped() {
+        // "focus" is a legacy id from before the Focus tab removal — it must be
+        // dropped exactly like any other unknown id when restoring old backups.
         val raw = """{"format": "safeme-backup", "schemaVersion": 1, "quickActions": ["focus", "bogus", "vpn"]}"""
         val snapshot = successOf(decode(raw))
-        assertEquals(listOf(QuickActionType.FOCUS, QuickActionType.VPN), snapshot.quickActions)
+        assertEquals(listOf(QuickActionType.VPN), snapshot.quickActions)
     }
 
     @Test

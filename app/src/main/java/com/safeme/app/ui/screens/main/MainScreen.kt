@@ -37,7 +37,6 @@ import com.safeme.app.ui.screens.applock.AppLockScreen
 import com.safeme.app.ui.screens.backup.BackupScreen
 import com.safeme.app.ui.screens.blocking.BlockingScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
-import com.safeme.app.ui.screens.focus.FocusScreen
 import com.safeme.app.ui.screens.history.HistoryScreen
 import com.safeme.app.ui.screens.home.HomeScreen
 import com.safeme.app.ui.screens.home.QuickActionsEditScreen
@@ -51,7 +50,7 @@ import com.safeme.app.ui.screens.titleblock.TitleBlockScreen
 import com.safeme.app.ui.screens.vpn.DnsVpnScreen
 import com.safeme.app.ui.theme.LocalAppColors
 
-private val MainTabRoutes = setOf("home", "block", "focus", "schedule", "profile")
+private val MainTabRoutes = setOf("home", "block", "schedule", "profile")
 
 @Composable
 fun MainScreen() {
@@ -99,7 +98,6 @@ fun MainScreen() {
             composable("home") {
                 HomeScreen(
                     onReviewShield = { navigateToTab("block") },
-                    onStartFocus = { navigateToTab("focus") },
                     onAddKeyword = { navController.navigate("keywords") },
                     onNewSchedule = { navController.navigate("scheduleedit") },
                     onBackup = { navController.navigate("backup") },
@@ -150,12 +148,6 @@ fun MainScreen() {
             composable("servicepicker") {
                 ServicePickerScreen(onBack = { navController.popBackStack() })
             }
-            composable("focus") {
-                FocusScreen(
-                    onStartFocus = { navController.navigate("focusactive") },
-                    onManageWhitelist = { navController.navigate("focuswhitelist") },
-                )
-            }
             composable("schedule") {
                 ScheduleScreen(
                     onNewSchedule = { navController.navigate("scheduleedit") },
@@ -169,7 +161,6 @@ fun MainScreen() {
                             "permissions" -> navController.navigate("permissions")
                             "backup" -> navController.navigate("backup")
                             "troubleshoot" -> navController.navigate("troubleshoot")
-                            "crash" -> navController.navigate("crash")
                             "about" -> navController.navigate("about")
                             "applock" -> navController.navigate("applock")
                         }
@@ -210,13 +201,10 @@ fun MainScreen() {
             composable("quickactions") {
                 QuickActionsEditScreen(onBack = { navController.popBackStack() })
             }
-            composable("focusactive") { PlaceholderScreen(R.string.foc_active_title) }
-            composable("focuswhitelist") { PlaceholderScreen(R.string.foc_whitelist_placeholder) }
             composable("permissions") {
                 ManagePermissionsFlow(onBack = { navController.popBackStack() })
             }
             composable("troubleshoot") { PlaceholderScreen(R.string.prof_troubleshoot_title) }
-            composable("crash") { PlaceholderScreen(R.string.prof_crash_title) }
             composable("about") {
                 AboutScreen(onBack = { navController.popBackStack() })
             }

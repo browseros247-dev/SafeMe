@@ -554,17 +554,6 @@ private fun SupportList(
             .cardShape()
     ) {
         ListRow(
-            icon = ProfCrashIcon,
-            background = colors.iconRedBg,
-            tint = colors.danger,
-            title = stringResource(R.string.prof_crash_title),
-            sub = stringResource(R.string.prof_crash_sub),
-            badge = stringResource(R.string.prof_crash_badge),
-            badgeBg = colors.danger,
-            onClick = { onOpen("crash") }
-        )
-        HorizontalDivider(color = colors.line)
-        ListRow(
             icon = ProfInfoIcon,
             background = colors.brandSoft,
             tint = colors.brandDark,

@@ -70,7 +70,6 @@ private val HeroRingTrack = Color(0xFFEADFD6)
 @Composable
 fun HomeScreen(
     onReviewShield: () -> Unit = {},
-    onStartFocus: () -> Unit = {},
     onAddKeyword: () -> Unit = {},
     onNewSchedule: () -> Unit = {},
     onBackup: () -> Unit = {},
@@ -136,7 +135,6 @@ fun HomeScreen(
             )
             QuickActionsGrid(
                 actions = quickActions,
-                onStartFocus = onStartFocus,
                 onAddKeyword = onAddKeyword,
                 onNewSchedule = onNewSchedule,
                 onBackup = onBackup,
@@ -148,7 +146,6 @@ fun HomeScreen(
             SectionTitle(title = stringResource(R.string.home_today))
             StatsRow(
                 blocked = state.blockedToday,
-                focusTime = state.focusTime,
                 schedules = state.scheduleCount
             )
             SectionTitle(
@@ -507,7 +504,6 @@ private fun SectionTitle(title: String, moreText: String? = null, onMore: () -> 
 @Composable
 private fun QuickActionsGrid(
     actions: List<QuickActionType>,
-    onStartFocus: () -> Unit,
     onAddKeyword: () -> Unit,
     onNewSchedule: () -> Unit,
     onBackup: () -> Unit,
@@ -537,7 +533,6 @@ private fun QuickActionsGrid(
                         title = stringResource(action.titleRes()),
                         sub = stringResource(action.subRes()),
                         onClick = action.onClick(
-                            onStartFocus,
                             onAddKeyword,
                             onNewSchedule,
                             onBackup,
@@ -557,7 +552,6 @@ private fun QuickActionsGrid(
 }
 
 internal fun QuickActionType.icon() = when (this) {
-    QuickActionType.FOCUS -> HomeClockIcon
     QuickActionType.KEYWORD -> HomeHashtagIcon
     QuickActionType.SCHEDULE -> HomeCalendarIcon
     QuickActionType.BACKUP -> HomeDownloadIcon
@@ -568,7 +562,6 @@ internal fun QuickActionType.icon() = when (this) {
 }
 
 internal fun QuickActionType.titleRes() = when (this) {
-    QuickActionType.FOCUS -> R.string.home_start_focus
     QuickActionType.KEYWORD -> R.string.home_add_keyword
     QuickActionType.SCHEDULE -> R.string.home_new_schedule
     QuickActionType.BACKUP -> R.string.home_backup
@@ -579,7 +572,6 @@ internal fun QuickActionType.titleRes() = when (this) {
 }
 
 internal fun QuickActionType.subRes() = when (this) {
-    QuickActionType.FOCUS -> R.string.home_start_focus_sub
     QuickActionType.KEYWORD -> R.string.home_add_keyword_sub
     QuickActionType.SCHEDULE -> R.string.home_new_schedule_sub
     QuickActionType.BACKUP -> R.string.home_backup_sub
@@ -590,7 +582,6 @@ internal fun QuickActionType.subRes() = when (this) {
 }
 
 private fun QuickActionType.onClick(
-    onStartFocus: () -> Unit,
     onAddKeyword: () -> Unit,
     onNewSchedule: () -> Unit,
     onBackup: () -> Unit,
@@ -599,7 +590,6 @@ private fun QuickActionType.onClick(
     onAppLock: () -> Unit,
     onHistory: () -> Unit
 ): () -> Unit = when (this) {
-    QuickActionType.FOCUS -> onStartFocus
     QuickActionType.KEYWORD -> onAddKeyword
     QuickActionType.SCHEDULE -> onNewSchedule
     QuickActionType.BACKUP -> onBackup
@@ -664,12 +654,10 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun StatsRow(blocked: String, focusTime: String, schedules: String) {
+private fun StatsRow(blocked: String, schedules: String) {
     val colors = LocalAppColors.current
     Row {
         StatCard(value = blocked, label = stringResource(R.string.home_stat_blocked), color = colors.brand, modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(10.dp))
-        StatCard(value = focusTime, label = stringResource(R.string.home_stat_focus_time), color = colors.success, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(10.dp))
         StatCard(value = schedules, label = stringResource(R.string.home_stat_schedules), color = colors.warning, modifier = Modifier.weight(1f))
     }

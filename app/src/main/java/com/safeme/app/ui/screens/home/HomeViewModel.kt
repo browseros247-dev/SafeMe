@@ -52,8 +52,6 @@ data class HomeUiState(
     val greeting: String = "",
     val dateLine: String = "",
     val blockedToday: String = "0",
-    /** Honest focus time — no focus tracker exists yet, so it is "0m" until the feature lands. */
-    val focusTime: String = "0m",
     val scheduleCount: String = "0",
     val heroProgress: Float = 0f,
     val heroTitleRes: Int = R.string.home_hero_title,

@@ -26,7 +26,7 @@ JSONC file and restores it atomically with validation and rollback.
   "schedules": { "schedules": […], "a11yWarningDismissed": … },
   "vpn": { "enabled": …, "preset": "CLOUDFLARE_FAMILY", "customV4": …,
            "customV6": …, "whitelist": […], "notifMode": …, "notifCustom": … },
-  "quickActions": ["focus", "vpn", …],
+  "quickActions": ["keyword", "vpn", …],
   "appLock": { "lockType": …, "storedHash": …, "credentialLength": …,
                "biometricEnabled": …, "forgotPasswordDisabled": …,
                "autoLock": … },

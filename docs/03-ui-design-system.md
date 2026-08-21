@@ -65,7 +65,7 @@ Material 3's `colorScheme` maps these tokens onto M3 roles (`primary`,
 
 | Component | Responsibility |
 |---|---|
-| `BottomNavBar` | 5-tab bottom navigation (Home, Blocking, Focus, Schedule, Profile) with icons from `BottomNavIcons.kt`; highlighted current tab |
+| `BottomNavBar` | 4-tab bottom navigation (Home, Blocking, Schedule, Profile) with icons from `BottomNavIcons.kt`; highlighted current tab |
 | `ToastHost` | Displays non-blocking toasts fed by a `SharedFlow<String>` — the standard "operation succeeded/failed" feedback channel |
 | `Effects.blurredShadow` | Design-language soft shadow behind cards; lazily builds `Paint`/`BlurMaskFilter` once per modifier and reuses across frames |
 | `GroupedAppPicker` | Shared grouped picker (category header + bordered card of rows + search filter) used by schedule apps and VPN whitelist; row rendering is injected per screen |
@@ -94,17 +94,16 @@ the flow jumps straight to the main app on first launch.
 
 ### Main tabs (`MainScreen`)
 
-Routes `home`, `block`, `focus`, `schedule`, `profile` show the bottom bar.
+Routes `home`, `block`, `schedule`, `profile` show the bottom bar.
 Other routes are pushed sub-screens with horizontal slide transitions
 (`slideInHorizontally` + `fadeIn`, 250 ms; exit fade 200 ms).
 
 | Route | Screen | Opens |
 |---|---|---|
-| `home` | `HomeScreen` | keywords, scheduleedit, backup, history, vpn, applock, quickactions, block tab, focus tab |
+| `home` | `HomeScreen` | keywords, scheduleedit, backup, history, vpn, applock, quickactions, block tab |
 | `block` | `BlockingScreen` | blockscreen, vpn, antitamper, keywords, websites, titleblock |
-| `focus` | `FocusScreen` | focusactive, focuswhitelist (placeholders) |
 | `schedule` | `ScheduleScreen` | scheduleedit (+ `?editId=` for edit) |
-| `profile` | `ProfileScreen` | permissions, backup, troubleshoot (placeholder), crash (placeholder), about, applock |
+| `profile` | `ProfileScreen` | permissions, backup, troubleshoot (placeholder), about, applock |
 | sub | `AboutScreen`, `BackupScreen`, `HistoryScreen`, `QuickActionsEditScreen`, `TitleBlockScreen`, `AppLockScreen`, `AntiTamperScreen` + `AccessibilityProtectionScreen` + `ServicePickerScreen`, `DnsVpnScreen`, `KeywordManagerScreen` (`?type=&tab=`), `ScheduleEditScreen`, `ManagePermissionsFlow` | |
 
 ### Screen conventions
@@ -126,7 +125,7 @@ Other routes are pushed sub-screens with horizontal slide transitions
    action that jumps to the Blocking tab.
 3. **Attention banner** — first off layer, e.g. "Accessibility service is
    off".
-4. **Quick actions** — grid of the user's curated actions (focus, keyword,
+4. **Quick actions** — grid of the user's curated actions (keyword,
    schedule, backup, websites, vpn, applock, history), editable via
    `QuickActionsEditScreen`.
 5. **Blocked today** / **activity feed** — `ActivityLog` entries with

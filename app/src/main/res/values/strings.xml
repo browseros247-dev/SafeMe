@@ -25,7 +25,6 @@
 
     <string name="nav_home">Home</string>
     <string name="nav_block">Block</string>
-    <string name="nav_focus">Focus</string>
     <string name="nav_schedule">Schedule</string>
     <string name="nav_profile">Profile</string>
 
@@ -124,8 +123,6 @@
 
     <string name="home_quick_actions">Quick actions</string>
     <string name="home_edit">Edit</string>
-    <string name="home_start_focus">Start Focus</string>
-    <string name="home_start_focus_sub">Stop Me session</string>
     <string name="home_add_keyword">Add keyword</string>
     <string name="home_add_keyword_sub">Block more sites</string>
     <string name="home_new_schedule">New schedule</string>
@@ -150,7 +147,6 @@
 
     <string name="home_today">Today</string>
     <string name="home_stat_blocked">Blocked</string>
-    <string name="home_stat_focus_time">Focus time</string>
     <string name="home_stat_schedules">Schedules</string>
 
     <string name="home_recent_activity">Recent activity</string>
@@ -343,32 +339,6 @@
     <string name="sche_apps_empty">No apps found</string>
     <string name="schedule_gate_message">App blocked by SafeMe — active schedule window</string>
 
-    <string name="foc_title">Stop Me</string>
-    <string name="foc_pill">Focus mode</string>
-    <string name="foc_hero_label">How long do you need?</string>
-    <string name="foc_min">min</string>
-    <string name="foc_custom">+ Custom duration</string>
-    <string name="foc_start">Start Focus</string>
-    <string name="foc_sessions">Scheduled sessions</string>
-    <string name="foc_sess_deep_name">Deep work</string>
-    <string name="foc_sess_deep_sub">Daily 9:00 – 11:00 · 4 sessions</string>
-    <string name="foc_sess_evening_name">Evening unwind</string>
-    <string name="foc_sess_evening_sub">Mon–Fri 22:00 – 23:00</string>
-    <string name="foc_whitelist_title">Whitelist apps</string>
-    <string name="foc_whitelist_sub">These stay usable during sessions</string>
-    <string name="foc_manage">Manage</string>
-    <string name="foc_widget_title">2×1 widget</string>
-    <string name="foc_widget_sub">Quick-start from your home screen</string>
-    <string name="foc_add">Add</string>
-    <string name="foc_note">Active sessions show a countdown foreground notification and can\'t be skipped without the close-gate or PIN.</string>
-    <string name="foc_toast_on">On</string>
-    <string name="foc_toast_off">Off</string>
-    <string name="foc_toast_start">Focus started — 25:00 countdown</string>
-    <string name="foc_toast_custom">Custom duration — set any length</string>
-    <string name="foc_toast_widget">Widget added to home screen</string>
-    <string name="foc_active_title">Deep focus in progress</string>
-    <string name="foc_whitelist_placeholder">Focus Whitelist</string>
-
     <string name="prof_title">Profile</string>
     <string name="prof_header_sub">Your account, appearance, permissions &amp; support.</string>
     <string name="prof_share">Sharing SafeMe…</string>
@@ -397,9 +367,6 @@
     <string name="prof_support">Support</string>
     <string name="prof_troubleshoot_title">Troubleshooting</string>
     <string name="prof_troubleshoot_sub">Background autostart · enable it manually</string>
-    <string name="prof_crash_title">Crash Logs</string>
-    <string name="prof_crash_sub">Diagnostics · export · clear</string>
-    <string name="prof_crash_badge">2</string>
     <string name="prof_about_title">About</string>
     <string name="prof_about_sub">v%1$s · version info</string>
     <string name="prof_about_version">Version %1$s · package %2$s</string>

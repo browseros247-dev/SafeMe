@@ -33,7 +33,7 @@ informed by the "Protect Yourself" reference project.
 | Prevent Uninstall | Device Admin (replaces Uninstall with Disable) + accessibility guards that block SafeMe's App-Info / Device-Admin / uninstall pages | Blocking tab → Anti-Tamper |
 | Accessibility protection | Watches for protected a11y services being disabled/unbound (ContentObserver + poll) and re-enables them (needs `WRITE_SECURE_SETTINGS` via ADB) | Anti-Tamper → Accessibility protection |
 | Backup & Restore | Versioned, human-editable JSONC file capturing all 8 config domains; atomic validate-before-write restore with rollback | Profile → Backup & Restore |
-| Focus mode, quick actions, activity feed, history | Home tab surfaces: curated quick actions, blocked-today counter, recent-activity log (capped, deduped) | Home tab |
+| Quick actions, activity feed, history | Home tab surfaces: curated quick actions, blocked-today counter, recent-activity log (capped, deduped) | Home tab |
 | Onboarding | First-run permission walkthrough (notifications → battery → accessibility) with skip-if-already-granted | App start |
 
 ## Protection layers

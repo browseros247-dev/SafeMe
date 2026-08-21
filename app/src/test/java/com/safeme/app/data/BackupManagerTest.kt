@@ -70,7 +70,7 @@ class BackupManagerTest {
         put(BackupSection.BLOCKING, FakeStore(BlockingPrefsState(blockingEnabled = true)))
         put(BackupSection.SCHEDULES, FakeStore(SchedulePrefsState(schedules = emptyList())))
         put(BackupSection.VPN, FakeStore(DnsVpnSettings(enabled = false)))
-        put(BackupSection.QUICK_ACTIONS, FakeStore(listOf(QuickActionType.FOCUS)))
+        put(BackupSection.QUICK_ACTIONS, FakeStore(listOf(QuickActionType.HISTORY)))
         put(BackupSection.APP_LOCK, FakeStore(AppLockPrefsState(lockType = LockType.OFF)))
         put(BackupSection.PREVENT_UNINSTALL, FakeStore(PreventUninstallPrefsState(preventUninstallEnabled = false)))
         put(BackupSection.A11Y_PROTECTION, FakeStore(A11yProtectionPrefsState(protectionEnabled = false)))

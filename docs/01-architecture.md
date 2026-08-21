@@ -134,8 +134,8 @@ Other `data/` files:
 
 ### `ui/` — Compose
 
-- `screens/main/MainScreen.kt` — `NavHost` with 5 bottom-tab destinations
-  (`home`, `block`, `focus`, `schedule`, `profile`) and ~20 secondary routes.
+- `screens/main/MainScreen.kt` — `NavHost` with 4 bottom-tab destinations
+  (`home`, `block`, `schedule`, `profile`) and ~20 secondary routes.
 - `screens/permissions/OnboardingNavHost.kt` — first-run flow
   (`welcome` → notifications → battery → accessibility → `main`), with a
   skip-if-permissions-already-granted fast path.

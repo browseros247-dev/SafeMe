@@ -61,6 +61,7 @@ private val Context.blockingDataStore by preferencesDataStore(name = "safeme_pre
 
 val KEY_BLOCKLIST_KEYWORDS = stringPreferencesKey("blocklist_keywords_json")
 val KEY_WHITELIST_KEYWORDS = stringPreferencesKey("whitelist_keywords_json")
+val KEY_WHITELIST_SEEDED = booleanPreferencesKey("whitelist_seeded")
 val KEY_BLOCKED_WEBSITES = stringPreferencesKey("blocked_websites_json")
 val KEY_TRUSTED_WEBSITES = stringPreferencesKey("trusted_websites_json")
 val KEY_TITLE_BLOCK_RULES = stringPreferencesKey("title_block_rules_json")
@@ -218,13 +219,34 @@ internal fun stringsFromJson(json: String?, strict: Boolean = false): List<Strin
     }
 }
 
+/**
+ * Resolves the effective whitelist and whether the one-time recovery seed must be
+ * persisted. Seeding happens ONLY when nothing was ever stored and the seed flag is
+ * unset: any stored list — including one the user explicitly emptied — always wins.
+ */
+internal fun resolveWhitelistSeed(
+    stored: List<String>,
+    alreadySeeded: Boolean,
+): Pair<List<String>, Boolean> =
+    when {
+        alreadySeeded -> stored to false
+        stored.isEmpty() -> BundledKeywordCatalog.recoveryWhitelistSeed to true
+        else -> stored to false
+    }
+
 fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
     blockingDataStore.data
         .catch { emit(emptyPreferences()) }
         .map { prefs ->
+            val storedWhitelist = stringsFromJson(prefs[KEY_WHITELIST_KEYWORDS])
+            val (whitelistKeywords, shouldPersistSeed) =
+                resolveWhitelistSeed(storedWhitelist, prefs[KEY_WHITELIST_SEEDED] ?: false)
+            if (shouldPersistSeed) {
+                persistWhitelistSeed(whitelistKeywords)
+            }
             BlockingPrefsState(
                 blocklistKeywords = keywordsFromJson(prefs[KEY_BLOCKLIST_KEYWORDS]),
-                whitelistKeywords = stringsFromJson(prefs[KEY_WHITELIST_KEYWORDS]),
+                whitelistKeywords = whitelistKeywords,
                 blockedWebsites = websitesFromJson(prefs[KEY_BLOCKED_WEBSITES]),
                 trustedWebsites = stringsFromJson(prefs[KEY_TRUSTED_WEBSITES]),
                 titleBlockRules = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES]),
@@ -232,6 +254,16 @@ fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
                 blockedToday = prefs[KEY_BLOCKED_TODAY] ?: 0,
             )
         }
+
+/** Persists the one-time seed exactly once; failure degrades to session-only seeding. */
+private suspend fun Context.persistWhitelistSeed(seed: List<String>) {
+    runCatching {
+        blockingDataStore.edit { prefs ->
+            prefs[KEY_WHITELIST_KEYWORDS] = stringsToJson(seed)
+            prefs[KEY_WHITELIST_SEEDED] = true
+        }
+    }
+}
 
 fun Context.blockingEnabled(): Flow<Boolean> =
     blockingDataStore.data
@@ -376,6 +408,8 @@ suspend fun Context.resetUserBlockingPrefs() {
         prefs.remove(KEY_BLOCKED_WEBSITES)
         prefs.remove(KEY_TRUSTED_WEBSITES)
         prefs.remove(KEY_TITLE_BLOCK_RULES)
+        // Explicit reset never re-seeds: keep the seed flag set.
+        prefs[KEY_WHITELIST_SEEDED] = true
     }
 }
 

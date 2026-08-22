@@ -23,6 +23,7 @@ import com.safeme.app.data.normalizeDomain
 import com.safeme.app.data.preventUninstallPrefs
 import com.safeme.app.protect.A11yProtectionGuard
 import com.safeme.app.protect.A11yProtectionUtils
+import com.safeme.app.protect.BrowserUrlGate
 import com.safeme.app.protect.DeviceAdminUtils
 import com.safeme.app.protect.ImageVideoSearchGate
 import com.safeme.app.protect.PrivateDnsBlockers
@@ -535,6 +536,26 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
         val state = cachedState ?: return
         if (!state.blockingEnabled) return
+
+        // Browser URL-bar gate: dedicated site detection for supported
+        // browsers, evaluated BEFORE the generic keyword engine so URL-shaped
+        // text matches domain rules exactly instead of relying on body-text
+        // substrings. Suppression-first inside [BrowserUrlGate.evaluate];
+        // cooldown dedup shares the keyword-engine key space.
+        if (BrowserUrlGate.isBrowserPackage(pkg)) {
+            collectUrlCandidates(snapshot)?.let { candidates ->
+                BrowserUrlGate.evaluate(candidates, state)
+            }?.let { urlMatch ->
+                val key = "$pkg|${urlMatch.value}"
+                val now = SystemClock.elapsedRealtime()
+                if (!(lastBlockKey == key && now - lastBlockAt < COOLDOWN_MS)) {
+                    lastBlockKey = key
+                    lastBlockAt = now
+                    launchGate(pkg, MatchResult(urlMatch.value, urlMatch.type))
+                }
+                return
+            }
+        }
 
         val texts = collectTexts(snapshot.texts)
         if (texts.isEmpty()) return
@@ -1564,6 +1585,75 @@ class SafeMeAccessibilityService : AccessibilityService() {
         } catch (_: Throwable) {
         }
         return out.distinct()
+    }
+
+    /**
+     * URL candidates for [BrowserUrlGate]: event strings plus a bounded
+     * EditText tree-walk fallback (NopoX-parity address-bar extraction).
+     * Fail-open — returns null so the caller falls through to the keyword
+     * engine.
+     */
+    private fun collectUrlCandidates(snapshot: EventSnapshot): List<String>? = try {
+        val raw = ArrayList<String>()
+        try {
+            snapshot.texts.forEach { raw.add(it) }
+        } catch (_: Throwable) {
+        }
+        try {
+            val root = rootInActiveWindow
+            if (root != null) {
+                try {
+                    val entries = ArrayList<Pair<String?, String>>()
+                    collectEditTextEntries(root, entries, 0)
+                    raw.addAll(BrowserUrlGate.urlCandidatesFromNodeEntries(entries))
+                } finally {
+                    recycle(root)
+                }
+            }
+        } catch (_: Throwable) {
+        }
+        BrowserUrlGate.extractUrlCandidates(raw).distinct()
+    } catch (t: Throwable) {
+        Log.w(TAG, "collectUrlCandidates failed — fail open", t)
+        null
+    }
+
+    /**
+     * Bounded walk of [root]'s node tree collecting (className, text) pairs of
+     * EditText nodes only (capped by MAX_DEPTH/MAX_STRINGS). The root itself
+     * is NOT recycled — the caller owns it.
+     */
+    private fun collectEditTextEntries(
+        node: AccessibilityNodeInfo,
+        out: MutableList<Pair<String?, String>>,
+        depth: Int,
+    ) {
+        if (depth > MAX_DEPTH || out.size >= MAX_STRINGS) return
+        try {
+            val cls = node.className?.toString()
+            if (cls != null && cls.endsWith("EditText")) {
+                val t = node.text?.toString()
+                if (!t.isNullOrBlank()) out.add(cls to t)
+            }
+        } catch (_: Throwable) {
+        }
+        val childCount = try {
+            node.childCount
+        } catch (_: Throwable) {
+            0
+        }
+        for (i in 0 until childCount) {
+            val child = try {
+                node.getChild(i)
+            } catch (_: Throwable) {
+                null
+            } ?: continue
+            try {
+                collectEditTextEntries(child, out, depth + 1)
+            } finally {
+                recycle(child)
+            }
+        }
     }
 
     /**

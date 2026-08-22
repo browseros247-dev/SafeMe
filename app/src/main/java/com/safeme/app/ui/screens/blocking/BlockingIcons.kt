@@ -114,6 +114,29 @@ internal val BlkChevronRightIcon: ImageVector by lazy {
     }.build()
 }
 
+internal val BlkChevronLeftIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "BlkChevronLeft",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        val stroke = SolidColor(Color.Black)
+        path(
+            fill = null,
+            stroke = stroke,
+            strokeLineWidth = 2f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(15f, 5f)
+            lineTo(8f, 12f)
+            lineTo(15f, 19f)
+        }
+    }.build()
+}
+
 internal val BlkLayersIcon: ImageVector by lazy {
     ImageVector.Builder(
         name = "BlkLayers",

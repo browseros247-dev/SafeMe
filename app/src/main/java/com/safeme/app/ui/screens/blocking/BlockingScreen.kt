@@ -60,6 +60,7 @@ fun BlockingScreen(
     onOpenKeywords: () -> Unit = {},
     onOpenWebsites: () -> Unit = {},
     onOpenTitleBlock: () -> Unit = {},
+    onOpenOtherFeatures: () -> Unit = {},
     viewModel: BlockingViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -98,11 +99,12 @@ fun BlockingScreen(
                 onWebsitesClick = onOpenWebsites
             )
             SectionTitle(text = stringResource(R.string.blk_more))
-            MoreGrid(
+MoreGrid(
                 onOpenBlockScreen = onOpenBlockScreen,
                 onVpn = onOpenVpn,
                 onOpenTitleBlock = onOpenTitleBlock,
                 onOpenAntiTamper = onOpenAntiTamper,
+                onOpenOtherFeatures = onOpenOtherFeatures,
                 onComingSoon = { viewModel.showToast(comingSoonToast) }
             )
             Spacer(Modifier.size(16.dp))
@@ -115,7 +117,7 @@ fun BlockingScreen(
 }
 
 @Composable
-private fun SubHeader(title: String, onHelp: () -> Unit) {
+internal fun SubHeader(title: String, onHelp: () -> Unit) {
     val colors = LocalAppColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -408,6 +410,53 @@ private fun ManageCard(
     }
 }
 
+/**
+ * NopoX-parity image/video-search engine toggle. Independent of the master
+ * blocking switch (own DataStore flag, PreventUninstall precedent): fires the
+ * gate only when an images/videos search URL AND an adult keyword co-occur.
+ */
+@Composable
+internal fun ImageVideoSearchCard(
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
+    val colors = LocalAppColors.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShape(radius = 18.dp)
+            .padding(14.dp)
+    ) {
+        IconBox(
+            icon = BlkGlobeIcon,
+            background = colors.brandSoft,
+            tint = colors.brandDark,
+            size = 40.dp,
+            iconSize = 20.dp,
+            radius = 13.dp
+        )
+        Spacer(Modifier.size(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.blk_imgvid_title),
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.ink
+            )
+            Text(
+                text = stringResource(R.string.blk_imgvid_sub),
+                fontSize = 11.5.sp,
+                color = colors.ink2,
+                lineHeight = 15.sp,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        Spacer(Modifier.size(12.dp))
+        MasterSwitch(checked = enabled, onToggle = onToggle)
+    }
+}
+
 @Composable
 private fun SegButton(
     text: String,
@@ -459,6 +508,7 @@ private fun MoreGrid(
     onVpn: () -> Unit,
     onOpenTitleBlock: () -> Unit,
     onOpenAntiTamper: () -> Unit,
+    onOpenOtherFeatures: () -> Unit,
     onComingSoon: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -498,16 +548,24 @@ private fun MoreGrid(
                 modifier = Modifier.weight(1f)
             )
         }
-        // The SafeSearch card was removed, so the last entry spans the full row;
-        // a lone half-width card would leave an unbalanced empty margin.
-        MoreCard(
-            icon = BlkCrossIcon,
-            variant = IconVariant.Amber,
-            title = stringResource(R.string.blk_card_titleblock),
-            sub = stringResource(R.string.blk_card_titleblock_sub),
-            onClick = onOpenTitleBlock,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MoreCard(
+                icon = BlkCrossIcon,
+                variant = IconVariant.Amber,
+                title = stringResource(R.string.blk_card_titleblock),
+                sub = stringResource(R.string.blk_card_titleblock_sub),
+                onClick = onOpenTitleBlock,
+                modifier = Modifier.weight(1f)
+            )
+            MoreCard(
+                icon = BlkLayersIcon,
+                variant = IconVariant.Dark,
+                title = stringResource(R.string.blk_card_otherfeatures),
+                sub = stringResource(R.string.blk_card_otherfeatures_sub),
+                onClick = onOpenOtherFeatures,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 

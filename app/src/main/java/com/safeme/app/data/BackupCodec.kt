@@ -23,6 +23,7 @@ enum class BackupSection {
     APP_LOCK,
     PREVENT_UNINSTALL,
     A11Y_PROTECTION,
+    CONTENT_ENGINE,
     BLOCK_SCREEN,
 }
 
@@ -80,6 +81,7 @@ data class BackupSnapshot(
     val appLock: AppLockPrefsState? = null,
     val preventUninstall: PreventUninstallPrefsState? = null,
     val a11yProtection: A11yProtectionPrefsState? = null,
+    val contentEngine: ContentEnginePrefsState? = null,
     val blockScreen: BlockScreenPrefsState? = null,
 ) {
     /** The sections that carry data — in canonical order. */
@@ -91,6 +93,7 @@ data class BackupSnapshot(
         if (appLock != null) add(BackupSection.APP_LOCK)
         if (preventUninstall != null) add(BackupSection.PREVENT_UNINSTALL)
         if (a11yProtection != null) add(BackupSection.A11Y_PROTECTION)
+        if (contentEngine != null) add(BackupSection.CONTENT_ENGINE)
         if (blockScreen != null) add(BackupSection.BLOCK_SCREEN)
     }
 
@@ -102,6 +105,7 @@ data class BackupSnapshot(
         BackupSection.APP_LOCK -> appLock
         BackupSection.PREVENT_UNINSTALL -> preventUninstall
         BackupSection.A11Y_PROTECTION -> a11yProtection
+        BackupSection.CONTENT_ENGINE -> contentEngine
         BackupSection.BLOCK_SCREEN -> blockScreen
     }
 }
@@ -138,6 +142,7 @@ object BackupCodec {
         snapshot.appLock?.let { root.put("appLock", it.toJson()) }
         snapshot.preventUninstall?.let { root.put("preventUninstall", it.toJson()) }
         snapshot.a11yProtection?.let { root.put("a11yProtection", it.toJson()) }
+        snapshot.contentEngine?.let { root.put("contentEngine", it.toJson()) }
         snapshot.blockScreen?.let { root.put("blockScreen", it.toJson()) }
 
         val header = buildString {
@@ -192,6 +197,7 @@ object BackupCodec {
                 appLock = root.parseSection("appLock") { it.parseAppLock() },
                 preventUninstall = root.parseSection("preventUninstall") { it.parsePreventUninstall() },
                 a11yProtection = root.parseSection("a11yProtection") { it.parseA11yProtection() },
+                contentEngine = root.parseSection("contentEngine") { it.parseContentEngine() },
                 blockScreen = root.parseSection("blockScreen") { it.parseBlockScreen() },
             )
         } catch (e: InvalidBackupException) {
@@ -324,6 +330,15 @@ object BackupCodec {
 
     private fun JSONObject.parsePreventUninstall(): PreventUninstallPrefsState =
         PreventUninstallPrefsState(preventUninstallEnabled = boolean("enabled", false))
+
+    private fun ContentEnginePrefsState.toJson(): JSONObject {
+        val o = JSONObject()
+        o.put("blockImageVideoSearch", blockImageVideoSearch)
+        return o
+    }
+
+    private fun JSONObject.parseContentEngine(): ContentEnginePrefsState =
+        ContentEnginePrefsState(blockImageVideoSearch = boolean("blockImageVideoSearch", false))
 
     private fun A11yProtectionPrefsState.toJson(): JSONObject {
         val o = JSONObject()

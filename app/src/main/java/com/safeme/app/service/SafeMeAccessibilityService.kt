@@ -18,11 +18,13 @@ import com.safeme.app.data.BundledKeywords
 import com.safeme.app.data.TitleBlockRule
 import com.safeme.app.data.TitleMatchMode
 import com.safeme.app.data.blockingPrefs
+import com.safeme.app.data.contentEnginePrefs
 import com.safeme.app.data.normalizeDomain
 import com.safeme.app.data.preventUninstallPrefs
 import com.safeme.app.protect.A11yProtectionGuard
 import com.safeme.app.protect.A11yProtectionUtils
 import com.safeme.app.protect.DeviceAdminUtils
+import com.safeme.app.protect.ImageVideoSearchGate
 import com.safeme.app.protect.ProtectedSystemPages
 import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.protect.UninstallBlockers
@@ -102,6 +104,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private var cachedPuEnabled: Boolean = false
 
     @Volatile
+    private var cachedImageVideoSearchEnabled: Boolean = false
+
+    @Volatile
     private var lastBlockKey: String? = null
 
     @Volatile
@@ -148,6 +153,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
     /** Last PU content-event tree probe timestamp — throttles CONTENT_CHANGED/focus floods. */
     @Volatile
     private var lastPuContentProbeMs: Long = 0L
+
+    /** Last image/video-search content-event tree probe timestamp — throttles event floods. */
+    @Volatile
+    private var lastImageVideoProbeMs: Long = 0L
 
     /** Stored runnable for the eviction toast — [M3 fix] allows cancellation on service destroy. */
     private var pendingToastRunnable: Runnable? = null
@@ -203,6 +212,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 preventUninstallPrefs().collect { cachedPuEnabled = it.preventUninstallEnabled }
             } catch (t: Throwable) {
                 cachedPuEnabled = false
+            }
+        }
+        serviceScope.launch {
+            try {
+                contentEnginePrefs().collect {
+                    cachedImageVideoSearchEnabled = it.blockImageVideoSearch
+                }
+            } catch (t: Throwable) {
+                cachedImageVideoSearchEnabled = false
             }
         }
         // PU watchdog: enforces eviction of our own a11y detail page on every
@@ -415,6 +433,19 @@ class SafeMeAccessibilityService : AccessibilityService() {
                     handlePreventUninstallContentEvent(snapshot)
                 } catch (t: Throwable) {
                     Log.w(TAG, "PU content-event check failed — fail open", t)
+                }
+            }
+            // [Image/video search gate] Browser-scoped content-event probe:
+            // image-search results pages usually render without a fresh
+            // window-state change, so the window path misses them. Same
+            // fail-open discipline as the PU branch above.
+            if (cachedImageVideoSearchEnabled &&
+                ImageVideoSearchGate.isImageSearchBrowser(snapshot.pkg)
+            ) {
+                try {
+                    handleImageVideoSearchProbe(snapshot)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "imgvid content-event check failed — fail open", t)
                 }
             }
             return
@@ -656,6 +687,54 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // then returns false), so this call is side-effecting — its return
             // value is not a "not gated" signal and the gate cooldown dedupes.
             isOurUninstallTargetPageInTree(root, pkg, cls)
+        } finally {
+            recycle(root)
+        }
+    }
+
+    /**
+     * [Image/video search gate] Browser-scoped tree probe for non-window-state
+     * events: collects the active-window text pool (event texts + bounded walk),
+     * then requires BOTH an images/videos search-URL signature AND an adult
+     * keyword in the same pool before raising the gate. Throttled on
+     * content-changed/focus floods like the PU path; deliberate clicks probe
+     * immediately (the cooldown dedupes double-fires).
+     */
+    private fun handleImageVideoSearchProbe(snapshot: EventSnapshot) {
+        rearmCooldownsIfGateDismissed()
+        val pkg = snapshot.pkg ?: return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage || pkg == "com.android.systemui") return
+        if (!ImageVideoSearchGate.isImageSearchBrowser(pkg)) return
+
+        val now = SystemClock.elapsedRealtime()
+        val throttled = snapshot.type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+            snapshot.type == AccessibilityEvent.TYPE_VIEW_FOCUSED
+        if (throttled && now - lastImageVideoProbeMs < IMGVID_PROBE_THROTTLE_MS) return
+        lastImageVideoProbeMs = now
+
+        val root = try {
+            rootInActiveWindow
+        } catch (t: Throwable) {
+            null
+        } ?: return
+        try {
+            // Scope the probe to the browser's own active window so another
+            // app's transient window can never supply matching text.
+            val rootPkg = runCatching { root.packageName?.toString() }.getOrNull()
+            if (rootPkg != null && rootPkg != pkg) return
+            val texts = collectTexts(snapshot.texts).map { it.lowercase(Locale.US) }
+            val match = ImageVideoSearchGate.matches(
+                pkg,
+                texts,
+                cachedState ?: return,
+            ) ?: return
+            val key = "$pkg|imgvid"
+            if (lastBlockKey == key && now - lastBlockAt < COOLDOWN_MS) return
+            lastBlockKey = key
+            lastBlockAt = now
+            Log.d(TAG, "imgvid: gate launched (pkg=$pkg kind=${match.kind})")
+            launchGate(pkg, MatchResult(match.signature, ImageVideoSearchGate.GATE_TYPE))
         } finally {
             recycle(root)
         }
@@ -1625,6 +1704,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // at most once per window on those events. Deliberate clicks probe
         // immediately — the PU gate cooldown dedupes double-fires.
         const val PU_CONTENT_PROBE_THROTTLE_MS = 250L
+        // [Image/video search gate] Same flood discipline as the PU content
+        // probe: CONTENT_CHANGED/focus events probe at most once per window;
+        // deliberate clicks probe immediately.
+        const val IMGVID_PROBE_THROTTLE_MS = 250L
 
         /**
          * [Launcher pre-empt] A launcher "App info"/"Remove" click qualifies

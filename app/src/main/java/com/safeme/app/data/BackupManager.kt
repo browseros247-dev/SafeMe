@@ -43,6 +43,7 @@ suspend fun Context.createBackup(): BackupFile {
         appLock = appLockPrefs().first(),
         preventUninstall = preventUninstallPrefs().first(),
         a11yProtection = a11yProtectionPrefs().first(),
+        contentEngine = contentEnginePrefs().first(),
         blockScreen = blockScreenPrefs().first(),
     )
     val jsonc = BackupCodec.toJsonc(snapshot, appVersion = version, createdAt = now.toString())
@@ -109,6 +110,7 @@ fun Context.backupStores(): Map<BackupSection, BackupStateStore> = mapOf(
     BackupSection.APP_LOCK to AppLockStore(this),
     BackupSection.PREVENT_UNINSTALL to PreventUninstallStore(this),
     BackupSection.A11Y_PROTECTION to A11yProtectionStore(this),
+    BackupSection.CONTENT_ENGINE to ContentEngineStore(this),
     BackupSection.BLOCK_SCREEN to BlockScreenStore(this),
 )
 
@@ -158,6 +160,13 @@ private class A11yProtectionStore(private val context: Context) : BackupStateSto
     override suspend fun read(): Any? = context.a11yProtectionPrefs().first()
     override suspend fun write(value: Any?) {
         if (value != null) context.writeA11yProtectionPrefs(value as A11yProtectionPrefsState)
+    }
+}
+
+private class ContentEngineStore(private val context: Context) : BackupStateStore {
+    override suspend fun read(): Any? = context.contentEnginePrefs().first()
+    override suspend fun write(value: Any?) {
+        if (value != null) context.setBlockImageVideoSearch((value as ContentEnginePrefsState).blockImageVideoSearch)
     }
 }
 

@@ -36,6 +36,7 @@ import com.safeme.app.ui.screens.antitamper.ServicePickerScreen
 import com.safeme.app.ui.screens.applock.AppLockScreen
 import com.safeme.app.ui.screens.backup.BackupScreen
 import com.safeme.app.ui.screens.blocking.BlockingScreen
+import com.safeme.app.ui.screens.blocking.OtherFeaturesScreen
 import com.safeme.app.ui.screens.blockscreen.BlockScreen
 import com.safeme.app.ui.screens.history.HistoryScreen
 import com.safeme.app.ui.screens.home.HomeScreen
@@ -125,6 +126,7 @@ fun MainScreen() {
                         navController.navigate("keywords?type=websites&tab=blocked")
                     },
                     onOpenTitleBlock = { navController.navigate("titleblock") },
+                    onOpenOtherFeatures = { navController.navigate("otherfeatures") },
                 )
             }
             composable("blockscreen") {
@@ -210,6 +212,9 @@ fun MainScreen() {
             }
             composable("titleblock") {
                 TitleBlockScreen(onBack = { navController.popBackStack() })
+            }
+            composable("otherfeatures") {
+                OtherFeaturesScreen(onBack = { navController.popBackStack() })
             }
         }
     }

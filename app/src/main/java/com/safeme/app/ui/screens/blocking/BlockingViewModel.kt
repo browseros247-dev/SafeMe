@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.safeme.app.R
 import com.safeme.app.data.BundledKeywords
 import com.safeme.app.data.blockingPrefs
+import com.safeme.app.data.contentEnginePrefs
+import com.safeme.app.data.setBlockImageVideoSearch
 import com.safeme.app.data.setBlockingEnabled
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,6 +25,7 @@ data class BlockingUiState(
     val keywords: String = "0",
     val layersActive: String = "3",
     val manageSub: String = "",
+    val blockImageVideoSearch: Boolean = false,
 )
 
 class BlockingViewModel(application: Application) : AndroidViewModel(application) {
@@ -46,16 +49,28 @@ class BlockingViewModel(application: Application) : AndroidViewModel(application
                         state.blockedWebsites.size.toString(),
                         state.trustedWebsites.size.toString(),
                     )
-                    _uiState.value = BlockingUiState(
-                        blocking = state.blockingEnabled,
-                        blockedToday = state.blockedToday.toString(),
-                        keywords = formatCount(keywordCount),
-                        layersActive = "3",
-                        manageSub = manageSub,
-                    )
+                    _uiState.update {
+                        it.copy(
+                            blocking = state.blockingEnabled,
+                            blockedToday = state.blockedToday.toString(),
+                            keywords = formatCount(keywordCount),
+                            layersActive = "3",
+                            manageSub = manageSub,
+                        )
+                    }
                 }
             } catch (t: Throwable) {
                 _uiState.value = BlockingUiState()
+            }
+        }
+        viewModelScope.launch {
+            try {
+                app.contentEnginePrefs().collect { state ->
+                    _uiState.update {
+                        it.copy(blockImageVideoSearch = state.blockImageVideoSearch)
+                    }
+                }
+            } catch (_: Throwable) {
             }
         }
     }
@@ -73,6 +88,23 @@ class BlockingViewModel(application: Application) : AndroidViewModel(application
             } catch (t: Throwable) {
                 // Persistence failure: keep the UI in sync with the last known state.
                 _uiState.update { it.copy(blocking = !next) }
+            }
+        }
+    }
+
+    fun toggleImageVideoSearch() {
+        val next = !_uiState.value.blockImageVideoSearch
+        _uiState.update { it.copy(blockImageVideoSearch = next) }
+        val message = app.getString(
+            if (next) R.string.blk_toast_on else R.string.blk_toast_off
+        )
+        _toasts.tryEmit(message)
+        viewModelScope.launch {
+            try {
+                app.setBlockImageVideoSearch(next)
+            } catch (t: Throwable) {
+                // Persistence failure: keep the UI in sync with the last known state.
+                _uiState.update { it.copy(blockImageVideoSearch = !next) }
             }
         }
     }

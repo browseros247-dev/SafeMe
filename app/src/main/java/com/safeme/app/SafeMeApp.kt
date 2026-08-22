@@ -4,6 +4,7 @@ import android.app.Application
 import com.safeme.app.data.ThemePref
 import com.safeme.app.data.a11yProtectionPrefs
 import com.safeme.app.data.appLockPrefs
+import com.safeme.app.data.contentEnginePrefs
 import com.safeme.app.data.preventUninstallPrefs
 import com.safeme.app.data.schedulePrefs
 import com.safeme.app.data.themePref
@@ -81,6 +82,9 @@ class SafeMeApp : Application() {
                 app.a11yProtectionPrefs()
                     .combine(app.preventUninstallPrefs()) { a11y, pu ->
                         a11y.protectionEnabled || pu.preventUninstallEnabled
+                    }
+                    .combine(app.contentEnginePrefs()) { keepAlive, ce ->
+                        keepAlive || ce.blockImageVideoSearch
                     }
                     .collect { keepAlive ->
                         if (keepAlive) {

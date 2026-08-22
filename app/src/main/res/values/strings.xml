@@ -182,6 +182,7 @@
     <string name="backup_section_app_lock">App Lock</string>
     <string name="backup_section_prevent_uninstall">Prevent Uninstall</string>
     <string name="backup_section_a11y">Accessibility Protection</string>
+    <string name="backup_section_content_engine">Content Engines</string>
     <string name="backup_section_block_screen">Block Screen</string>
     <string name="backup_toast_exported">Backup exported</string>
     <string name="backup_toast_export_failed">Couldn\'t export backup</string>
@@ -206,7 +207,8 @@
     <string name="blk_manage_sub">%1$s keywords · %2$s websites · %3$s trusted</string>
     <string name="blk_seg_keywords">Keywords</string>
     <string name="blk_seg_websites">Websites</string>
-    <string name="blk_more">More blocking</string>
+    <string name="blk_imgvid_title">Block Image &amp; Video Search</string>
+    <string name="blk_imgvid_sub">Adult-term searches · Google · Bing · DuckDuckGo · Yandex</string>    <string name="blk_more">More blocking</string>
     <string name="blk_card_appfeature">App-Feature</string>
     <string name="blk_card_appfeature_sub">Reels · Shorts · Stories</string>
     <string name="blk_card_blockscreen">Block Screen</string>
@@ -217,6 +219,8 @@
     <string name="blk_card_antitamper_sub">Prevent uninstall · power menu</string>
     <string name="blk_card_titleblock">Block Settings by Title</string>
     <string name="blk_card_titleblock_sub">System pages · app titles</string>
+    <string name="blk_card_otherfeatures">Some Other Features</string>
+    <string name="blk_card_otherfeatures_sub">Image/video search · more</string>
     <string name="blk_toast_on">On</string>
     <string name="blk_toast_off">Off</string>
     <string name="blk_coming_soon">Coming soon</string>

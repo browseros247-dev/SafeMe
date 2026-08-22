@@ -59,6 +59,7 @@ class BackupManagerTest {
         ),
         preventUninstall = PreventUninstallPrefsState(preventUninstallEnabled = true),
         a11yProtection = A11yProtectionPrefsState(protectionEnabled = true, protectedComponents = setOf("pkg/svc")),
+        contentEngine = ContentEnginePrefsState(blockImageVideoSearch = true),
         blockScreen = BlockScreenPrefsState(dwell = 8, message = "Focus", whyOn = false),
     )
 
@@ -74,6 +75,7 @@ class BackupManagerTest {
         put(BackupSection.APP_LOCK, FakeStore(AppLockPrefsState(lockType = LockType.OFF)))
         put(BackupSection.PREVENT_UNINSTALL, FakeStore(PreventUninstallPrefsState(preventUninstallEnabled = false)))
         put(BackupSection.A11Y_PROTECTION, FakeStore(A11yProtectionPrefsState(protectionEnabled = false)))
+        put(BackupSection.CONTENT_ENGINE, FakeStore(ContentEnginePrefsState(blockImageVideoSearch = false)))
         put(BackupSection.BLOCK_SCREEN, FakeStore(BlockScreenPrefsState(dwell = 5)))
     }.mapValues { (section, store) ->
         when (section) {
@@ -102,6 +104,7 @@ class BackupManagerTest {
         assertEquals(restored.appLock, stores[BackupSection.APP_LOCK]?.value)
         assertEquals(restored.preventUninstall, stores[BackupSection.PREVENT_UNINSTALL]?.value)
         assertEquals(restored.a11yProtection, stores[BackupSection.A11Y_PROTECTION]?.value)
+        assertEquals(restored.contentEngine, stores[BackupSection.CONTENT_ENGINE]?.value)
         assertEquals(restored.blockScreen, stores[BackupSection.BLOCK_SCREEN]?.value)
     }
 

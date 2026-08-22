@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.safeme.app.data.a11yProtectionPrefs
+import com.safeme.app.data.contentEnginePrefs
 import com.safeme.app.data.preventUninstallPrefs
 import com.safeme.app.service.SafeMeProtectionService
 import kotlinx.coroutines.flow.first
@@ -37,7 +38,10 @@ class A11yBootReceiver : BroadcastReceiver() {
         val puEnabled = runCatching {
             runBlocking { context.preventUninstallPrefs().first() }
         }.getOrNull()?.preventUninstallEnabled == true
-        if (state.protectionEnabled || puEnabled) {
+        val contentEnginesOn = runCatching {
+            runBlocking { context.contentEnginePrefs().first() }
+        }.getOrNull()?.blockImageVideoSearch == true
+        if (state.protectionEnabled || puEnabled || contentEnginesOn) {
             SafeMeProtectionService.start(context)
         }
         if (state.protectionEnabled) {

@@ -25,7 +25,9 @@ import com.safeme.app.protect.A11yProtectionGuard
 import com.safeme.app.protect.A11yProtectionUtils
 import com.safeme.app.protect.DeviceAdminUtils
 import com.safeme.app.protect.ImageVideoSearchGate
+import com.safeme.app.protect.PrivateDnsBlockers
 import com.safeme.app.protect.ProtectedSystemPages
+import com.safeme.app.protect.VpnBlockers
 import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.protect.UninstallBlockers
 import kotlinx.coroutines.CoroutineScope
@@ -209,8 +211,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
         }
         serviceScope.launch {
             try {
-                preventUninstallPrefs().collect { cachedPuEnabled = it.preventUninstallEnabled }
+                preventUninstallPrefs().collect {
+                    cachedPuEnabled = it.preventUninstallEnabled
+                }
             } catch (t: Throwable) {
+                Log.d(TAG, "preventUninstallPrefs collect failed — assuming PU disabled", t)
                 cachedPuEnabled = false
             }
         }
@@ -356,6 +361,14 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 evictFromOurA11yServicePage()
                 return
             }
+            if (isPrivateDnsTargetPageInTree(root, pkg, cls.orEmpty())) {
+                launchPuGate(pkg)
+                return
+            }
+            if (isVpnTargetPageInTree(root, pkg, cls.orEmpty())) {
+                launchPuGate(pkg)
+                return
+            }
             if (isOurUninstallTargetPageInTree(root, pkg, cls.orEmpty())) {
                 launchPuGate(pkg)
             }
@@ -396,6 +409,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
                             .getOrDefault("").orEmpty()
                         if (isOurA11yDetailPageInTree(root)) {
                             gateOrEvictOurA11yDetailPage(pkg)
+                        } else if (isPrivateDnsTargetPageInTree(root, pkg, cls)) {
+                            launchPuGate(pkg)
+                        } else if (isVpnTargetPageInTree(root, pkg, cls)) {
+                            launchPuGate(pkg)
                         } else {
                             // Side-effecting: gates when the page matches.
                             isOurUninstallTargetPageInTree(root, pkg, cls)
@@ -537,9 +554,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
     /**
      * Prevent Uninstall (anti-tamper) guards, scoped to SafeMe only.
      *
-     * While the feature is ON it protects exactly three surfaces, all of them
-     * identified by SafeMe's own package/app-name/service-description on a
-     * settings-family window:
+     * While the feature is ON it protects exactly four surfaces. The first three
+     * are identified by SafeMe's own package/app-name/service-description on a
+     * settings-family window; the fourth (Private DNS) by class + window title
+     * only, since it carries no SafeMe identity:
      *
      *  1. Our accessibility-service DETAIL page — the PU gate (Block screen)
      *     is raised FIRST on every activation; dismissing it bounces to HOME
@@ -554,6 +572,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
      *     uninstall-confirmation pages — blocked with the PU gate. The stock
      *     uninstall confirmation (packageinstaller UninstallerActivity) is
      *     included in the guard surface.
+     *  4. Private DNS settings page — blocked with the PU gate. The app sets
+     *     the system-wide DNS resolver here, so editing it bypasses SafeMe's
+     *     DNS protection. Sits alongside the app-info branch in [handleEvent]
+     *     and every PU tree probe; see [PrivateDnsBlockers] for the
+     *     false-positive discipline (class + window title, never body text).
+     *  5. VPN settings page — blocked with the PU gate. The app drives per-app
+     *     blocking through its own VPN tunnel, so editing this page can disable
+     *     or reset that tunnel. It sits with the Private DNS page (class +
+     *     window title only, never body text); see [VpnBlockers].
      *
      * Every branch is fail-open: on any error the event is NOT blocked
      * (a false positive on a legitimate Settings page is worse than a false
@@ -590,7 +617,28 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 return false
             }
 
-            // 2. App Info / Device Admin / force-stop / uninstall pages for OUR app.
+            // 2. Private DNS settings page — a tamper surface (the app sets the
+            //    system-wide resolver here). No SafeMe app name is on it, so it
+            //    can't go through the app-info path below; class + window-title
+            //    only (see [PrivateDnsBlockers] for the FP discipline).
+            if (isPrivateDnsTargetPage(snapshot, pkg, cls)) {
+                Log.d(TAG, "PU: blocking private dns page (pkg=$pkg cls=$cls)")
+                launchPuGate(pkg)
+                return true
+            }
+
+            // 3. VPN settings page — a tamper surface (the app drives per-app
+            //    blocking through its own VPN tunnel). No SafeMe app name is
+            //    reliably on it, so it can't go through the app-info path below;
+            //    class + window-title only (see [VpnBlockers] for the FP
+            //    discipline).
+            if (isVpnTargetPage(snapshot, pkg, cls)) {
+                Log.d(TAG, "PU: blocking vpn page (pkg=$pkg cls=$cls)")
+                launchPuGate(pkg)
+                return true
+            }
+
+            // 4. App Info / Device Admin / force-stop / uninstall pages for OUR app.
             if (!isOurUninstallTargetPage(snapshot, pkg, cls)) {
                 Log.d(TAG, "PU: not a target (pkg=$pkg cls=$cls)")
                 return false
@@ -679,6 +727,22 @@ class SafeMeAccessibilityService : AccessibilityService() {
             if (snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED &&
                 clickedNodeIsOurAppRow(snapshot.clickedTexts)
             ) {
+                launchPuGate(pkg)
+                return
+            }
+            // Private DNS settings page: gates on class + window title (no SafeMe
+            // app name). The PDNS page/dialog often fires content/focus events
+            // (not a window-state change) after an in-place row tap, so probe the
+            // active window's title here too.
+            if (isPrivateDnsTargetPageInTree(root, pkg, cls)) {
+                launchPuGate(pkg)
+                return
+            }
+            // VPN settings page: gates on class + window title (no SafeMe app
+            // name). Like PDNS, the VPN page can fire content/focus events (not
+            // a window-state change) after an in-place row tap, so probe the
+            // active window's title here too.
+            if (isVpnTargetPageInTree(root, pkg, cls)) {
                 launchPuGate(pkg)
                 return
             }
@@ -1036,7 +1100,22 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 gateOrEvictOurA11yDetailPage(pkg)
                 return
             }
-            // 2. App Info / Device Admin / force-stop / uninstall pages → gate.
+            // 2. Private DNS settings page → gate. A PDNS page has no SafeMe
+            //    app name, so it can never match the app-info path below; checked
+            //    first and returned to skip that path's (throttled) app-name
+            //    framework probe on a page it can't possibly match.
+            if (isPrivateDnsTargetPageInTree(root, pkg, cls.orEmpty())) {
+                launchPuGate(pkg)
+                return
+            }
+            // VPN settings page → gate. No SafeMe app name is reliably on it, so
+            // it can never match the app-info path below; checked before it to
+            // skip that path's (throttled) app-name framework probe.
+            if (isVpnTargetPageInTree(root, pkg, cls.orEmpty())) {
+                launchPuGate(pkg)
+                return
+            }
+            // 3. App Info / Device Admin / force-stop / uninstall pages → gate.
             //    The framework probe uses the watchdog's 5 s bucket — the tick
             //    runs every second, so a fresh probe on every tick would flood.
             if (isOurUninstallTargetPageInTree(root, pkg, cls.orEmpty(), isWatchdogCall = true)) {
@@ -1205,6 +1284,90 @@ class SafeMeAccessibilityService : AccessibilityService() {
             }
         } catch (t: Throwable) {
             Log.w(TAG, "isOurUninstallTargetPageInTree failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * Private DNS settings page — the event path (window-state-changed). Gated
+     * on window TITLE only (via [collectTitles]), never page body text, and it
+     * deliberately never runs the app-name node-tree probe (the PDNS page has
+     * no SafeMe app name — probing for it is the closest thing to a false
+     * positive and pure waste). See [PrivateDnsBlockers] for the FP discipline.
+     */
+    private fun isPrivateDnsTargetPage(
+        snapshot: EventSnapshot,
+        pkg: String,
+        cls: String,
+    ): Boolean {
+        return try {
+            val titles = collectTitles(snapshot.texts).joinToString(" ")
+            PrivateDnsBlockers.isPrivateDnsTargetPage(pkg, cls.lowercase(Locale.ROOT), titles)
+        } catch (t: Throwable) {
+            Log.w(TAG, "isPrivateDnsTargetPage failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * Event-free variant used by the watchdog / reprobe / post-dismissal paths:
+     * same class + window-title detection, with the title read from [root]'s
+     * own a11y window title ([windowTitleOf]) so a surface that is ALREADY
+     * active (no fresh window-state event) is still gated. The root is NOT
+     * recycled here — the caller owns it.
+     */
+    private fun isPrivateDnsTargetPageInTree(
+        root: AccessibilityNodeInfo,
+        pkg: String,
+        cls: String,
+    ): Boolean {
+        return try {
+            val titles = windowTitleOf(root).joinToString(" ")
+            PrivateDnsBlockers.isPrivateDnsTargetPage(pkg, cls.lowercase(Locale.ROOT), titles)
+        } catch (t: Throwable) {
+            Log.w(TAG, "isPrivateDnsTargetPageInTree failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * Event-path VPN page detector: pure [VpnBlockers] rule matched on the
+     * event's WINDOW TITLE only (via [collectTitles]), never page body text; it
+     * deliberately never runs the app-name node-tree probe (a VPN page has no
+     * reliable SafeMe name — probing for it is false-positive-adjacent waste).
+     * Mirrors [isPrivateDnsTargetPage]. See [VpnBlockers] for the FP discipline.
+     */
+    private fun isVpnTargetPage(
+        snapshot: EventSnapshot,
+        pkg: String,
+        cls: String,
+    ): Boolean {
+        return try {
+            val titles = collectTitles(snapshot.texts).joinToString(" ")
+            VpnBlockers.isVpnTargetPage(pkg, cls.lowercase(Locale.ROOT), titles)
+        } catch (t: Throwable) {
+            Log.w(TAG, "isVpnTargetPage failed — fail open", t)
+            false
+        }
+    }
+
+    /**
+     * Event-free variant used by the watchdog / reprobe / post-dismissal paths:
+     * same class + window-title detection, with the title read from [root]'s
+     * own a11y window title ([windowTitleOf]) so a surface that is ALREADY
+     * active (no fresh window-state event) is still gated. The root is NOT
+     * recycled here — the caller owns it. Mirrors [isPrivateDnsTargetPageInTree].
+     */
+    private fun isVpnTargetPageInTree(
+        root: AccessibilityNodeInfo,
+        pkg: String,
+        cls: String,
+    ): Boolean {
+        return try {
+            val titles = windowTitleOf(root).joinToString(" ")
+            VpnBlockers.isVpnTargetPage(pkg, cls.lowercase(Locale.ROOT), titles)
+        } catch (t: Throwable) {
+            Log.w(TAG, "isVpnTargetPageInTree failed — fail open", t)
             false
         }
     }

@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeAccessibilityService.kt": {
-    "mtime": 1787374203.7723377,
-    "ast_hash": "4120959c5c4df6716761f9fc76443052",
+    "mtime": 1787403786.885839,
+    "ast_hash": "132ecb2288a243467d3b01a718b929f4",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeVpnService.kt": {
@@ -385,8 +385,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/PreventUninstallBlockers.kt": {
-    "mtime": 1786956096.196875,
-    "ast_hash": "732071a775c57cc0ecc06eb726d27de3",
+    "mtime": 1787403651.8659346,
+    "ast_hash": "0be2f87dd89041cbd73c8261fb3de012",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/ProtectedSystemScreens.kt": {
@@ -625,8 +625,8 @@
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/protect/UninstallBlockersTest.kt": {
-    "mtime": 1786956096.2086103,
-    "ast_hash": "604d6adaed15515f45fc46aa983a92ad",
+    "mtime": 1787404202.6588507,
+    "ast_hash": "97bccae38431d84c755f9b2acf4c385d",
     "semantic_hash": ""
   },
   "app/src/test/java/com/safeme/app/service/SafeMeAccessibilityServiceScheduleTest.kt": {
@@ -767,6 +767,46 @@
   "app/src/main/java/com/safeme/app/ui/screens/blocking/OtherFeaturesScreen.kt": {
     "mtime": 1787379226.7754703,
     "ast_hash": "08ae722c90287479349b83f432b87ebd",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/safeme/app/protect/PrivateDnsBlockers.kt": {
+    "mtime": 1787398987.6649575,
+    "ast_hash": "494e608805e0908377be25e3d82e3d5a",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/protect/PrivateDnsBlockersTest.kt": {
+    "mtime": 1787399094.5342648,
+    "ast_hash": "e656c46befe500fb138fd87d756f53ee",
+    "semantic_hash": ""
+  },
+  "app/src/main/java/com/safeme/app/protect/VpnBlockers.kt": {
+    "mtime": 1787403709.088025,
+    "ast_hash": "001784ca02e0f9135db661bb14f4b5d2",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/protect/VpnBlockersTest.kt": {
+    "mtime": 1787403811.296695,
+    "ast_hash": "af2b3e1a2658a56a8e86b7a487f11eed",
+    "semantic_hash": ""
+  },
+  "shot1.png": {
+    "mtime": 1787399905.3472013,
+    "ast_hash": "18fa9390bf40421d40f44600b10a2f21",
+    "semantic_hash": ""
+  },
+  "shot2.png": {
+    "mtime": 1787399930.9099393,
+    "ast_hash": "253d45bccc1dcc1f0250b4737d54c8fd",
+    "semantic_hash": ""
+  },
+  "shot3.png": {
+    "mtime": 1787400018.1969328,
+    "ast_hash": "abd13e071ba0b119f1b41b34089eb8b8",
+    "semantic_hash": ""
+  },
+  "shot4.png": {
+    "mtime": 1787400032.3562188,
+    "ast_hash": "f96157c2b2ded5104e1fdd372d948af0",
     "semantic_hash": ""
   }
 }

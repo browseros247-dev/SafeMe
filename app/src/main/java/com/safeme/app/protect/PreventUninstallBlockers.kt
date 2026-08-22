@@ -43,10 +43,17 @@ object UninstallBlockers {
 
     /**
      * Class-name markers for the app-info page of an installed app (hosted by
-     * Settings on AOSP/OEM). "subsettings" alone is ambiguous (it also hosts
-     * the a11y detail page on modern AOSP) — the caller must ALSO confirm our
-     * app name is on page AND exclude our a11y detail page (description
-     * fingerprint) before treating SubSettings as our App Info page.
+     * Settings on AOSP/OEM). Deliberately does NOT include the generic
+     * "subsettings" container: on AOSP every Settings sub-page (Network &
+     * internet, VPN, and so on) is hosted in com.android.settings.SubSettings,
+     * and those pages mention "SafeMe" whenever a SafeMe VPN exists (e.g. the
+     * "VPN: SafeMe" row) — treating any SubSettings page that merely contains
+     * our app name as our App Info page over-blocks it. Real App Info pages are
+     * still matched by the specific markers below and by the uninstall keywords
+     * (uninstall / force stop / clear data / storage / permissions), which every
+     * App Info page exposes. The caller must also exclude our a11y detail page
+     * (description fingerprint) before treating SubSettings as our App Info
+     * page.
      */
     val APP_INFO_CLASS_MARKERS: List<String> = listOf(
         "appinfodashboard",
@@ -56,7 +63,6 @@ object UninstallBlockers {
         "appinfo",
         "appdetails",
         "appdetail",
-        "subsettings",
     )
 
     val UNINSTALL_KEYWORDS: List<String> = listOf(

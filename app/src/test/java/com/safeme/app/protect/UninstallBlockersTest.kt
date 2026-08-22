@@ -62,6 +62,27 @@ class UninstallBlockersTest {
         )
     }
 
+    @Test
+    fun genericSubSettingsPageWithAppNameButNoKeywordsIsNotTarget() {
+        // [FP fix] The Network & internet page is hosted in SubSettings and its
+        // body contains "SafeMe" (the "VPN: SafeMe" row) when the app's VPN is
+        // configured. The old "subsettings" class marker gated it; only pages
+        // with real app-info markers or uninstall keywords may gate now.
+        assertFalse(
+            isTarget(
+                lowerClass = "com.android.settings.SubSettings",
+                lowerText = "network internet vpn safeme private dns airplane mode",
+            )
+        )
+    }
+
+    @Test
+    fun appInfoClassMarkerStillTargetsWithoutKeyword() {
+        // Real App Info markers keep working without any uninstall keyword on
+        // the page (regression guard for the subsettings removal).
+        assertTrue(isTarget())
+    }
+
     // ---- Device Admin: deactivation is a target, activation never is ----
 
     @Test

@@ -68,6 +68,22 @@ internal fun isExcludedFromContentEngine(
     (fgPkg != null && fgPkg in excluded)
 
 /**
+ * True when the content engine would be evaluating SafeMe's OWN UI: either
+ * the event was emitted by our own package, or the foreground window being
+ * walked belongs to us. Our screens legitimately contain blocklist words
+ * (the keyword editor, the exclude-apps sheet copy, the gate's own
+ * "Why:" text), and foreign-package events (IME, systemui) can carry those
+ * texts through the rootInActiveWindow tree walk — so without this guard
+ * SafeMe gates itself. Unconditional: the app picker deliberately hides
+ * our own package, so users cannot self-exclude via the exclude list.
+ */
+internal fun isOwnUiEvent(
+    ownPackage: String?,
+    eventPkg: String?,
+    fgPkg: String?,
+): Boolean = ownPackage != null && (eventPkg == ownPackage || fgPkg == ownPackage)
+
+/**
  * [App content re-check] Search results pages usually paint via
  * CONTENT_CHANGED events AFTER the window-state event already saw an
  * unpainted page; without probing those events the keyword/URL engine
@@ -606,6 +622,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // because foreign-package events can carry this app's window texts.
         val fgPkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
             ?: lastForegroundPkg ?: pkg
+        // Own UI: our screens legitimately contain blocklist words (keyword
+        // editor, exclude-apps sheet, gate "Why:" text) — never evaluate
+        // them, whoever emitted the event (IME events carry our texts).
+        if (isOwnUiEvent(ownPackage, pkg, fgPkg)) {
+            Log.d(TAG, "exclude: own UI suppressed (event=$pkg fg=$fgPkg)")
+            return
+        }
         if (isExcludedFromContentEngine(pkg, fgPkg, state.excludedApps)) {
             Log.d(TAG, "exclude: suppressed content engine (event=$pkg fg=$fgPkg)")
             return

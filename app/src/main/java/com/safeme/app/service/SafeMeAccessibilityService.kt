@@ -2,6 +2,7 @@ package com.safeme.app.service
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
 import android.os.Build
@@ -38,6 +39,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import java.util.Locale
 
 internal const val SCHEDULE_RECHECK_THROTTLE_MS = 5_000L
@@ -47,6 +50,38 @@ internal fun shouldThrottleScheduleRecheck(
     nowMs: Long,
     force: Boolean,
 ): Boolean = !force && nowMs - lastRecheckMs < SCHEDULE_RECHECK_THROTTLE_MS
+
+/**
+ * True when either the event-emitting package or the actual foreground
+ * package is on the exclude list. Dual-checking is required because events
+ * arrive from every installed package (the accessibility config has no
+ * packageNames filter): an IME / GMS / systemui event can carry the
+ * foreground app's texts through the rootInActiveWindow tree walk, so
+ * checking only the event package would let a foreign event block an
+ * excluded app.
+ */
+internal fun isExcludedFromContentEngine(
+    eventPkg: String?,
+    fgPkg: String?,
+    excluded: Set<String>,
+): Boolean = (eventPkg != null && eventPkg in excluded) ||
+    (fgPkg != null && fgPkg in excluded)
+
+/**
+ * [App content re-check] Search results pages usually paint via
+ * CONTENT_CHANGED events AFTER the window-state event already saw an
+ * unpainted page; without probing those events the keyword/URL engine
+ * stays blind until a later window-state carries the rendered text.
+ * Deliberate clicks probe immediately (the gate cooldown dedupes
+ * double-fires); content-changed/focus floods are throttled.
+ */
+internal const val APP_CONTENT_RECHECK_THROTTLE_MS = 250L
+
+internal fun shouldThrottleAppContentRecheck(
+    lastRecheckMs: Long,
+    nowMs: Long,
+    isClick: Boolean,
+): Boolean = !isClick && nowMs - lastRecheckMs < APP_CONTENT_RECHECK_THROTTLE_MS
 
 /**
  * Core blocking engine.
@@ -161,6 +196,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastImageVideoProbeMs: Long = 0L
 
+    /** Last app content-event re-check timestamp — throttles event floods. */
+    @Volatile
+    private var lastAppContentRecheckMs: Long = 0L
+
     /** Stored runnable for the eviction toast — [M3 fix] allows cancellation on service destroy. */
     private var pendingToastRunnable: Runnable? = null
 
@@ -203,12 +242,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        serviceScope.launch {
-            try {
-                blockingPrefs().collect { cachedState = it }
-            } catch (t: Throwable) {
-                cachedState = BlockingPrefsState()
+        // One-time synchronous read to ensure cachedState has the correct values
+        // even if the collect flow fails or lags on rebind.
+        runCatching {
+            runBlocking {
+                val initial = this@SafeMeAccessibilityService.blockingPrefs().first()
+                cachedState = initial
+                Log.d(TAG, "exclude: initial cachedState excluded=${initial.excludedApps}")
             }
+        }.onFailure { t ->
+            cachedState = BlockingPrefsState()
+            Log.w(TAG, "exclude: initial cachedState read failed — using defaults", t)
         }
         serviceScope.launch {
             try {
@@ -227,6 +271,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 }
             } catch (t: Throwable) {
                 cachedImageVideoSearchEnabled = false
+            }
+        }
+        serviceScope.launch {
+            try {
+                blockingPrefs().collect { state ->
+                    cachedState = state
+                }
+            } catch (t: Throwable) {
+                Log.d(TAG, "blockingPrefs collect failed — using initial cached state", t)
             }
         }
         // PU watchdog: enforces eviction of our own a11y detail page on every
@@ -466,6 +519,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
                     Log.w(TAG, "imgvid content-event check failed — fail open", t)
                 }
             }
+            // [App content re-check] Search results pages in ANY app
+            // (browsers, YouTube, Gmail, Play Store, …) usually paint
+            // via CONTENT_CHANGED events AFTER the window-state event saw
+            // an unpainted page — without this probe the keyword/URL engine
+            // stays blind until a later window-state carries the rendered
+            // text. Same fail-open discipline as the branches above.
+            try {
+                handleAppContentRecheck(snapshot)
+            } catch (t: Throwable) {
+                Log.w(TAG, "app content-event check failed — fail open", t)
+            }
             return
         }
 
@@ -536,7 +600,31 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
         val state = cachedState ?: return
         if (!state.blockingEnabled) return
+        // Exclude-apps: selected apps are NEVER blocked by the keyword /
+        // porn-keyword / title / URL content engine — no master toggle, the
+        // membership alone suppresses. Dual-check (event + foreground pkg)
+        // because foreign-package events can carry this app's window texts.
+        val fgPkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+            ?: lastForegroundPkg ?: pkg
+        if (isExcludedFromContentEngine(pkg, fgPkg, state.excludedApps)) {
+            Log.d(TAG, "exclude: suppressed content engine (event=$pkg fg=$fgPkg)")
+            return
+        }
 
+        evaluateContentEngine(snapshot, pkg, state)
+    }
+
+    /**
+     * Shared content-engine evaluation: browser URL-bar gate first, then the
+     * generic keyword/title engine. Used by BOTH the window-state path and
+     * the [handleAppContentRecheck] probe so the two paths can never
+     * drift apart. Callers own the exclusion guard + master-switch checks.
+     */
+    private fun evaluateContentEngine(
+        snapshot: EventSnapshot,
+        pkg: String,
+        state: BlockingPrefsState,
+    ) {
         // Browser URL-bar gate: dedicated site detection for supported
         // browsers, evaluated BEFORE the generic keyword engine so URL-shaped
         // text matches domain rules exactly instead of relying on body-text
@@ -798,6 +886,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (throttled && now - lastImageVideoProbeMs < IMGVID_PROBE_THROTTLE_MS) return
         lastImageVideoProbeMs = now
 
+        // Exclude-apps: bypass the image/video search gate for excluded
+        // packages — membership alone suppresses, no master toggle. Dual-check
+        // mirrors the window path (foreign events can carry browser texts).
+        val s = cachedState
+        val probeFgPkg = runCatching { rootInActiveWindow?.packageName?.toString() }.getOrNull()
+            ?: lastForegroundPkg ?: pkg
+        if (s != null && isExcludedFromContentEngine(pkg, probeFgPkg, s.excludedApps)) {
+            Log.d(TAG, "exclude: suppressed image/video probe (event=$pkg fg=$probeFgPkg)")
+            return
+        }
+
         val root = try {
             rootInActiveWindow
         } catch (t: Throwable) {
@@ -820,6 +919,58 @@ class SafeMeAccessibilityService : AccessibilityService() {
             lastBlockAt = now
             Log.d(TAG, "imgvid: gate launched (pkg=$pkg kind=${match.kind})")
             launchGate(pkg, MatchResult(match.signature, ImageVideoSearchGate.GATE_TYPE))
+        } finally {
+            recycle(root)
+        }
+    }
+
+    /**
+     * [App content re-check] Keyword/URL engine probe for non-window-state
+     * events from ANY app (browsers, YouTube, Gmail, Play Store, …):
+     * search results pages usually paint via CONTENT_CHANGED events after
+     * the window-state event already saw an unpainted page, so without this
+     * the engine stays blind until a later window-state carries the rendered
+     * text. Throttled on content-changed/focus floods like the PU and
+     * image/video probes; deliberate clicks probe immediately (the cooldown
+     * dedupes double-fires). Scoped to the app's own active window and
+     * fail-open like every other probe.
+     */
+    private fun handleAppContentRecheck(snapshot: EventSnapshot) {
+        rearmCooldownsIfGateDismissed()
+        val pkg = snapshot.pkg ?: return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage || pkg == "com.android.systemui") return
+
+        // Master switch first: don't burn the shared throttle slot (or pay a
+        // binder fetch for the root window) when blocking is disabled.
+        val state = cachedState ?: return
+        if (!state.blockingEnabled) return
+
+        val now = SystemClock.elapsedRealtime()
+        val isClick = snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED
+        if (shouldThrottleAppContentRecheck(lastAppContentRecheckMs, now, isClick)) return
+        lastAppContentRecheckMs = now
+
+        val root = try {
+            rootInActiveWindow
+        } catch (t: Throwable) {
+            null
+        } ?: return
+        try {
+            // Scope to the app's own active window so another app's
+            // transient window can never supply matching text (same
+            // discipline as the image/video probe).
+            val rootPkg = runCatching { root.packageName?.toString() }.getOrNull()
+            if (rootPkg != null && rootPkg != pkg) return
+
+            // Exclude-apps: same contract as the window path.
+            val fgPkg = rootPkg ?: lastForegroundPkg ?: pkg
+            if (isExcludedFromContentEngine(pkg, fgPkg, state.excludedApps)) {
+                Log.d(TAG, "exclude: suppressed content engine recheck (event=$pkg fg=$fgPkg)")
+                return
+            }
+
+            evaluateContentEngine(snapshot, pkg, state)
         } finally {
             recycle(root)
         }
@@ -1816,6 +1967,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
     }
 
     private fun launchGate(pkg: String, match: MatchResult) {
+        // Matched keyword/URL is sensitive; log only on debuggable builds.
+        if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            Log.d(TAG, "gate: pkg=$pkg value=${match.value} type=${match.type}")
+        }
         // [Overlay gate] Universal block-gate host: NopoX-style overlay window
         // (fast cover, no activity launch) with an automatic fallback to
         // [BlockGateActivity] when SYSTEM_ALERT_WINDOW is not granted — so no

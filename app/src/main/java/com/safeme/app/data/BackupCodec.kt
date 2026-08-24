@@ -243,6 +243,7 @@ object BackupCodec {
         o.put("trustedWebsites", JSONArray(stringsToJson(trustedWebsites)))
         o.put("titleBlockRules", JSONArray(titleRulesToJson(titleBlockRules)))
         o.put("blockingEnabled", blockingEnabled)
+        o.put("excludedApps", JSONArray(excludedApps.toList()))
         return o
     }
 
@@ -258,6 +259,7 @@ object BackupCodec {
         trustedWebsites = stringsFromJson(jsonArray("trustedWebsites")?.toString(), strict = true),
         titleBlockRules = titleRulesFromJson(jsonArray("titleBlockRules")?.toString(), strict = true),
         blockingEnabled = boolean("blockingEnabled", true),
+        excludedApps = stringArray("excludedApps").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
     )
 
     private fun SchedulePrefsState.toJson(): JSONObject {

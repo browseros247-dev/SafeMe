@@ -199,7 +199,6 @@
     <string name="blk_title">Blocking</string>
     <string name="blk_help_toast">Blocking help</string>
     <string name="blk_shield_status">Blocking active</string>
-    <string name="blk_shield_sub">%1$s keywords · %2$s layers · VPN on</string>
     <string name="blk_stat_blocked_today">Blocked today</string>
     <string name="blk_stat_keywords">Keywords</string>
     <string name="blk_stat_layers">Layers active</string>
@@ -224,6 +223,16 @@
     <string name="blk_toast_on">On</string>
     <string name="blk_toast_off">Off</string>
     <string name="blk_coming_soon">Coming soon</string>
+
+    <string name="blk_exclude_title">Exclude Apps from Blocking</string>
+    <string name="blk_exclude_sub">Never blocked by keywords or porn blocking</string>
+    <string name="blk_exclude_manage">Manage</string>
+    <string name="blk_exclude_sheet_title">Exclude apps</string>
+    <string name="blk_exclude_sheet_sub">Excluded apps are never blocked by keyword, porn keyword, website, or image/video-search blocking.</string>
+    <plurals name="blk_exclude_count">
+        <item quantity="one">%d app excluded</item>
+        <item quantity="other">%d apps excluded</item>
+    </plurals>
 
     <string name="tb_title">Block Settings by Title</string>
     <string name="tb_subtitle">Block System Settings pages when their window title matches one of your rules.</string>

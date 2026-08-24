@@ -9,7 +9,12 @@ import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.contentEnginePrefs
 import com.safeme.app.data.setBlockImageVideoSearch
 import com.safeme.app.data.setBlockingEnabled
+import com.safeme.app.data.AppCatalog
+import com.safeme.app.data.InstalledApp
+import com.safeme.app.data.setBlockingExcludedApps
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -26,6 +31,9 @@ data class BlockingUiState(
     val layersActive: String = "3",
     val manageSub: String = "",
     val blockImageVideoSearch: Boolean = false,
+    val excludedApps: Set<String> = emptySet(),
+    val installedApps: List<InstalledApp> = emptyList(),
+    val appsLoaded: Boolean = false,
 )
 
 class BlockingViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,6 +64,7 @@ class BlockingViewModel(application: Application) : AndroidViewModel(application
                             keywords = formatCount(keywordCount),
                             layersActive = "3",
                             manageSub = manageSub,
+                            excludedApps = state.excludedApps,
                         )
                     }
                 }
@@ -105,6 +114,35 @@ class BlockingViewModel(application: Application) : AndroidViewModel(application
             } catch (t: Throwable) {
                 // Persistence failure: keep the UI in sync with the last known state.
                 _uiState.update { it.copy(blockImageVideoSearch = !next) }
+            }
+        }
+    }
+
+    fun setExcludedApps(apps: Set<String>) {
+        val sanitized = apps.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        val prev = _uiState.value.excludedApps
+        _uiState.update { it.copy(excludedApps = sanitized) }
+        viewModelScope.launch {
+            try {
+                app.setBlockingExcludedApps(sanitized)
+            } catch (t: Throwable) {
+                _uiState.update { it.copy(excludedApps = prev) }
+            }
+        }
+    }
+
+    fun ensureAppsLoaded() {
+        if (_uiState.value.appsLoaded) return
+        viewModelScope.launch {
+            try {
+                val apps = withContext(Dispatchers.Default) { AppCatalog.load(app) }
+                // Only pin as loaded when we actually got apps; empty or
+                // broken results retry on the next Manage tap.
+                if (apps.isNotEmpty()) {
+                    _uiState.update { it.copy(installedApps = apps, appsLoaded = true) }
+                }
+            } catch (t: Throwable) {
+                // Leave appsLoaded=false so the next tap retries.
             }
         }
     }

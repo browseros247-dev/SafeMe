@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -55,6 +56,7 @@ data class BlockingPrefsState(
     val titleBlockRules: List<TitleBlockRule> = emptyList(),
     val blockingEnabled: Boolean = true,
     val blockedToday: Int = 0,
+    val excludedApps: Set<String> = emptySet(),
 )
 
 private val Context.blockingDataStore by preferencesDataStore(name = "safeme_prefs")
@@ -67,6 +69,7 @@ val KEY_TRUSTED_WEBSITES = stringPreferencesKey("trusted_websites_json")
 val KEY_TITLE_BLOCK_RULES = stringPreferencesKey("title_block_rules_json")
 val KEY_BLOCKING_ENABLED = booleanPreferencesKey("blocking_enabled")
 val KEY_BLOCKED_TODAY = intPreferencesKey("blocked_today")
+val KEY_BLOCKING_EXCLUDED_APPS = stringSetPreferencesKey("blocking_excluded_apps")
 
 internal fun keywordsToJson(list: List<BlockedKeyword>): String {
     val arr = JSONArray()
@@ -236,7 +239,10 @@ internal fun resolveWhitelistSeed(
 
 fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
     blockingDataStore.data
-        .catch { emit(emptyPreferences()) }
+        .catch { t ->
+            android.util.Log.w("BlockingPrefs", "safeme_prefs unreadable — using defaults", t)
+            emit(emptyPreferences())
+        }
         .map { prefs ->
             val storedWhitelist = stringsFromJson(prefs[KEY_WHITELIST_KEYWORDS])
             val (whitelistKeywords, shouldPersistSeed) =
@@ -252,6 +258,8 @@ fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
                 titleBlockRules = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES]),
                 blockingEnabled = prefs[KEY_BLOCKING_ENABLED] ?: true,
                 blockedToday = prefs[KEY_BLOCKED_TODAY] ?: 0,
+                excludedApps = (prefs[KEY_BLOCKING_EXCLUDED_APPS] ?: emptySet())
+                    .filter { it.isNotBlank() }.toSet(),
             )
         }
 
@@ -398,6 +406,7 @@ suspend fun Context.writeBlockingPrefs(state: BlockingPrefsState) {
         prefs[KEY_TRUSTED_WEBSITES] = stringsToJson(state.trustedWebsites)
         prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(state.titleBlockRules)
         prefs[KEY_BLOCKING_ENABLED] = state.blockingEnabled
+        prefs[KEY_BLOCKING_EXCLUDED_APPS] = state.excludedApps
     }
 }
 
@@ -408,6 +417,7 @@ suspend fun Context.resetUserBlockingPrefs() {
         prefs.remove(KEY_BLOCKED_WEBSITES)
         prefs.remove(KEY_TRUSTED_WEBSITES)
         prefs.remove(KEY_TITLE_BLOCK_RULES)
+        prefs.remove(KEY_BLOCKING_EXCLUDED_APPS)
         // Explicit reset never re-seeds: keep the seed flag set.
         prefs[KEY_WHITELIST_SEEDED] = true
     }
@@ -451,6 +461,12 @@ suspend fun Context.toggleTitleBlockRule(id: String, enabled: Boolean) {
             if (it.id == id) it.copy(enabled = enabled) else it
         }
         prefs[KEY_TITLE_BLOCK_RULES] = titleRulesToJson(updated)
+    }
+}
+
+suspend fun Context.setBlockingExcludedApps(apps: Set<String>) {
+    blockingDataStore.edit { prefs ->
+        prefs[KEY_BLOCKING_EXCLUDED_APPS] = apps.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     }
 }
 

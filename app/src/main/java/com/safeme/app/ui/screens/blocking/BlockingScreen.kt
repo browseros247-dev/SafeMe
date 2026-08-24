@@ -43,7 +43,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,8 +81,6 @@ fun BlockingScreen(
             )
             ShieldCard(
                 blocking = state.blocking,
-                keywords = state.keywords,
-                layersActive = state.layersActive,
                 onToggle = viewModel::toggleBlocking
             )
             Spacer(Modifier.size(12.dp))
@@ -150,12 +147,9 @@ internal fun SubHeader(title: String, onHelp: () -> Unit) {
 @Composable
 private fun ShieldCard(
     blocking: Boolean,
-    keywords: String,
-    layersActive: String,
     onToggle: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    val shieldSub = stringResource(R.string.blk_shield_sub, keywords, layersActive)
 
     Box(
         modifier = Modifier
@@ -195,14 +189,6 @@ private fun ShieldCard(
                     fontWeight = FontWeight.Bold,
                     color = colors.brandDark
                 )
-                Text(
-                    text = shieldSub,
-                    fontSize = 12.sp,
-                    color = colors.brandDark.copy(alpha = 0.78f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
             }
             Spacer(Modifier.size(12.dp))
             MasterSwitch(checked = blocking, onToggle = onToggle)
@@ -232,7 +218,7 @@ private fun BoxScope.ShieldRings() {
 }
 
 @Composable
-private fun MasterSwitch(checked: Boolean, onToggle: () -> Unit) {
+internal fun MasterSwitch(checked: Boolean, onToggle: () -> Unit) {
     val colors = LocalAppColors.current
     val bg by animateColorAsState(
         targetValue = if (checked) colors.brand else colors.swOff,
@@ -620,7 +606,7 @@ private fun MoreCard(
 }
 
 @Composable
-private fun IconBox(
+internal fun IconBox(
     icon: ImageVector,
     background: Color,
     tint: Color,
@@ -646,7 +632,7 @@ private fun IconBox(
 }
 
 @Composable
-private fun Modifier.cardShape(radius: Dp = 20.dp): Modifier {
+internal fun Modifier.cardShape(radius: Dp = 20.dp): Modifier {
     val colors = LocalAppColors.current
     return this
         .shadow(

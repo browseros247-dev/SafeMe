@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BlockingPrefs.kt": {
-    "mtime": 1786534396.6869462,
-    "ast_hash": "760463c7b3444caa4f1a103c5584617e",
+    "mtime": 1787526918.7653377,
+    "ast_hash": "a70ff0403e733a6a9a9598cb8b59e8ee",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BundledAdult.kt": {
@@ -25,8 +25,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BundledKeywords.kt": {
-    "mtime": 1786077400.7177215,
-    "ast_hash": "c591dd5344e96e5ee65efb2ada19caf8",
+    "mtime": 1787412586.0944853,
+    "ast_hash": "071fa5cd70d2d14405736911ad8f4595",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/OnboardingPrefs.kt": {
@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeAccessibilityService.kt": {
-    "mtime": 1787403786.885839,
-    "ast_hash": "132ecb2288a243467d3b01a718b929f4",
+    "mtime": 1787526956.629748,
+    "ast_hash": "c6c7655138676ab3e2797c5b643f0dfb",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeVpnService.kt": {
@@ -80,13 +80,13 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/blocking/BlockingScreen.kt": {
-    "mtime": 1787378494.2248836,
-    "ast_hash": "42731686297f664ef8b91ae258e8e82e",
+    "mtime": 1787463658.9601932,
+    "ast_hash": "bfe7191a1de438dee5fa6120ae073de8",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/blocking/BlockingViewModel.kt": {
-    "mtime": 1787375197.4819305,
-    "ast_hash": "b55285db87cf1d1941c491368029beb8",
+    "mtime": 1787526938.633106,
+    "ast_hash": "e89e84eb8437fd6cb2b69b5eccb68299",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/blockscreen/BlockOverlay.kt": {
@@ -320,8 +320,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BackupCodec.kt": {
-    "mtime": 1787374306.701676,
-    "ast_hash": "9eeeb9a17fd089ddf5856164257e292f",
+    "mtime": 1787480148.2934527,
+    "ast_hash": "63dd301569dc0e51bbd2f1bf244b9ecb",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/data/BackupManager.kt": {
@@ -765,8 +765,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/blocking/OtherFeaturesScreen.kt": {
-    "mtime": 1787379226.7754703,
-    "ast_hash": "08ae722c90287479349b83f432b87ebd",
+    "mtime": 1787526976.3454282,
+    "ast_hash": "60742db386c69a7c55380b1ffd21034a",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/protect/PrivateDnsBlockers.kt": {
@@ -789,24 +789,39 @@
     "ast_hash": "af2b3e1a2658a56a8e86b7a487f11eed",
     "semantic_hash": ""
   },
-  "shot1.png": {
-    "mtime": 1787399905.3472013,
-    "ast_hash": "18fa9390bf40421d40f44600b10a2f21",
+  "app/src/main/java/com/safeme/app/data/BundledKeywordCatalog.kt": {
+    "mtime": 1787412432.0964377,
+    "ast_hash": "2f69d3c78a7ab0eb477a42eb09e109fc",
     "semantic_hash": ""
   },
-  "shot2.png": {
-    "mtime": 1787399930.9099393,
-    "ast_hash": "253d45bccc1dcc1f0250b4737d54c8fd",
+  "app/src/main/java/com/safeme/app/protect/BrowserUrlGate.kt": {
+    "mtime": 1787413443.3563795,
+    "ast_hash": "9306a0a7ba9fba247a5aa3abbd747110",
     "semantic_hash": ""
   },
-  "shot3.png": {
-    "mtime": 1787400018.1969328,
-    "ast_hash": "abd13e071ba0b119f1b41b34089eb8b8",
+  "app/src/test/java/com/safeme/app/ExcludeAppsE2ETest.kt": {
+    "mtime": 1787480927.1340828,
+    "ast_hash": "e70f226737c7f00b975d0ea6e3cfc652",
     "semantic_hash": ""
   },
-  "shot4.png": {
-    "mtime": 1787400032.3562188,
-    "ast_hash": "f96157c2b2ded5104e1fdd372d948af0",
+  "app/src/test/java/com/safeme/app/data/BundledKeywordCatalogTest.kt": {
+    "mtime": 1787413444.26222,
+    "ast_hash": "df4a00ed634931400598d9adfa358e56",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/data/WhitelistSeedTest.kt": {
+    "mtime": 1787413086.028448,
+    "ast_hash": "5cba66a98274c3f3ccb9976ff85a7cc3",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/protect/BrowserUrlGateTest.kt": {
+    "mtime": 1787413785.8404,
+    "ast_hash": "6807e3f5edb1652fad05b35e1179b2e0",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/service/SafeMeAccessibilityServiceAppContentRecheckTest.kt": {
+    "mtime": 1787494950.271808,
+    "ast_hash": "1ee939c339a1e8c4a355951c57f7ed9c",
     "semantic_hash": ""
   }
 }

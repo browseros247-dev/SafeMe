@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeAccessibilityService.kt": {
-    "mtime": 1787526956.629748,
-    "ast_hash": "c6c7655138676ab3e2797c5b643f0dfb",
+    "mtime": 1787532561.2148867,
+    "ast_hash": "74a795d39a39624f24efd76c4237afa5",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/service/SafeMeVpnService.kt": {
@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/permissions/PermissionScreen.kt": {
-    "mtime": 1787301260.449509,
-    "ast_hash": "d3b653fa79f7c4860a5d560dd6117e87",
+    "mtime": 1787537066.5388842,
+    "ast_hash": "f1d1ab57eff2b0555866164cc780fa1b",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/profile/ProfileIcons.kt": {
@@ -520,8 +520,8 @@
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/permissions/PermissionSteps.kt": {
-    "mtime": 1787301260.449509,
-    "ast_hash": "6d5b26d9f3c75b3b33ce3a0b57ce3f30",
+    "mtime": 1787537031.136419,
+    "ast_hash": "3f68766853e451629b6d3d315d9ef014",
     "semantic_hash": ""
   },
   "app/src/main/java/com/safeme/app/ui/screens/profile/AboutScreen.kt": {
@@ -822,6 +822,11 @@
   "app/src/test/java/com/safeme/app/service/SafeMeAccessibilityServiceAppContentRecheckTest.kt": {
     "mtime": 1787494950.271808,
     "ast_hash": "1ee939c339a1e8c4a355951c57f7ed9c",
+    "semantic_hash": ""
+  },
+  "app/src/test/java/com/safeme/app/service/SafeMeAccessibilityServiceOwnUiGuardTest.kt": {
+    "mtime": 1787533237.9826443,
+    "ast_hash": "f7d1edea6ecea875275a3df665dfd2fd",
     "semantic_hash": ""
   }
 }

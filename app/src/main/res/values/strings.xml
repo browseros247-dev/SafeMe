@@ -16,7 +16,11 @@
 
 
     <string name="perm_a11y_title">Accessibility</string>
-    <string name="perm_a11y_sub">Core blocking engine — detects blocked content</string>
+    <string name="perm_a11y_sub">SafeMe uses Android\'s Accessibility Service only to watch the screen you are viewing and block content matching your rules.</string>
+    <string name="perm_a11y_step1">Open Settings → Accessibility → SafeMe</string>
+    <string name="perm_a11y_step2">Toggle the SafeMe service On and confirm</string>
+    <string name="perm_a11y_step3">Return to SafeMe — protection turns on</string>
+    <string name="perm_a11y_note">Tip: after enabling, Android may ask you to confirm — allow it.</string>
 
     <string name="perm_required_toast">Grant the required permissions to continue</string>
     <string name="perm_skipped_toast">Skipped — you can grant it later from Profile</string>

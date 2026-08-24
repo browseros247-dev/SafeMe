@@ -25,7 +25,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import com.safeme.app.R
-import com.safeme.app.ui.theme.LocalAppColors
 import com.safeme.app.ui.util.isAccessibilityEnabled
 
 const val PERM_ROUTE_NOTIFICATIONS = "permissions"
@@ -62,7 +61,6 @@ fun NotificationPermissionStep(
     onBack: () -> Unit = { navController.popBackStack() },
 ) {
     val context = LocalContext.current
-    val colors = LocalAppColors.current
     val granted by vm.granted.collectAsState()
     val notificationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -79,9 +77,6 @@ fun NotificationPermissionStep(
     PermissionScreen(
         title = context.getString(R.string.perm_notifications_title),
         subtitle = context.getString(R.string.perm_notifications_sub),
-        icon = BellIcon,
-        iconTint = colors.brandDark,
-        iconBg = colors.brandSoft,
         required = true,
         step = 1,
         totalSteps = 3,
@@ -110,7 +105,6 @@ fun BatteryPermissionStep(
     onBack: () -> Unit = { navController.popBackStack() },
 ) {
     val context = LocalContext.current
-    val colors = LocalAppColors.current
     val granted by vm.granted.collectAsState()
     var pendingReturn by rememberSaveable { mutableStateOf(false) }
 
@@ -148,13 +142,11 @@ fun BatteryPermissionStep(
     PermissionScreen(
         title = context.getString(R.string.perm_battery_title),
         subtitle = context.getString(R.string.perm_battery_sub),
-        icon = BatteryIcon,
-        iconTint = colors.success,
-        iconBg = colors.iconGreenBg,
         required = false,
         step = 2,
         totalSteps = 3,
         granted = KEY_BATTERY in granted,
+        accentWord = "Battery",
         onBack = onBack,
         onGrant = {
             if (KEY_BATTERY in granted) navController.navigate(PERM_ROUTE_A11Y) else grant()
@@ -182,7 +174,6 @@ fun AccessibilityPermissionStep(
     onBack: () -> Unit = { navController.popBackStack() },
 ) {
     val context = LocalContext.current
-    val colors = LocalAppColors.current
     val granted by vm.granted.collectAsState()
     var pendingReturn by rememberSaveable { mutableStateOf(false) }
 
@@ -223,15 +214,18 @@ fun AccessibilityPermissionStep(
     PermissionScreen(
         title = context.getString(R.string.perm_a11y_title),
         subtitle = context.getString(R.string.perm_a11y_sub),
-        icon = A11yPersonIcon,
-        iconTint = colors.iconDarkFg,
-        iconBg = colors.iconDarkBg,
         required = true,
         step = 3,
         totalSteps = 3,
         granted = KEY_ACCESSIBILITY in granted,
         onBack = onBack,
-        onGrant = ::grant
+        onGrant = ::grant,
+        timeline = listOf(
+            context.getString(R.string.perm_a11y_step1),
+            context.getString(R.string.perm_a11y_step2),
+            context.getString(R.string.perm_a11y_step3)
+        ),
+        note = context.getString(R.string.perm_a11y_note)
     )
 }
 

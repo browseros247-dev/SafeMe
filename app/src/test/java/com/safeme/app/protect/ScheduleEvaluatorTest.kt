@@ -53,6 +53,14 @@ class ScheduleEvaluatorTest {
 
     /** A Wednesday in August 2026 — compute its day index dynamically. */
     private val wednesdayIndex = dayIndexOf(2026, 7, 5)
+    private val mondayIndex = dayIndexOf(2026, 7, 3)
+    private val sundayIndex = dayIndexOf(2026, 7, 9)
+
+    /** Bedtime rule: 22:00 → 07:00 on the given days (overnight spill). */
+    private fun overnightRule(
+        days: List<Int> = listOf(mondayIndex),
+        enabled: Boolean = true,
+    ) = rule(days = days, startMinute = 22 * 60, endMinute = 7 * 60, enabled = enabled)
 
     // ---------------------------------------------------------- active window
 
@@ -213,5 +221,112 @@ class ScheduleEvaluatorTest {
     @Test
     fun windowLabel_usesEnDashWithSpaces() {
         assertEquals("21:00 – 23:00", scheduleWindowLabel(21 * 60, 23 * 60))
+    }
+
+    @Test
+    fun windowLabel_wrapAppendsPlusOne() {
+        assertEquals("22:00 – 07:00 (+1)", scheduleWindowLabel(22 * 60, 7 * 60))
+    }
+
+    // ------------------------------------------------------ overnight wrap
+
+    @Test
+    fun evaluate_wrapEveningActive() {
+        val active = ScheduleEvaluator.evaluate(listOf(overnightRule()), at(2026, 7, 3, 22, 30))
+        assertEquals(setOf("com.tiktok"), active.launchBlockedPackages)
+        assertEquals(setOf("com.tiktok"), active.internetBlockedPackages)
+    }
+
+    @Test
+    fun evaluate_wrapSpillsIntoNextMorning() {
+        val active = ScheduleEvaluator.evaluate(listOf(overnightRule()), at(2026, 7, 4, 3, 0))
+        assertTrue(active.hasLaunchBlock)
+        assertTrue(active.hasInternetBlock)
+    }
+
+    @Test
+    fun evaluate_wrapGapInactive() {
+        val rules = listOf(overnightRule())
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 3, 21, 59)).hasLaunchBlock)
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 4, 12, 0)).hasLaunchBlock)
+    }
+
+    @Test
+    fun evaluate_wrapBoundariesHalfOpen() {
+        val rules = listOf(overnightRule())
+        assertTrue(ScheduleEvaluator.evaluate(rules, at(2026, 7, 3, 22, 0)).hasLaunchBlock)
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 4, 7, 0)).hasLaunchBlock)
+    }
+
+    @Test
+    fun evaluate_wrapSundaySpillsIntoMonday() {
+        val rules = listOf(overnightRule(days = listOf(sundayIndex)))
+        // Monday 2026-08-10 just after midnight — Sunday's spill is active.
+        assertTrue(ScheduleEvaluator.evaluate(rules, at(2026, 7, 10, 0, 30)).hasLaunchBlock)
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 10, 8, 0)).hasLaunchBlock)
+    }
+
+    @Test
+    fun evaluate_wrapDisabledInactive() {
+        val rules = listOf(overnightRule(enabled = false))
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 3, 22, 30)).hasLaunchBlock)
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 4, 3, 0)).hasLaunchBlock)
+    }
+
+    @Test
+    fun evaluate_equalStartEndNeverActive() {
+        val rules = listOf(rule(startMinute = 22 * 60, endMinute = 22 * 60))
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 5, 22, 0)).hasLaunchBlock)
+        assertFalse(ScheduleEvaluator.evaluate(rules, at(2026, 7, 5, 22, 30)).hasLaunchBlock)
+    }
+
+    @Test
+    fun evaluate_wrapUnionWithNormalRule() {
+        val r1 = overnightRule()
+        val r2 = rule(
+            name = "B",
+            days = listOf(mondayIndex),
+            apps = listOf("com.instagram"),
+            mode = ScheduleMode.INTERNET,
+        )
+        val active = ScheduleEvaluator.evaluate(listOf(r1, r2), at(2026, 7, 3, 22, 30))
+        assertEquals(setOf("com.tiktok"), active.launchBlockedPackages)
+        assertEquals(setOf("com.tiktok", "com.instagram"), active.internetBlockedPackages)
+    }
+
+    @Test
+    fun nextBoundary_wrapBeforeStart() {
+        val boundary = ScheduleEvaluator.nextBoundary(listOf(overnightRule()), at(2026, 7, 3, 21, 0))
+        assertEquals(at(2026, 7, 3, 22, 0), boundary)
+    }
+
+    @Test
+    fun nextBoundary_wrapEveningReturnsSpillEnd() {
+        val boundary = ScheduleEvaluator.nextBoundary(listOf(overnightRule()), at(2026, 7, 3, 23, 0))
+        assertEquals(at(2026, 7, 4, 7, 0), boundary)
+    }
+
+    @Test
+    fun nextBoundary_wrapSpillReturnsSpillEnd() {
+        val boundary = ScheduleEvaluator.nextBoundary(listOf(overnightRule()), at(2026, 7, 4, 3, 0))
+        assertEquals(at(2026, 7, 4, 7, 0), boundary)
+    }
+
+    @Test
+    fun nextBoundary_wrapAfterSpillReturnsNextWeek() {
+        val boundary = ScheduleEvaluator.nextBoundary(listOf(overnightRule()), at(2026, 7, 4, 8, 0))
+        assertEquals(at(2026, 7, 10, 22, 0), boundary)
+    }
+
+    @Test
+    fun nextBoundary_wrapAtEndInstantReturnsNextWeek() {
+        val boundary = ScheduleEvaluator.nextBoundary(listOf(overnightRule()), at(2026, 7, 4, 7, 0))
+        assertEquals(at(2026, 7, 10, 22, 0), boundary)
+    }
+
+    @Test
+    fun nextBoundary_equalStartEndSkipped() {
+        val rules = listOf(rule(startMinute = 22 * 60, endMinute = 22 * 60))
+        assertEquals(Long.MAX_VALUE, ScheduleEvaluator.nextBoundary(rules, at(2026, 7, 5, 12, 0)))
     }
 }

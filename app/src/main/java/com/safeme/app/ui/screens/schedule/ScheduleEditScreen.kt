@@ -376,7 +376,10 @@ private fun DayCircles(selected: Set<Int>, onToggle: (Int) -> Unit) {
     }
 }
 
-/** Prototype `.timep` start/end boxes with "to" between. */
+/**
+ * Prototype `.timep` start/end boxes with "to" between. Overnight windows
+ * (end < start) add an "Ends next day" caption under the row.
+ */
 @Composable
 private fun TimeWindowRow(
     startMinute: Int,
@@ -385,18 +388,28 @@ private fun TimeWindowRow(
     onEnd: () -> Unit,
 ) {
     val colors = LocalAppColors.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        TimeBox(minute = startMinute, onClick = onStart, modifier = Modifier.weight(1f))
-        Text(
-            text = stringResource(R.string.sche_to),
-            fontSize = 14.sp,
-            color = colors.ink3,
-        )
-        TimeBox(minute = endMinute, onClick = onEnd, modifier = Modifier.weight(1f))
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            TimeBox(minute = startMinute, onClick = onStart, modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.sche_to),
+                fontSize = 14.sp,
+                color = colors.ink3,
+            )
+            TimeBox(minute = endMinute, onClick = onEnd, modifier = Modifier.weight(1f))
+        }
+        if (endMinute < startMinute) {
+            Text(
+                text = stringResource(R.string.sche_overnight),
+                fontSize = 12.sp,
+                color = colors.ink3,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
     }
 }
 

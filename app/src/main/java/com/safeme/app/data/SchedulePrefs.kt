@@ -35,9 +35,10 @@ enum class ScheduleMode(val label: String) {
  *
  * @param days Day-of-week indices in the prototype's order: 0=Mon … 6=Sun.
  * @param startMinute Minutes from midnight when the window starts (0..1439).
- * @param endMinute Minutes from midnight when the window ends; always greater
- *   than [startMinute] (the UI validates "Start must be before end", matching
- *   the prototype — schedules never wrap past midnight in this design).
+ * @param endMinute Minutes from midnight when the window ends; must not equal
+ *   [startMinute]. May be less than [startMinute] for overnight windows,
+ *   which spill into the next day (the UI validates "Start and end can't be
+ *   the same").
  * @param appPackages Packages targeted by this rule. Empty means "no apps
  *   picked" → the schedule blocks everything ([blocksAllApps]).
  */
@@ -147,7 +148,7 @@ fun schedulesFromJson(json: String?): List<ScheduleBlock> {
                 if (days.isEmpty()) continue
                 val start = o.optInt("st", -1)
                 val end = o.optInt("en", -1)
-                if (start !in 0..1439 || end !in 0..1439 || end <= start) continue
+                if (start !in 0..1439 || end !in 0..1439 || end == start) continue
                 val mode = ScheduleMode.fromName(o.optString("m")) ?: continue
                 val apps = buildList {
                     val a = o.optJSONArray("a")
@@ -277,6 +278,10 @@ fun scheduleModeLabel(mode: ScheduleMode): String = when (mode) {
 fun scheduleTimeLabel(minute: Int): String =
     "${(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}"
 
-/** "21:00 – 23:00" card time row (prototype uses an en-dash with spaces). */
+/**
+ * "21:00 – 23:00" card time row (prototype uses an en-dash with spaces).
+ * Overnight windows append " (+1)" to mark the spill into the next day.
+ */
 fun scheduleWindowLabel(startMinute: Int, endMinute: Int): String =
-    "${scheduleTimeLabel(startMinute)} – ${scheduleTimeLabel(endMinute)}"
+    "${scheduleTimeLabel(startMinute)} – ${scheduleTimeLabel(endMinute)}" +
+        if (endMinute < startMinute) " (+1)" else ""

@@ -145,7 +145,7 @@ class ScheduleEditViewModel(
             _toasts.tryEmit(app.getString(R.string.sche_toast_day))
             return false
         }
-        if (state.endMinute <= state.startMinute) {
+        if (!isValidScheduleWindow(state.startMinute, state.endMinute)) {
             _toasts.tryEmit(app.getString(R.string.sche_toast_time))
             return false
         }
@@ -196,6 +196,16 @@ class ScheduleEditViewModel(
             ScheduleEditViewModel(app, editId) as T
     }
 }
+
+/**
+ * B10: a schedule window is valid unless start and end coincide. Overnight
+ * windows (`endMinute < startMinute`) spill into the next day. Range
+ * 0..1439 is enforced by the time picker (`hour % 24`, `minute % 60`), so
+ * only the degenerate case is rejected here. Single source of truth for
+ * the editor save path and the time-picker sheet.
+ */
+internal fun isValidScheduleWindow(startMinute: Int, endMinute: Int): Boolean =
+    startMinute != endMinute
 
 /**
  * B6: resolves the editor's `enabled` flag. New schedules default on; edits

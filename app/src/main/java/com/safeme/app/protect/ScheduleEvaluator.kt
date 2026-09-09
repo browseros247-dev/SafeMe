@@ -37,14 +37,31 @@ object ScheduleEvaluator {
     fun matchesDay(rule: ScheduleBlock, dayIndex: Int): Boolean =
         dayIndex in 0..6 && dayIndex in rule.days
 
-    /** True when [minuteOfDay] falls inside the rule's window (same-day only). */
+    /**
+     * True when [minuteOfDay] falls inside the rule's window. Normal windows
+     * (`end > start`) match `start until end` on selected days; overnight
+     * windows (`end < start`) match `[start, 24:00)` on selected days plus
+     * `[00:00, end)` spilling into the following day. Degenerate windows
+     * (`end == start`) never match.
+     */
     fun isActiveAt(rule: ScheduleBlock, dayIndex: Int, minuteOfDay: Int): Boolean {
-        if (!rule.enabled) return false
-        if (!matchesDay(rule, dayIndex)) return false
-        if (rule.startMinute !in 0..1439 || rule.endMinute !in 0..1439) return false
-        if (rule.endMinute <= rule.startMinute) return false
-        return minuteOfDay in rule.startMinute until rule.endMinute
+        if (!rule.enabled || dayIndex !in 0..6) return false
+        val start = rule.startMinute
+        val end = rule.endMinute
+        if (start !in 0..1439 || end !in 0..1439 || end == start) return false
+        if (end > start) {
+            return matchesDay(rule, dayIndex) && minuteOfDay in start until end
+        }
+        // Overnight: [start, 24:00) on each selected day plus [00:00, end)
+        // spilling into the following day. (minuteOfDay >= start is safely
+        // bounded: callers derive it from Calendar fields, always 0..1439.)
+        val evening = dayIndex in rule.days && minuteOfDay >= start
+        val morning = prevDayIndex(dayIndex) in rule.days && minuteOfDay < end
+        return evening || morning
     }
+
+    /** Day before [dayIndex] in prototype order (Mon=0..Sun=6); Monday's is Sunday. */
+    private fun prevDayIndex(dayIndex: Int): Int = (dayIndex + 6) % 7
 
     /**
      * Evaluate all rules at [nowMillis]. Union semantics: if any active rule
@@ -91,7 +108,8 @@ object ScheduleEvaluator {
 
     /**
      * Earliest future instant (start or end) of any enabled rule, or
-     * [Long.MAX_VALUE] when no boundary exists (no rules).
+     * [Long.MAX_VALUE] when no boundary exists (no rules). An overnight
+     * rule's end is emitted on the day it spills into.
      */
     fun nextBoundary(
         rules: List<ScheduleBlock>,
@@ -115,11 +133,26 @@ object ScheduleEvaluator {
             }
             val dayIndex = ((day.get(Calendar.DAY_OF_WEEK) - 1 + 6) % 7)
             for (rule in enabled) {
-                if (dayIndex !in rule.days) continue
-                val startAt = day.timeInMillis + rule.startMinute * 60_000L
-                if (startAt > nowMillis && startAt < earliest) earliest = startAt
-                val endAt = day.timeInMillis + rule.endMinute * 60_000L
-                if (endAt > nowMillis && endAt < earliest) earliest = endAt
+                val start = rule.startMinute
+                val end = rule.endMinute
+                if (start !in 0..1439 || end !in 0..1439 || end == start) continue
+                if (dayIndex in rule.days) {
+                    val startAt = day.timeInMillis + start * 60_000L
+                    if (startAt > nowMillis && startAt < earliest) earliest = startAt
+                    if (end > start) {
+                        val endAt = day.timeInMillis + end * 60_000L
+                        if (endAt > nowMillis && endAt < earliest) earliest = endAt
+                    }
+                }
+                // A wrapped rule's end is emitted while scanning the day it
+                // spills into (independent if: consecutive selected days emit
+                // both their own start and the previous day's spill end).
+                // Every candidate stays before the next midnight, so the
+                // early-break below remains correct.
+                if (end < start && prevDayIndex(dayIndex) in rule.days) {
+                    val spillAt = day.timeInMillis + end * 60_000L
+                    if (spillAt > nowMillis && spillAt < earliest) earliest = spillAt
+                }
             }
             if (earliest != Long.MAX_VALUE) break
         }

@@ -11,7 +11,7 @@ data class ScheduleBlock(
     val name: String,
     val days: List<Int>,          // 0=Mon … 6=Sun (prototype order)
     val startMinute: Int,         // minutes from midnight, 0..1439
-    val endMinute: Int,           // > startMinute, same day only (no wraparound)
+    val endMinute: Int,           // != startMinute; < startMinute ⇒ overnight, spills into the next day
     val mode: ScheduleMode,       // INTERNET | LAUNCH | BOTH
     val appPackages: List<String>,// empty ⇒ blocks every app (blocksAllApps)
     val enabled: Boolean = true,
@@ -30,15 +30,19 @@ data class ScheduleBlock(
 
 Android-free, unit-tested:
 
-- `isActiveAt(rule, dayIndex, minuteOfDay)` — enabled, matching day, valid
-  window, `minuteOfDay in start until end`.
+- `isActiveAt(rule, dayIndex, minuteOfDay)` — enabled, valid window
+  (`end == start` never matches), `minuteOfDay in start until end` on
+  selected days for normal windows; overnight windows (`end < start`) match
+  `[start, 24:00)` on selected days plus `[00:00, end)` spilling into the
+  following day.
 - `evaluate(rules, now)` — **union semantics**: if any active rule targets a
   package, it is blocked. Produces `ActiveRules` with four fields:
   `internetBlockedPackages`, `internetBlockAll`, `launchBlockedPackages`,
   `launchBlockAll`.
 - `nextBoundary(rules, now)` — earliest future start **or** end of any
   enabled rule (day offsets 0..7 cover every day-of-week combination
-  exactly once), or `Long.MAX_VALUE` when no boundary exists.
+  exactly once; a wrapped rule's end is emitted while scanning the day it
+  spills into), or `Long.MAX_VALUE` when no boundary exists.
 
 ## 3. Coordinator (`protect/ScheduleEngine.kt`)
 
@@ -99,7 +103,7 @@ phone/telecom) so the user can always escape.
 - `ScheduleScreen` — list of schedule cards with day/window labels
   (`scheduleDaysLabel`, `scheduleWindowLabel` helpers) and enable toggles.
 - `ScheduleEditScreen` — create/edit with `?editId=`; days, start/end pickers
-  (validated "start before end"), mode segmented control (Internet | Launch |
+  (validated "start != end", overnight allowed), mode segmented control (Internet | Launch |
   Both), and the shared app picker for `appPackages` (see
   [09](09-app-picker.md)).
 - Mutations go through `Context.addSchedule` / `updateSchedule` /

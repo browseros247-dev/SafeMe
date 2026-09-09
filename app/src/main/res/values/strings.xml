@@ -341,7 +341,8 @@
     <string name="sche_enabled_sub">Turn off to pause this schedule without deleting it</string>
     <string name="sche_toast_name">Give your schedule a name</string>
     <string name="sche_toast_day">Pick at least one day</string>
-    <string name="sche_toast_time">Start must be before end</string>
+    <string name="sche_toast_time">Start and end can\'t be the same</string>
+    <string name="sche_overnight">Ends next day</string>
     <string name="sche_toast_saved">Schedule saved — alarms set</string>
     <string name="sche_toast_deleted">Schedule deleted</string>
     <plurals name="sche_toast_apps">

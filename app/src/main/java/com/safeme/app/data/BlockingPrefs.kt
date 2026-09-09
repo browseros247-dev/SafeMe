@@ -10,10 +10,13 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
 enum class BlockedCategory(val label: String) {
@@ -69,6 +72,13 @@ val KEY_TRUSTED_WEBSITES = stringPreferencesKey("trusted_websites_json")
 val KEY_TITLE_BLOCK_RULES = stringPreferencesKey("title_block_rules_json")
 val KEY_BLOCKING_ENABLED = booleanPreferencesKey("blocking_enabled")
 val KEY_BLOCKED_TODAY = intPreferencesKey("blocked_today")
+/**
+ * ISO `yyyy-MM-dd` (device zone) of the day [KEY_BLOCKED_TODAY] counts for.
+ * Storage-only: intentionally NOT part of [BlockingPrefsState]. The counter is
+ * transient (backup/restore and explicit reset both ignore it), so the date key
+ * shares those semantics — see [maybeRolloverBlockedCounter].
+ */
+val KEY_BLOCKED_DATE = stringPreferencesKey("blocked_date")
 val KEY_BLOCKING_EXCLUDED_APPS = stringSetPreferencesKey("blocking_excluded_apps")
 
 internal fun keywordsToJson(list: List<BlockedKeyword>): String {
@@ -237,6 +247,37 @@ internal fun resolveWhitelistSeed(
         else -> stored to false
     }
 
+/**
+ * ISO `yyyy-MM-dd` date key for [epochMillis] in [zone].
+ * `java.time` is API-26-native (minSdk 26), and date-based keys are immune to
+ * DST/midnight-millis arithmetic edges.
+ */
+internal fun blockedDateKey(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
+    Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate().toString()
+
+/**
+ * Pure read-side rollover: same-day keeps the (non-negative) count, anything
+ * else — stale, missing, garbage, or future date — resets to zero. Fail-safe
+ * direction: clock skew or bad data under-counts, never over-counts or throws.
+ */
+internal fun rolloverBlockedCount(
+    storedDate: String?,
+    storedCount: Int,
+    today: String,
+): Pair<String, Int> =
+    if (storedDate == today) today to maxOf(0, storedCount) else today to 0
+
+/**
+ * Pure write-side rollover used by [incrementBlockedToday]: same-day increments,
+ * anything else starts the new day at 1.
+ */
+internal fun nextBlockedCounter(
+    storedDate: String?,
+    storedCount: Int,
+    today: String,
+): Pair<String, Int> =
+    if (storedDate == today) today to (maxOf(0, storedCount) + 1) else today to 1
+
 fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
     blockingDataStore.data
         .catch { t ->
@@ -257,7 +298,12 @@ fun Context.blockingPrefs(): Flow<BlockingPrefsState> =
                 trustedWebsites = stringsFromJson(prefs[KEY_TRUSTED_WEBSITES]),
                 titleBlockRules = titleRulesFromJson(prefs[KEY_TITLE_BLOCK_RULES]),
                 blockingEnabled = prefs[KEY_BLOCKING_ENABLED] ?: true,
-                blockedToday = prefs[KEY_BLOCKED_TODAY] ?: 0,
+                // Pure read-side rollover: stale dates display 0 without writing.
+                blockedToday = rolloverBlockedCount(
+                    prefs[KEY_BLOCKED_DATE],
+                    prefs[KEY_BLOCKED_TODAY] ?: 0,
+                    blockedDateKey(System.currentTimeMillis()),
+                ).second,
                 excludedApps = (prefs[KEY_BLOCKING_EXCLUDED_APPS] ?: emptySet())
                     .filter { it.isNotBlank() }.toSet(),
             )
@@ -281,7 +327,13 @@ fun Context.blockingEnabled(): Flow<Boolean> =
 fun Context.blockedTodayFlow(): Flow<Int> =
     blockingDataStore.data
         .catch { emit(emptyPreferences()) }
-        .map { it[KEY_BLOCKED_TODAY] ?: 0 }
+        .map { prefs ->
+            rolloverBlockedCount(
+                prefs[KEY_BLOCKED_DATE],
+                prefs[KEY_BLOCKED_TODAY] ?: 0,
+                blockedDateKey(System.currentTimeMillis()),
+            ).second
+        }
 
 suspend fun Context.setBlockingEnabled(enabled: Boolean) {
     blockingDataStore.edit { it[KEY_BLOCKING_ENABLED] = enabled }
@@ -289,7 +341,30 @@ suspend fun Context.setBlockingEnabled(enabled: Boolean) {
 
 suspend fun Context.incrementBlockedToday() {
     blockingDataStore.edit { prefs ->
-        prefs[KEY_BLOCKED_TODAY] = (prefs[KEY_BLOCKED_TODAY] ?: 0) + 1
+        val (date, count) = nextBlockedCounter(
+            prefs[KEY_BLOCKED_DATE],
+            prefs[KEY_BLOCKED_TODAY] ?: 0,
+            blockedDateKey(System.currentTimeMillis()),
+        )
+        prefs[KEY_BLOCKED_DATE] = date
+        prefs[KEY_BLOCKED_TODAY] = count
+    }
+}
+
+/**
+ * Rolls the daily block counter to `(today, 0)` when the stored date is stale.
+ * No-op (no write, no emission) when already current. Callers should invoke
+ * this fail-soft (`runCatching`) from screen-resume paths so a UI left open
+ * across midnight corrects itself on the next resume.
+ */
+suspend fun Context.maybeRolloverBlockedCounter() {
+    val today = blockedDateKey(System.currentTimeMillis())
+    val current = blockingDataStore.data.first()[KEY_BLOCKED_DATE]
+    if (current != today) {
+        blockingDataStore.edit { prefs ->
+            prefs[KEY_BLOCKED_DATE] = today
+            prefs[KEY_BLOCKED_TODAY] = 0
+        }
     }
 }
 
@@ -396,7 +471,8 @@ suspend fun Context.removeTrustedWebsite(domain: String) {
 
 /**
  * Replaces all user blocking configuration in one atomic edit (backup restore).
- * `blockedToday` is a transient daily counter and is intentionally untouched.
+ * `blockedToday` is a transient daily counter — it and its `blocked_date` key
+ * are intentionally untouched, so a restore never resurrects a stale count.
  */
 suspend fun Context.writeBlockingPrefs(state: BlockingPrefsState) {
     blockingDataStore.edit { prefs ->

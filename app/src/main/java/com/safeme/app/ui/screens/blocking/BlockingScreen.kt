@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
@@ -46,6 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.safeme.app.R
 import com.safeme.app.ui.components.ToastHost
@@ -64,8 +68,19 @@ fun BlockingScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val colors = LocalAppColors.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val comingSoonToast = stringResource(R.string.blk_coming_soon)
     val helpToast = stringResource(R.string.blk_help_toast)
+
+    // B1 freshness (mirrors HomeScreen): roll the daily counter on resume so a
+    // screen left open across midnight corrects itself.
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         Column(

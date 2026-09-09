@@ -19,6 +19,7 @@ import com.safeme.app.data.activityLog
 import com.safeme.app.data.appLockPrefs
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.dnsVpnSettings
+import com.safeme.app.data.maybeRolloverBlockedCounter
 import com.safeme.app.data.preventUninstallPrefs
 import com.safeme.app.data.quickActionPrefs
 import com.safeme.app.data.schedulePrefs
@@ -215,6 +216,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refresh() {
+        // Daily counter freshness: separate launch so the rollover is never
+        // subject to the a11y job's delays/cancellation. No-op write when current.
+        viewModelScope.launch {
+            runCatching { app.maybeRolloverBlockedCounter() }
+        }
         a11yRefreshJob?.cancel()
         val generation = ++a11yRefreshGeneration
         val previous = a11yStatus

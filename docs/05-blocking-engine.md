@@ -87,7 +87,8 @@ On a match, the service launches `BlockGateActivity` with
   toggle, "Close" gated until the dwell elapses).
 - **blockedToday counter**: incremented once per gate creation
   (`savedInstanceState == null` only — never re-incremented on rotation or
-  recreation).
+  recreation). Date-keyed (`blocked_date`, device zone): resets to 0 on a new
+  local day — lazily on read, atomically on increment, and on screen resume.
 - **Activity feed**: one `block` entry per gate with a human title
   ("Website blocked", "Keyword blocked", "Settings page blocked",
   "Blocked <label>", "Uninstall blocked").

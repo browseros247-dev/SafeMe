@@ -7,6 +7,7 @@ import com.safeme.app.R
 import com.safeme.app.data.BundledKeywords
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.contentEnginePrefs
+import com.safeme.app.data.maybeRolloverBlockedCounter
 import com.safeme.app.data.setBlockImageVideoSearch
 import com.safeme.app.data.setBlockingEnabled
 import com.safeme.app.data.AppCatalog
@@ -149,6 +150,16 @@ class BlockingViewModel(application: Application) : AndroidViewModel(application
 
     fun showToast(message: String) {
         _toasts.tryEmit(message)
+    }
+
+    /**
+     * B1 freshness: rolls the daily counter on resume so a screen left open
+     * across midnight corrects itself. No-op write when already current.
+     */
+    fun refresh() {
+        viewModelScope.launch {
+            runCatching { app.maybeRolloverBlockedCounter() }
+        }
     }
 
     private fun formatCount(count: Int): String {

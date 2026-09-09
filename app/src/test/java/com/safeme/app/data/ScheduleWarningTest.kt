@@ -98,4 +98,83 @@ class ScheduleWarningTest {
             )
         )
     }
+
+    // -------------------------------------------- exact-alarm banner predicate
+
+    @Test
+    fun exactBanner_hiddenBelowS() {
+        assertFalse(
+            shouldShowExactAlarmWarning(
+                listOf(block(ScheduleMode.BOTH)),
+                granted = false,
+                dismissed = false,
+                sdkInt = 30,
+            )
+        )
+    }
+
+    @Test
+    fun exactBanner_hiddenWhenGranted() {
+        assertFalse(
+            shouldShowExactAlarmWarning(
+                listOf(block(ScheduleMode.BOTH)),
+                granted = true,
+                dismissed = false,
+                sdkInt = 34,
+            )
+        )
+    }
+
+    @Test
+    fun exactBanner_hiddenWhenDismissed() {
+        assertFalse(
+            shouldShowExactAlarmWarning(
+                listOf(block(ScheduleMode.BOTH)),
+                granted = false,
+                dismissed = true,
+                sdkInt = 34,
+            )
+        )
+    }
+
+    @Test
+    fun exactBanner_hiddenWithNoEnabledSchedules() {
+        assertFalse(
+            shouldShowExactAlarmWarning(
+                emptyList(),
+                granted = false,
+                dismissed = false,
+                sdkInt = 34,
+            )
+        )
+        assertFalse(
+            shouldShowExactAlarmWarning(
+                listOf(block(ScheduleMode.BOTH, enabled = false)),
+                granted = false,
+                dismissed = false,
+                sdkInt = 34,
+            )
+        )
+    }
+
+    @Test
+    fun exactBanner_visibleWhenDeniedWithEnabledSchedule() {
+        assertTrue(
+            shouldShowExactAlarmWarning(
+                listOf(block(ScheduleMode.BOTH)),
+                granted = false,
+                dismissed = false,
+                sdkInt = 31,
+            )
+        )
+        // One enabled schedule among paused ones is enough.
+        assertTrue(
+            shouldShowExactAlarmWarning(
+                listOf(block(ScheduleMode.INTERNET, enabled = false), block(ScheduleMode.LAUNCH)),
+                granted = false,
+                dismissed = false,
+                sdkInt = 34,
+            )
+        )
+    }
 }

@@ -58,6 +58,8 @@ data class SchedulePrefsState(
     val schedules: List<ScheduleBlock> = emptyList(),
     /** User dismissed the "Accessibility Service required" banner. */
     val a11yWarningDismissed: Boolean = false,
+    /** User dismissed the "Precise schedule timing" banner. */
+    val exactAlarmWarningDismissed: Boolean = false,
     /** Global exclusion list: packages never blocked by any schedule. */
     val excludedApps: Set<String> = emptySet(),
 )
@@ -66,6 +68,7 @@ private val Context.scheduleDataStore by preferencesDataStore(name = "schedule_p
 
 val KEY_SCHEDULES_JSON = stringPreferencesKey("schedules_json")
 val KEY_A11Y_WARN_DISMISSED = booleanPreferencesKey("a11y_warn_dismissed")
+val KEY_EXACT_ALARM_WARN_DISMISSED = booleanPreferencesKey("exact_alarm_warn_dismissed")
 val KEY_EXCLUDED_APPS = stringSetPreferencesKey("excluded_apps")
 
 /** Prototype day order: Mon … Sun. */
@@ -78,6 +81,7 @@ fun Context.schedulePrefs(): Flow<SchedulePrefsState> =
             SchedulePrefsState(
                 schedules = schedulesFromJson(prefs[KEY_SCHEDULES_JSON]),
                 a11yWarningDismissed = prefs[KEY_A11Y_WARN_DISMISSED] ?: false,
+                exactAlarmWarningDismissed = prefs[KEY_EXACT_ALARM_WARN_DISMISSED] ?: false,
                 excludedApps = prefs[KEY_EXCLUDED_APPS] ?: emptySet(),
             )
         }
@@ -86,6 +90,13 @@ fun Context.schedulePrefs(): Flow<SchedulePrefsState> =
 suspend fun Context.setA11yWarningDismissed(dismissed: Boolean) {
     scheduleDataStore.edit { prefs ->
         prefs[KEY_A11Y_WARN_DISMISSED] = dismissed
+    }
+}
+
+/** Persist the "Precise schedule timing" banner dismissal. */
+suspend fun Context.setExactAlarmWarningDismissed(dismissed: Boolean) {
+    scheduleDataStore.edit { prefs ->
+        prefs[KEY_EXACT_ALARM_WARN_DISMISSED] = dismissed
     }
 }
 
@@ -203,6 +214,7 @@ suspend fun Context.writeSchedulePrefs(state: SchedulePrefsState) {
     scheduleDataStore.edit { prefs ->
         prefs[KEY_SCHEDULES_JSON] = schedulesToJson(state.schedules)
         prefs[KEY_A11Y_WARN_DISMISSED] = state.a11yWarningDismissed
+        prefs[KEY_EXACT_ALARM_WARN_DISMISSED] = state.exactAlarmWarningDismissed
         prefs[KEY_EXCLUDED_APPS] = state.excludedApps
     }
 }
@@ -226,6 +238,22 @@ fun shouldShowA11yWarning(
 ): Boolean {
     if (a11yEnabled || dismissed) return false
     return schedules.any { it.enabled && requiresAccessibility(it.mode) }
+}
+
+/**
+ * Visibility of the "Precise schedule timing" banner: API 31+, at least one
+ * ENABLED schedule exists, exact alarms are not granted, and the user hasn't
+ * dismissed the warning. A paused schedule never nags. [sdkInt] is injectable
+ * for unit tests (defaults to the device SDK).
+ */
+fun shouldShowExactAlarmWarning(
+    schedules: List<ScheduleBlock>,
+    granted: Boolean,
+    dismissed: Boolean,
+    sdkInt: Int = android.os.Build.VERSION.SDK_INT,
+): Boolean {
+    if (sdkInt < android.os.Build.VERSION_CODES.S || granted || dismissed) return false
+    return schedules.any { it.enabled }
 }
 
 // ---------------------------------------------------------------- pure helpers

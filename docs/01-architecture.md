@@ -105,7 +105,8 @@ Other `data/` files:
 - `ScheduleEvaluator` — pure, Android-free decision core (day/window
   evaluation, `nextBoundary`). Unit-tested.
 - `ScheduleAlarmReceiver` — boot/update re-arm + exact boundary alarm
-  (inexact fallback on API 31+ without the exact-alarm permission).
+  (inexact fallback on API 31+ without the exact-alarm permission; a
+  Schedule-screen banner offers the grant).
 - `A11yProtectionGuard` / `A11yProtectionUtils` / `A11yProtectionStateHolder` —
   watches protected accessibility services (ContentObserver on the enabled
   list + master switch, plus a 30 s polling fallback) and re-enables them.

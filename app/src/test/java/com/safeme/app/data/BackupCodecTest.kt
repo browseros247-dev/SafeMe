@@ -305,4 +305,13 @@ class BackupCodecTest {
         assertEquals(emptyList<QuickActionType>(), snapshot.quickActions)
         assertEquals(listOf(BackupSection.QUICK_ACTIONS), snapshot.presentSections)
     }
+
+    @Test
+    fun exactAlarmDismissalSurvivesRoundTrip() {
+        val base = fullSnapshot()
+        val original = base.copy(
+            schedules = base.schedules?.copy(exactAlarmWarningDismissed = true),
+        )
+        assertEquals(original, successOf(decode(encode(original))))
+    }
 }

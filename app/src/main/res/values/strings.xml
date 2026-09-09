@@ -300,6 +300,10 @@
     <string name="sch_warn_a11y_sub">This schedule blocks app launches, so it won\'t work until SafeMe\'s Accessibility Service is enabled.</string>
     <string name="sch_warn_a11y_enable">Enable</string>
     <string name="sch_warn_a11y_dismiss">Dismiss warning</string>
+    <string name="sch_warn_exact_title">Precise schedule timing is off</string>
+    <string name="sch_warn_exact_sub">Schedules may start or stop minutes late until you allow SafeMe to set exact alarms.</string>
+    <string name="sch_warn_exact_enable">Enable</string>
+    <string name="sch_warn_exact_dismiss">Dismiss warning</string>
 
     <string name="sch_exclude_title">Exclude Apps</string>
     <string name="sch_exclude_sub">Never blocked by any schedule</string>

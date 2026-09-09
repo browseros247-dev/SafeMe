@@ -17,9 +17,26 @@ Declared in `AndroidManifest.xml`:
 | `RECEIVE_BOOT_COMPLETED` | boot re-arm of VPN / a11y protection / schedules | |
 | `WRITE_SECURE_SETTINGS` | a11y self-heal writes | **dev-only, ADB-granted**; see below |
 | `USE_BIOMETRIC` | biometric App Lock unlock | |
+| `SCHEDULE_EXACT_ALARM` | exact schedule-boundary alarms | user-granted via Settings ("Alarms & reminders"); inexact fallback retained |
 
 The manifest also declares a `<queries>` for `ACTION_MAIN`/`LAUNCHER` so the
 App Picker can enumerate launcher activities on Android 11+.
+
+### `SCHEDULE_EXACT_ALARM` (user-granted, Play-declared)
+
+Schedule boundaries (blocking starts/stops at parent-set times) need
+precisely-timed alarms: without the grant, `ScheduleAlarmReceiver` degrades
+to inexact `set()` and boundaries can land minutes late. The manifest
+declares `SCHEDULE_EXACT_ALARM` — NOT the Play-restricted `USE_EXACT_ALARM`,
+which is reserved for clock/calendar apps. On Android 14+ the grant is
+denied by default, so the Schedule screen shows a contextual banner (only
+when schedules are active) that deep-links to Settings → "Alarms &
+reminders". Denied/revoked states keep the inexact fallback plus the 60 s
+safety ticker — protection degrades gracefully, never silently breaks.
+
+- Publish-time action: complete the Play Console exact-alarm declaration,
+  justifying parental-schedule timing as the user-facing, precisely-timed
+  function.
 
 ### `WRITE_SECURE_SETTINGS` (intentional lint baseline)
 

@@ -66,7 +66,8 @@ boundaries, and by the safety ticker.
 
 - One exact `RTC_WAKEUP` alarm is scheduled for the next boundary
   (`setExactAndAllowWhileIdle`); on API 31+ without the exact-alarm
-  permission it degrades to inexact (`set`).
+  permission it degrades to inexact (`set`). A Schedule-screen banner
+  offers the Settings grant whenever schedules are active.
 - When it fires (or on `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`) the receiver
   runs `ScheduleEngine.reevaluate` in `goAsync()` and re-arms the next alarm.
 - `Long.MAX_VALUE` cancels the alarm (no enabled schedules).

@@ -1,5 +1,7 @@
 package com.safeme.app.ui.screens.schedule
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
@@ -55,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -116,6 +119,13 @@ fun ScheduleScreen(
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
                     onDismiss = viewModel::dismissA11yWarning
+                )
+            }
+            if (state.showExactAlarmWarning) {
+                Spacer(Modifier.height(12.dp))
+                ExactAlarmBanner(
+                    onEnable = { context.startActivity(exactAlarmSettingsIntent(context)) },
+                    onDismiss = viewModel::dismissExactAlarmWarning
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -376,6 +386,87 @@ private fun A11yWarningBanner(onEnable: () -> Unit, onDismiss: () -> Unit) {
         Icon(
             imageVector = SchCloseIcon,
             contentDescription = stringResource(R.string.sch_warn_a11y_dismiss),
+            tint = colors.ink3,
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onDismiss)
+                .padding(3.dp)
+        )
+    }
+}
+
+// Banner only renders on API 31+ (see shouldShowExactAlarmWarning); the
+// Settings constant is compile-time-inlined so referencing it is safe.
+@SuppressLint("InlinedApi")
+private fun exactAlarmSettingsIntent(context: Context): Intent = Intent(
+    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+    "package:${context.packageName}".toUri()
+)
+
+@Composable
+private fun ExactAlarmBanner(onEnable: () -> Unit, onDismiss: () -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShape(radius = 20.dp)
+            .background(colors.dangerBg)
+            .border(1.dp, colors.danger, RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(colors.dangerBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = SchClockIcon,
+                contentDescription = null,
+                tint = colors.danger,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.sch_warn_exact_title),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.ink
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = stringResource(R.string.sch_warn_exact_sub),
+                fontSize = 12.5.sp,
+                lineHeight = 17.sp,
+                color = colors.ink2
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .height(38.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(colors.brandSoft)
+                .clickable(onClick = onEnable)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.sch_warn_exact_enable),
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.brandDark
+            )
+        }
+        Spacer(Modifier.width(4.dp))
+        Icon(
+            imageVector = SchCloseIcon,
+            contentDescription = stringResource(R.string.sch_warn_exact_dismiss),
             tint = colors.ink3,
             modifier = Modifier
                 .size(22.dp)

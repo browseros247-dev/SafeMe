@@ -19,10 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +43,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,6 +99,10 @@ fun ScheduleEditScreen(
                     if (editId != null) R.string.sche_title_edit else R.string.sche_title_new
                 ),
                 onBack = onBack,
+            )
+            EnabledRow(
+                enabled = state.enabled,
+                onToggle = viewModel::setEnabled,
             )
             Column(
                 modifier = Modifier
@@ -239,6 +247,47 @@ private fun Header(title: String, onBack: () -> Unit) {
             fontWeight = FontWeight.Bold,
             letterSpacing = (-0.6).sp,
             color = colors.ink,
+        )
+    }
+}
+
+/** B6: visible enabled state. Edits preserve the stored flag; new schedules default on. */
+@Composable
+private fun EnabledRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(colors.surface)
+            .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .toggleable(value = enabled, role = Role.Switch, onValueChange = onToggle)
+            .padding(14.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.sche_enabled),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.ink,
+            )
+            Text(
+                text = stringResource(R.string.sche_enabled_sub),
+                fontSize = 12.sp,
+                color = colors.ink2,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = enabled,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = colors.brand,
+                checkedBorderColor = colors.brand,
+            ),
         )
     }
 }

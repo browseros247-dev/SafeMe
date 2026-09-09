@@ -333,6 +333,8 @@
     <string name="sche_save">Save changes</string>
     <string name="sche_delete">Delete schedule</string>
     <string name="sche_note">Boundary alarms + 15-min safety net + boot re-arm keep this schedule enforced.</string>
+    <string name="sche_enabled">Enabled</string>
+    <string name="sche_enabled_sub">Turn off to pause this schedule without deleting it</string>
     <string name="sche_toast_name">Give your schedule a name</string>
     <string name="sche_toast_day">Pick at least one day</string>
     <string name="sche_toast_time">Start must be before end</string>

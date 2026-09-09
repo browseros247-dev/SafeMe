@@ -2,7 +2,7 @@ package com.safeme.app.data
 
 internal val bundledAdultKeywords: List<String> = listOf(
     "xvideos", "xhamster", "xnxx", "youporn", "tube8", "spankbang", "brazzers", "bangbros", "naughtyamerica",
-    "realitykings", "vixen", "camgirl", "webcamsex", "sexchat", "sexting", "xxx", "oral sex", "sextoys", "sex toy",
+    "realitykings", "vixen", "camgirl", "webcamsex", "sexchat", "sexting", "oral sex", "sextoys", "sex toy",
     "sexdoll", "pussy",
 )
 

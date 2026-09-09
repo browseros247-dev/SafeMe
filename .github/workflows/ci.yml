@@ -95,6 +95,9 @@ jobs:
           EOF
           echo "Release signing configured from GitHub secrets."
 
+      - name: Verify bundled-dataset counts match sources
+        run: python3 tools/ci/check_bundled_counts.py --check
+
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest
 

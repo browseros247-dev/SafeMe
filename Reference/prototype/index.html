@@ -181,7 +181,7 @@
 
         <div class="sec-t">More blocking</div>
         <div class="grid2">
-          <button class="qa" onclick="toast('Coming soon')"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="t">App-Feature</div><div class="s">Reels · Shorts · Stories</div></button>
+          <button class="qa" onclick="nav('socialblocking')"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="t">Social Media Blocking</div><div class="s">Whole apps or just tabs · Reels · Shorts · Spotlight</div></button>
           <button class="qa" onclick="nav('blockscreen')"><div class="ic d"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div><div class="t">Block Screen</div><div class="s">Message · close-gate</div></button>
           <button class="qa" onclick="nav('vpn')"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="t">DNS &amp; VPN Filtering</div><div class="s">VPN · presets</div></button>
           <button class="qa" onclick="nav('antitamper')"><div class="ic r"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="t">Anti-Tamper</div><div class="s">Prevent uninstall · power menu</div></button>
@@ -190,7 +190,7 @@
         </div>
       </section>
 
-      <!-- ================= FOCUS ================= -->
+      <!-- ================= SOCIAL MEDIA BLOCKING (top) ================= -->
       
       <!-- ================= SCHEDULE ================= -->
       <section class="screen nav-on" id="sc-schedule">
@@ -537,7 +537,151 @@
         </div>
       </section>
 
-      <!-- ================= SERVICE PICKER ================= -->
+      <!-- ================= SOCIAL MEDIA BLOCKING — EXACT LAYOUT + SAFEME LIGHT THEME ================= -->
+      <section class="screen" id="sc-socialblocking" style="background:var(--bg)">
+        <div class="sub" style="margin:0 -2px;padding-bottom:10px">
+          <button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <h1>Social Media Blocking</h1>
+          <p class="sub-desc">Block a whole app at launch, or target specific addictive tabs.</p>
+        </div>
+
+        <!-- Master card — SafeMe light -->
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px 14px 12px;margin-top:16px;box-shadow:0 1px 2px rgba(31,26,22,.05)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:42px;height:42px;border-radius:14px;background:var(--brand-soft);color:var(--brand-dark);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.2">Social Media Blocking</div>
+              <div style="font-size:12px;color:var(--ink-2);margin-top:2px">Whole apps &amp; tabs protected</div>
+            </div>
+            <div class="sw on" id="socialMaster" onclick="togSocialMaster(this)" style="flex:none"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+            <div id="socialMasterPill" style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--success)"><span style="width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(46,125,91,.12)"></span>Master ON</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="socialHeroWhole" style="padding:5px 10px;background:var(--bg);border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:600;color:var(--ink-2);letter-spacing:.2px">5 launch</span>
+              <span id="socialHeroTabs" style="padding:5px 10px;background:var(--bg);border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:600;color:var(--ink-2);letter-spacing:.2px">3/3 tabs</span>
+            </div>
+          </div>
+        </div>
+        <!-- hidden compat -->
+        <div style="display:none"><span id="socialHeroPill"></span><span id="socialMasterSub"></span><span id="socialWholeSub"></span><span id="socialHeroTag"></span><span id="socialHeroTitle"></span><span id="socialHeroSub"></span><span id="socialCountPill"></span></div>
+
+        <!-- Quick Focus Mode — exact 3 presets -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding:0 2px">
+          <div style="font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;font-weight:700;color:var(--ink)">QUICK FOCUS MODE</div>
+          <div style="font-size:11px;color:var(--ink-3)">1-Tap Preset</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+          <button onclick="applyPreset('deep')" id="presetDeep" style="background:var(--brand-soft);border:1.5px solid var(--brand);border-radius:16px;padding:12px 10px;text-align:left;transition:.15s;box-shadow:0 1px 2px rgba(31,26,22,.05)">
+            <div style="display:flex;align-items:center;gap:5px;color:var(--brand-dark);font-size:13px;font-weight:700"><span style="font-size:13px">🔥</span> Deep Work</div>
+            <div style="font-size:11px;color:var(--ink-2);margin-top:4px;line-height:1.3">All apps &amp; tabs</div>
+          </button>
+          <button onclick="applyPreset('balanced')" id="presetBalanced" style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 10px;text-align:left;transition:.15s">
+            <div style="display:flex;align-items:center;gap:5px;color:var(--ink);font-size:13px;font-weight:600"><span style="font-size:12px">⚖</span> Balanced</div>
+            <div style="font-size:11px;color:var(--ink-2);margin-top:4px;line-height:1.3">Tabs only</div>
+          </button>
+          <button onclick="applyPreset('relax')" id="presetRelax" style="background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 10px;text-align:left;transition:.15s">
+            <div style="display:flex;align-items:center;gap:5px;color:var(--ink);font-size:13px;font-weight:600"><span style="font-size:12px">☕</span> Relax</div>
+            <div style="font-size:11px;color:var(--ink-2);margin-top:4px;line-height:1.3">All paused</div>
+          </button>
+        </div>
+
+        <!-- Launch Block — exact 5 rows -->
+        <div style="margin-top:18px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:0 2px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;font-weight:700;color:var(--ink)">LAUNCH BLOCK</span>
+                <span style="font-size:10px;padding:3px 8px;background:var(--brand-soft);color:var(--brand-dark);border-radius:999px;font-weight:700;letter-spacing:.3px;border:1px solid rgba(217,119,87,.25)">Full App</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--ink-2);margin-top:4px;line-height:15px">Entire app is blocked before opening.</div>
+            </div>
+            <button onclick="openSocialApps()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1px solid var(--line);border-radius:999px;color:var(--brand-dark);font-size:12.5px;font-weight:600;flex:none;box-shadow:0 1px 2px rgba(31,26,22,.05)"><span style="font-size:14px;line-height:1">+</span> Add</button>
+          </div>
+
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px" id="launchList">
+            <div class="launch-row" data-app="TikTok" style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#FDEEE2;color:#F97316;display:flex;align-items:center;justify-content:center;flex:none;font-weight:800;font-size:14px;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M12.5 2.5a5.5 5.5 0 015.5 5.5v8.2a4.2 4.2 0 01-4.2 4.2 4.2 4.2 0 01-4.2-4.2c0-2.3 1.9-4.2 4.2-4.2.5 0 1 .1 1.5.2V8.2a8.5 8.5 0 00-1.5-.1A7.2 7.2 0 005.3 15.3 7.2 7.2 0 0012.5 22.5a7.2 7.2 0 007.2-7.2V8.2a8.4 8.4 0 01-4.9 1.6c-.4 0-.9 0-1.3-.1V2.5z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">TikTok</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Blocked entirely before opening</div>
+              </div>
+              <div class="sw on" data-launch="TikTok" onclick="togLaunch(this,'TikTok')"></div>
+            </div>
+            <div class="launch-row" data-app="Instagram" style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#FDEAF4;color:#E1306C;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">Instagram</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Blocked entirely before opening</div>
+              </div>
+              <div class="sw on" data-launch="Instagram" onclick="togLaunch(this,'Instagram')"></div>
+            </div>
+            <div class="launch-row" data-app="X / Twitter" style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#EFEFEF;color:#0F1419;display:flex;align-items:center;justify-content:center;flex:none;font-weight:800;font-size:16px;letter-spacing:-1px;border:1px solid var(--line)">𝕏</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">X / Twitter</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Timeline &amp; notifications restricted</div>
+              </div>
+              <div class="sw on" data-launch="X / Twitter" onclick="togLaunch(this,'X / Twitter')"></div>
+            </div>
+            <div class="launch-row" data-app="Reddit" style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#FDE7E7;color:#FF4500;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M12 2.5a9.5 9.5 0 00-9.5 9.5c0 2.6 1.1 5 2.8 6.7.2.2.5.3.8.1l1.6-.9c.2-.1.3-.4.2-.6-.6-1-1-2.2-1-3.6 0-3.5 2.5-6.3 5.6-6.3 3 0 5.5 2.8 5.5 6.3 0 1.4-.3 2.6-1 3.6-.1.2 0 .5.2.6l1.6.9c.3.2.6.1.8-.1A9.5 9.5 0 0012 2.5z"/><circle cx="9.2" cy="11.2" r="1.2"/><circle cx="14.8" cy="11.2" r="1.2"/><path d="M8.5 14.5c1.2 1.1 3.8 1.1 5 0 .2-.2.1-.5-.2-.5h-4.6c-.3 0-.4.3-.2.5z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">Reddit</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Infinite feeds restricted</div>
+              </div>
+              <div class="sw on" data-launch="Reddit" onclick="togLaunch(this,'Reddit')"></div>
+            </div>
+            <div class="launch-row" data-app="Twitch" style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#F3E8FF;color:#9146FF;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M3 4.5l2-2h13l3 3v11l-4 4h-4l-3 3-3-3H5l-2-2z"/><path d="M9 9h2v6H9zM13 9h2v6h-2z" fill="white"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">Twitch</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Live streams restricted</div>
+              </div>
+              <div class="sw on" data-launch="Twitch" onclick="togLaunch(this,'Twitch')"></div>
+            </div>
+          </div>
+          <div id="socialWholeChips" style="display:none"></div>
+        </div>
+
+        <!-- In-App Tab Block — exact 3 rows -->
+        <div style="margin-top:18px">
+          <div style="display:flex;align-items:center;gap:8px;padding:0 2px">
+            <span style="font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;font-weight:700;color:var(--ink)">IN-APP TAB BLOCK</span>
+            <span id="tabActivePill" style="font-size:10px;padding:3px 8px;background:var(--brand-soft);border:1px solid rgba(217,119,87,.25);color:var(--brand-dark);border-radius:999px;font-weight:700;letter-spacing:.2px">3 active</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-2);margin-top:4px;line-height:15px;padding:0 2px">Keep useful functions, block endless feeds &amp; reels.</div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;padding-bottom:8px">
+            <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#FDE7E7;color:#FF0000;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M19.6 7.2a2.5 2.5 0 00-1.8-1.8C16.2 5 12 5 12 5s-4.2 0-5.8.4A2.5 2.5 0 004.4 7.2 25 25 0 004 12a25 25 0 00.4 4.8 2.5 2.5 0 001.8 1.8C7.8 19 12 19 12 19s4.2 0 5.8-.4a2.5 2.5 0 001.8-1.8A25 25 0 0020 12a25 25 0 00-.4-4.8z"/><path d="M10 15l5-3-5-3z" fill="white"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">YouTube Shorts</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Main video search &amp; subscriptions stay active</div>
+              </div>
+              <div class="sw on" id="socialYoutube" onclick="togSocialFeature(this,'youtube')"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#E7F0FD;color:#1877F2;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M12 2.5a9.5 9.5 0 00-3 18.5v-6.6H7v-2.8h2V9.2c0-2 1.2-3.1 3-3.1.9 0 1.8.1 1.8.1v2h-1c-1 0-1.3.6-1.3 1.2v1.5h2.3l-.4 2.8h-1.9V21A9.5 9.5 0 0012 2.5z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">Facebook Reels</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Events, groups &amp; Messenger stay active</div>
+              </div>
+              <div class="sw on" id="socialFacebook" onclick="togSocialFeature(this,'facebook')"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#FDF3E3;color:#B78A00;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M12 2.7c-2 .3-4 1.3-4 3.5 0 1.4.8 2.7 1.7 3.7-.6.6-1.7 1.2-2.6 1.5 0 0 2.2 1.6 4.3 1 .9.4 1.7.6 2.6.6s1.7-.2 2.6-.6c2.1.6 4.3-1 4.3-1-.9-.3-2-.9-2.6-1.5.9-1 1.7-2.3 1.7-3.7 0-2.2-2-3.2-4-3.5-1.2-.2-2.4-.2-3.6 0-.4 0-.8.1-1.2.1-.4 0-.8 0-1.2-.1z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">Snapchat Spotlight</div>
+                <div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">Direct messaging &amp; camera stay active</div>
+              </div>
+              <div class="sw on" id="socialSnapchat" onclick="togSocialFeature(this,'snapchat')"></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:none"><span id="socialYoutubePill"></span><span id="socialFacebookPill"></span><span id="socialSnapchatPill"></span></div>
+      </section>
+
+      <!-- ================= SERVICE PICKER      <!-- ================= SERVICE PICKER ================= -->
       <section class="screen" id="sc-servicepicker">
         <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Protect a service</h1><p class="sub-desc">Select the Accessibility Services SafeMe should keep running.</p></div>
         <label class="field" style="margin-top:14px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input placeholder="Search services…" oninput="svcSearch(this)"></label>
@@ -780,6 +924,17 @@
       <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm btn-secondary" style="flex:1" id="selAllVpnBtn" onclick="selectAllVpnApps()">Select All (0)</button><button class="btn sm btn-secondary" style="flex:1" id="deselAllVpnBtn" onclick="deselectAllVpnApps()">Deselect All (0)</button></div>
       <div class="app-picker" id="vpnAppList"></div>
       <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="vpnAppsDone()">Done</button>
+    </div>
+
+    <!-- Social Media Blocking — whole-app picker (All Apps) -->
+    <div class="sheet" id="sheetSocialApps">
+      <div class="grab"></div>
+      <h3>Block entire apps</h3>
+      <div class="s-sub">Pick apps to block completely — <b>All Apps</b> (includes TikTok &amp; Instagram). Persistent launch gate.</div>
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="socialAppSearch" placeholder="Search apps… (try TikTok, Instagram)" oninput="filterSocialApps(this.value)"></label>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm btn-secondary" style="flex:1" id="selAllSocialBtn" onclick="selectAllSocialApps()">Select All (0)</button><button class="btn sm btn-secondary" style="flex:1" id="deselAllSocialBtn" onclick="deselectAllSocialApps()">Deselect All (0)</button></div>
+      <div class="app-picker" id="socialAppList"></div>
+      <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="socialAppsDone()">Done</button>
     </div>
 
     <div class="sheet" id="sheetDelete">

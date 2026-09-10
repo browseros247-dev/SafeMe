@@ -61,9 +61,14 @@ class BackupManagerTest {
         a11yProtection = A11yProtectionPrefsState(protectionEnabled = true, protectedComponents = setOf("pkg/svc")),
         contentEngine = ContentEnginePrefsState(blockImageVideoSearch = true),
         blockScreen = BlockScreenPrefsState(dwell = 8, message = "Focus", whyOn = false),
+        socialBlocking = SocialBlockingState(
+            enabled = true,
+            wholeBlocked = setOf("com.zhiliaoapp.musically"),
+            youtube = true, facebook = false, snapchat = true,
+        ),
     )
 
-    /** All eight stores seeded with "old" values that differ from the backup. */
+    /** All stores seeded with "old" values that differ from the backup. */
     private fun seededStores(
         failEveryWriteOn: BackupSection? = null,
         failOnWriteNumber: BackupSection? = null,
@@ -77,6 +82,7 @@ class BackupManagerTest {
         put(BackupSection.A11Y_PROTECTION, FakeStore(A11yProtectionPrefsState(protectionEnabled = false)))
         put(BackupSection.CONTENT_ENGINE, FakeStore(ContentEnginePrefsState(blockImageVideoSearch = false)))
         put(BackupSection.BLOCK_SCREEN, FakeStore(BlockScreenPrefsState(dwell = 5)))
+        put(BackupSection.SOCIAL_BLOCKING, FakeStore(SocialBlockingState(enabled = false, wholeBlocked = emptySet(), youtube = false, facebook = false, snapchat = false)))
     }.mapValues { (section, store) ->
         when (section) {
             failEveryWriteOn -> FakeStore(store.value, failEveryWrite = true)
@@ -106,6 +112,7 @@ class BackupManagerTest {
         assertEquals(restored.a11yProtection, stores[BackupSection.A11Y_PROTECTION]?.value)
         assertEquals(restored.contentEngine, stores[BackupSection.CONTENT_ENGINE]?.value)
         assertEquals(restored.blockScreen, stores[BackupSection.BLOCK_SCREEN]?.value)
+        assertEquals(restored.socialBlocking, stores[BackupSection.SOCIAL_BLOCKING]?.value)
     }
 
     @Test

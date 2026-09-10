@@ -4,11 +4,11 @@
     welcome:{group:'Onboarding'}, permissions:{group:'Onboarding'}, permbattery:{group:'Onboarding'}, perma11y:{group:'Onboarding'},
     home:{group:'Main',nav:true}, block:{group:'Main',nav:true}, schedule:{group:'Main',nav:true}, profile:{group:'Main',nav:true},
     keywords:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, antitamper:{group:'Blocking'},
-    selfprotect:{group:'Blocking'}, servicepicker:{group:'Blocking'}, titleblock:{group:'Blocking'}, otherfeatures:{group:'Blocking'},
+    selfprotect:{group:'Blocking'}, servicepicker:{group:'Blocking'}, titleblock:{group:'Blocking'}, otherfeatures:{group:'Blocking'}, socialblocking:{group:'Blocking'},
     applock:{group:'Protection'}, backup:{group:'Protection'}, troubleshoot:{group:'Protection'}, about:{group:'Protection'},
     history:{group:'Activity & Schedules'}, scheduleedit:{group:'Activity & Schedules'}, quickactions:{group:'Activity & Schedules'}
   };
-  const ORDER = ['welcome','permissions','permbattery','perma11y','home','block','schedule','profile','keywords','blockscreen','vpn','antitamper','selfprotect','servicepicker','titleblock','otherfeatures','applock','backup','troubleshoot','about','history','scheduleedit','quickactions'];
+  const ORDER = ['welcome','permissions','permbattery','perma11y','home','block','schedule','profile','keywords','blockscreen','vpn','antitamper','selfprotect','servicepicker','titleblock','otherfeatures','socialblocking','applock','backup','troubleshoot','about','history','scheduleedit','quickactions'];
   let stack = [];
 
   // Build prototype navigator
@@ -217,12 +217,13 @@
   function refreshAppPicker(id){
     const cfg={
       sheetApps:['appList','appSearch','multi'],
-      sheetVpnApps:['vpnAppList','vpnAppSearch','multi']
+      sheetVpnApps:['vpnAppList','vpnAppSearch','multi'],
+      sheetSocialApps:['socialAppList','socialAppSearch','multi']
     }[id];
     if(!cfg) return;
     const host=document.getElementById(cfg[0]);
     const search=document.getElementById(cfg[1]); if(search) search.value='';
-    const sel = id==='sheetApps' ? appPickSel : vpnPickSel;
+    const sel = id==='sheetApps' ? appPickSel : id==='sheetVpnApps' ? vpnPickSel : SOCIAL.wholeBlocked;
     renderAppPicker(host, cfg[2], sel, '');
     updatePickerCounts();
   }
@@ -233,7 +234,7 @@
     document.getElementById('scrim').classList.add('show');
     document.getElementById(id).classList.add('show');
     if(id==='sheetDelay'){ startDelay(); }
-    if(id==='sheetApps'||id==='sheetVpnApps'){ refreshAppPicker(id); }
+    if(id==='sheetApps'||id==='sheetVpnApps'||id==='sheetSocialApps'){ refreshAppPicker(id); }
     if(id==='sheetTitle'){
       titleEditId=null;
       const tt=document.getElementById('titleSheetTitle'); if(tt) tt.textContent='Add title rule';
@@ -292,9 +293,13 @@
   function togSel(li){
     const c=li.querySelector('.checkbox'); c.classList.toggle('on');
     const name=li.dataset.app||(li.querySelector('.t')||{textContent:''}).textContent;
-    const set = li.closest('#appList') ? appPickSel : (li.closest('#vpnAppList') ? vpnPickSel : null);
+    let set = null;
+    if(li.closest('#appList')) set = appPickSel;
+    else if(li.closest('#vpnAppList')) set = vpnPickSel;
+    else if(li.closest('#socialAppList')) set = SOCIAL.wholeBlocked;
     if(set){ if(c.classList.contains('on')) set.add(name); else set.delete(name); }
     updatePickerCounts();
+    if(set===SOCIAL.wholeBlocked) renderSocial();
   }
 
   // ---------- Time delay gate ----------
@@ -721,6 +726,9 @@
     const c=document.getElementById('selAllVpnBtn'), d=document.getElementById('deselAllVpnBtn');
     if(c) c.textContent='Select All ('+vpnPickSel.size+')';
     if(d) d.textContent='Deselect All ('+vpnPickSel.size+')';
+    const e=document.getElementById('selAllSocialBtn'), f=document.getElementById('deselAllSocialBtn');
+    if(e) e.textContent='Select All ('+SOCIAL.wholeBlocked.size+')';
+    if(f) f.textContent='Deselect All ('+SOCIAL.wholeBlocked.size+')';
   }
   function selectAllApps(){
     const q=(document.getElementById('appSearch')||{}).value||'';
@@ -759,6 +767,204 @@
       g.style.display=any?'':'none';
     });
   }
+
+  // ---------- Social Media Blocking (two gates) ----------
+  const SOCIAL_KEY='safeme_social_blocking_v1';
+  const SOCIAL={ enabled: true, wholeBlocked: new Set(['TikTok','Instagram','X / Twitter','Reddit','Twitch']), youtube:true, facebook:true, snapchat:true };
+  function loadSocial(){
+    try{
+      const raw=localStorage.getItem(SOCIAL_KEY); if(!raw) return;
+      const j=JSON.parse(raw)||{};
+      SOCIAL.enabled=!!j.enabled;
+      SOCIAL.wholeBlocked=new Set(Array.isArray(j.wholeBlocked)?j.wholeBlocked:[]);
+      if(typeof j.youtube==='boolean') SOCIAL.youtube=j.youtube;
+      if(typeof j.facebook==='boolean') SOCIAL.facebook=j.facebook;
+      if(typeof j.snapchat==='boolean') SOCIAL.snapchat=j.snapchat;
+    }catch(e){}
+  }
+  function saveSocial(){
+    try{ localStorage.setItem(SOCIAL_KEY, JSON.stringify({enabled:SOCIAL.enabled, wholeBlocked:[...SOCIAL.wholeBlocked], youtube:SOCIAL.youtube, facebook:SOCIAL.facebook, snapchat:SOCIAL.snapchat})); }catch(e){}
+  }
+  function appByName(name){ return APPS.find(a=>a.name===name) || {name:name, bg:'#25282E', fg:'#9A9AA0', ic:'<circle cx="12" cy="12" r="8"/>'};
+  }
+  function renderSocial(){
+    const m=document.getElementById('socialMaster');
+    if(m) m.classList.toggle('on', SOCIAL.enabled);
+    // master pill — SafeMe light
+    const mp=document.getElementById('socialMasterPill');
+    if(mp){
+      if(SOCIAL.enabled){
+        mp.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(46,125,91,.12)"></span>Master ON';
+        mp.style.color='var(--success)';
+      } else {
+        mp.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:var(--ink-3)"></span>Master OFF';
+        mp.style.color='var(--ink-3)';
+      }
+    }
+    const ms=document.getElementById('socialMasterSub');
+    if(ms) ms.textContent = SOCIAL.enabled ? 'Whole apps & tabs protected' : 'Paused — tap to protect';
+    const hw=document.getElementById('socialHeroWhole');
+    if(hw){ hw.textContent = SOCIAL.wholeBlocked.size+' launch'; }
+    const ht=document.getElementById('socialHeroTabs');
+    if(ht){
+      const gated = (SOCIAL.youtube?1:0)+(SOCIAL.facebook?1:0)+(SOCIAL.snapchat?1:0);
+      ht.textContent = (SOCIAL.enabled?gated:0)+'/3 tabs';
+    }
+    const tabPill=document.getElementById('tabActivePill');
+    if(tabPill){
+      const gated = (SOCIAL.youtube?1:0)+(SOCIAL.facebook?1:0)+(SOCIAL.snapchat?1:0);
+      const active = SOCIAL.enabled ? gated : 0;
+      tabPill.textContent = active+' active';
+      tabPill.style.background = active? 'var(--brand-soft)' : 'var(--surface)';
+      tabPill.style.color = active? 'var(--brand-dark)' : 'var(--ink-3)';
+      tabPill.style.borderColor = active? 'rgba(217,119,87,.25)' : 'var(--line)';
+    }
+    // launch rows
+    document.querySelectorAll('.launch-row .sw').forEach(sw=>{
+      const name=sw.dataset.launch;
+      const on = SOCIAL.enabled && SOCIAL.wholeBlocked.has(name);
+      sw.classList.toggle('on', on);
+    });
+    document.querySelectorAll('.launch-row').forEach(row=>{
+      row.style.opacity = SOCIAL.enabled ? '1' : '.45';
+      row.style.pointerEvents = SOCIAL.enabled ? 'auto' : 'none';
+    });
+    // presets highlight
+    const deep=document.getElementById('presetDeep'), bal=document.getElementById('presetBalanced'), rel=document.getElementById('presetRelax');
+    const wholeN=SOCIAL.wholeBlocked.size;
+    const tabsN=(SOCIAL.youtube?1:0)+(SOCIAL.facebook?1:0)+(SOCIAL.snapchat?1:0);
+    let preset='none';
+    if(!SOCIAL.enabled) preset='relax';
+    else if(wholeN>=4 && tabsN===3) preset='deep';
+    else if(wholeN===0 && tabsN===3) preset='balanced';
+    if(deep){ deep.style.background = preset==='deep' ? 'var(--brand-soft)' : 'var(--surface)'; deep.style.borderColor = preset==='deep' ? 'var(--brand)' : 'var(--line)'; deep.style.borderWidth = preset==='deep' ? '1.5px' : '1px'; }
+    if(bal){ bal.style.background = preset==='balanced' ? 'var(--brand-soft)' : 'var(--surface)'; bal.style.borderColor = preset==='balanced' ? 'var(--brand)' : 'var(--line)'; bal.style.borderWidth = preset==='balanced' ? '1.5px' : '1px'; }
+    if(rel){ rel.style.background = preset==='relax' ? 'var(--brand-soft)' : 'var(--surface)'; rel.style.borderColor = preset==='relax' ? 'var(--brand)' : 'var(--line)'; rel.style.borderWidth = preset==='relax' ? '1.5px' : '1px'; }
+
+    // tabs
+    const yt=document.getElementById('socialYoutube'); if(yt) yt.classList.toggle('on', SOCIAL.enabled && SOCIAL.youtube);
+    const fb=document.getElementById('socialFacebook'); if(fb) fb.classList.toggle('on', SOCIAL.enabled && SOCIAL.facebook);
+    const sc=document.getElementById('socialSnapchat'); if(sc) sc.classList.toggle('on', SOCIAL.enabled && SOCIAL.snapchat);
+    document.querySelectorAll('#sc-socialblocking .list .sw, #sc-socialblocking [id^="social"] .sw').forEach(sw=>{
+      // keep minimal dim already handled, but ensure tabs dim when master off
+    });
+    // hide compat
+    const ws=document.getElementById('socialWholeSub'); if(ws) ws.style.display='none';
+    const chips=document.getElementById('socialWholeChips'); if(chips) chips.style.display='none';
+    const cp=document.getElementById('socialCountPill'); if(cp) cp.style.display='none';
+    // dynamic extra apps beyond default 5
+    const launchList=document.getElementById('launchList');
+    if(launchList){
+      const defaults=new Set(['TikTok','Instagram','X / Twitter','Reddit','Twitch']);
+      launchList.querySelectorAll('.launch-row.extra').forEach(r=>{
+        const nm=r.dataset.app;
+        if(!SOCIAL.wholeBlocked.has(nm)) r.remove();
+      });
+      SOCIAL.wholeBlocked.forEach(name=>{
+        if(defaults.has(name)) return;
+        const exists = launchList.querySelector('.launch-row[data-app="'+name+'"]');
+        if(exists) return;
+        const a=appByName(name);
+        const row=document.createElement('div');
+        row.className='launch-row extra';
+        row.dataset.app=name;
+        row.style.display='flex';
+        row.style.alignItems='center';
+        row.style.gap='12px';
+        row.style.background='var(--surface)';
+        row.style.border='1px solid var(--line)';
+        row.style.borderRadius='16px';
+        row.style.padding='12px';
+        const ic=document.createElement('div');
+        ic.style.width='42px'; ic.style.height='42px'; ic.style.borderRadius='14px'; ic.style.background=a.bg; ic.style.color=a.fg;
+        ic.style.display='flex'; ic.style.alignItems='center'; ic.style.justifyContent='center'; ic.style.flex='none';
+        ic.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round">'+a.ic+'</svg>';
+        const tx=document.createElement('div'); tx.style.flex='1'; tx.style.minWidth='0';
+        tx.innerHTML='<div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">'+name+'</div><div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">'+a.pkg+'</div>';
+        const sw=document.createElement('div'); sw.className='sw on'; sw.dataset.launch=name;
+        sw.onclick=function(){ togLaunch(sw, name); };
+        sw.classList.toggle('on', SOCIAL.enabled && SOCIAL.wholeBlocked.has(name));
+        row.appendChild(ic); row.appendChild(tx); row.appendChild(sw);
+        launchList.appendChild(row);
+      });
+    }
+    updatePickerCounts();
+  }
+  function applyPreset(which){
+    if(which==='deep'){
+      SOCIAL.enabled=true;
+      SOCIAL.wholeBlocked=new Set(['TikTok','Instagram','X / Twitter','Reddit','Twitch']);
+      SOCIAL.youtube=true; SOCIAL.facebook=true; SOCIAL.snapchat=true;
+    } else if(which==='balanced'){
+      SOCIAL.enabled=true;
+      SOCIAL.wholeBlocked.clear();
+      SOCIAL.youtube=true; SOCIAL.facebook=true; SOCIAL.snapchat=true;
+    } else if(which==='relax'){
+      SOCIAL.enabled=false;
+    }
+    saveSocial(); renderSocial();
+    const labels={deep:'Deep Work \u2014 all apps & tabs', balanced:'Balanced \u2014 tabs only', relax:'Relax \u2014 all paused'};
+    toast(labels[which]);
+  }
+  function togLaunch(el, name){
+    if(!SOCIAL.enabled){ toast('Turn on Master first'); return; }
+    if(SOCIAL.wholeBlocked.has(name)) SOCIAL.wholeBlocked.delete(name);
+    else SOCIAL.wholeBlocked.add(name);
+    saveSocial(); renderSocial();
+    toast(name + (SOCIAL.wholeBlocked.has(name) ? ' blocked' : ' allowed'));
+  }
+  function togSocialMaster(el){
+    SOCIAL.enabled = !SOCIAL.enabled;
+    el.classList.toggle('on', SOCIAL.enabled);
+    saveSocial(); renderSocial();
+    toast(SOCIAL.enabled ? 'Social Media Blocking — on' : 'Social Media Blocking — off');
+    actAdd(SOCIAL.enabled?'block':'schedule', SOCIAL.enabled?'Social blocking enabled':'Social blocking paused', SOCIAL.enabled? (SOCIAL.wholeBlocked.size+' whole · '+(SOCIAL.youtube+SOCIAL.facebook+SOCIAL.snapchat)+' tabs') : 'Master off · both gates paused', new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  }
+  function togSocialFeature(el, key){
+    if(!SOCIAL.enabled){ toast('Turn on Social Media Blocking first'); return; }
+    if(key==='youtube') SOCIAL.youtube=!SOCIAL.youtube;
+    if(key==='facebook') SOCIAL.facebook=!SOCIAL.facebook;
+    if(key==='snapchat') SOCIAL.snapchat=!SOCIAL.snapchat;
+    saveSocial(); renderSocial();
+    const labels={youtube:'YouTube Shorts',facebook:'Facebook Reels',snapchat:'Snapchat Spotlight'};
+    const on = key==='youtube'?SOCIAL.youtube : key==='facebook'?SOCIAL.facebook : SOCIAL.snapchat;
+    toast(labels[key]+' '+(on?'blocked':'allowed'));
+  }
+  function openSocialApps(){ refreshAppPicker('sheetSocialApps'); document.getElementById('scrim').classList.add('show'); document.getElementById('sheetSocialApps').classList.add('show'); }
+  function filterSocialApps(q){
+    const v=(q||'').trim().toLowerCase();
+    document.querySelectorAll('#socialAppList .app-group').forEach(g=>{
+      let any=false;
+      g.querySelectorAll('.li').forEach(r=>{
+        const t=(r.querySelector('.t').textContent+' '+(r.querySelector('.s')||{textContent:''}).textContent).toLowerCase();
+        const hit=!v||t.includes(v);
+        r.style.display=hit?'':'none';
+        if(hit) any=true;
+      });
+      g.style.display=any?'':'none';
+    });
+  }
+  function selectAllSocialApps(){
+    const q=(document.getElementById('socialAppSearch')||{}).value||'';
+    APPS.forEach(a=>SOCIAL.wholeBlocked.add(a.name));
+    renderAppPicker(document.getElementById('socialAppList'),'multi',SOCIAL.wholeBlocked,q);
+    updatePickerCounts(); renderSocial(); saveSocial(); toast('All apps blocked (whole-app)');
+  }
+  function deselectAllSocialApps(){
+    const q=(document.getElementById('socialAppSearch')||{}).value||'';
+    SOCIAL.wholeBlocked.clear();
+    renderAppPicker(document.getElementById('socialAppList'),'multi',SOCIAL.wholeBlocked,q);
+    updatePickerCounts(); renderSocial(); saveSocial(); toast('Cleared whole-app blocks');
+  }
+  function socialAppsDone(){
+    saveSocial(); renderSocial(); closeSheets();
+    toast(SOCIAL.wholeBlocked.size ? SOCIAL.wholeBlocked.size+' app'+(SOCIAL.wholeBlocked.size===1?'':'s')+' blocked (whole-app)' : 'No whole-app blocks');
+  }
+  function socialRemoveApp(name){
+    SOCIAL.wholeBlocked.delete(name);
+    saveSocial(); renderSocial(); toast(name+' — unblocked');
+  }
+  loadSocial();
 
   // ---------- DNS & VPN ----------
   let vpnPreset='Cloudflare Family', dnsV4='1.1.1.1', dnsV6='', vpnWhitelist=[], vpnNotif='Default';
@@ -1075,4 +1281,5 @@
     qaRender();
     feedRender();
     histRender();
+    renderSocial();
   })();

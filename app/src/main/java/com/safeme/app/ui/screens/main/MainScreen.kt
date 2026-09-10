@@ -47,6 +47,7 @@ import com.safeme.app.ui.screens.profile.AboutScreen
 import com.safeme.app.ui.screens.profile.ProfileScreen
 import com.safeme.app.ui.screens.schedule.ScheduleEditScreen
 import com.safeme.app.ui.screens.schedule.ScheduleScreen
+import com.safeme.app.ui.screens.socialblocking.SocialBlockingScreen
 import com.safeme.app.ui.screens.titleblock.TitleBlockScreen
 import com.safeme.app.ui.screens.vpn.DnsVpnScreen
 import com.safeme.app.ui.theme.LocalAppColors
@@ -127,6 +128,7 @@ fun MainScreen() {
                     },
                     onOpenTitleBlock = { navController.navigate("titleblock") },
                     onOpenOtherFeatures = { navController.navigate("otherfeatures") },
+                    onOpenSocialBlocking = { navController.navigate("socialblocking") },
                 )
             }
             composable("blockscreen") {
@@ -215,6 +217,9 @@ fun MainScreen() {
             }
             composable("otherfeatures") {
                 OtherFeaturesScreen(onBack = { navController.popBackStack() })
+            }
+            composable("socialblocking") {
+                SocialBlockingScreen(onBack = { navController.popBackStack() })
             }
         }
     }

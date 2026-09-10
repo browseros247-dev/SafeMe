@@ -25,6 +25,7 @@ enum class BackupSection {
     A11Y_PROTECTION,
     CONTENT_ENGINE,
     BLOCK_SCREEN,
+    SOCIAL_BLOCKING,
 }
 
 /**
@@ -83,6 +84,7 @@ data class BackupSnapshot(
     val a11yProtection: A11yProtectionPrefsState? = null,
     val contentEngine: ContentEnginePrefsState? = null,
     val blockScreen: BlockScreenPrefsState? = null,
+    val socialBlocking: SocialBlockingState? = null,
 ) {
     /** The sections that carry data — in canonical order. */
     val presentSections: List<BackupSection> get() = buildList {
@@ -95,6 +97,7 @@ data class BackupSnapshot(
         if (a11yProtection != null) add(BackupSection.A11Y_PROTECTION)
         if (contentEngine != null) add(BackupSection.CONTENT_ENGINE)
         if (blockScreen != null) add(BackupSection.BLOCK_SCREEN)
+        if (socialBlocking != null) add(BackupSection.SOCIAL_BLOCKING)
     }
 
     fun valueFor(section: BackupSection): Any? = when (section) {
@@ -107,6 +110,7 @@ data class BackupSnapshot(
         BackupSection.A11Y_PROTECTION -> a11yProtection
         BackupSection.CONTENT_ENGINE -> contentEngine
         BackupSection.BLOCK_SCREEN -> blockScreen
+        BackupSection.SOCIAL_BLOCKING -> socialBlocking
     }
 }
 
@@ -144,6 +148,7 @@ object BackupCodec {
         snapshot.a11yProtection?.let { root.put("a11yProtection", it.toJson()) }
         snapshot.contentEngine?.let { root.put("contentEngine", it.toJson()) }
         snapshot.blockScreen?.let { root.put("blockScreen", it.toJson()) }
+        snapshot.socialBlocking?.let { root.put("socialBlocking", it.toJson()) }
 
         val header = buildString {
             appendLine("// SafeMe backup — JSONC")
@@ -199,6 +204,7 @@ object BackupCodec {
                 a11yProtection = root.parseSection("a11yProtection") { it.parseA11yProtection() },
                 contentEngine = root.parseSection("contentEngine") { it.parseContentEngine() },
                 blockScreen = root.parseSection("blockScreen") { it.parseBlockScreen() },
+                socialBlocking = root.parseSection("socialBlocking") { it.parseSocialBlocking() },
             )
         } catch (e: InvalidBackupException) {
             return BackupParseResult.Failure(e.error)
@@ -361,8 +367,6 @@ object BackupCodec {
     }
 
     private fun JSONObject.parseBlockScreen(): BlockScreenPrefsState = BlockScreenPrefsState(
-        // Absent keys fall back to defaults; a stored dwell outside the valid
-        // range is clamped so a backup can never restore an out-of-range gate.
         dwell = int("dwell", BLOCK_SCREEN_DEFAULT_DWELL)
             .coerceIn(BLOCK_SCREEN_MIN_DWELL, BLOCK_SCREEN_MAX_DWELL),
         message = string("message") ?: "",
@@ -375,6 +379,24 @@ object BackupCodec {
             protectionEnabled = boolean("enabled", false),
             protectedComponents = stringArray("protectedComponents").toSet(),
         )
+
+    private fun SocialBlockingState.toJson(): JSONObject {
+        val o = JSONObject()
+        o.put("enabled", enabled)
+        o.put("wholeBlocked", JSONArray(wholeBlocked.toList()))
+        o.put("youtube", youtube)
+        o.put("facebook", facebook)
+        o.put("snapchat", snapchat)
+        return o
+    }
+
+    private fun JSONObject.parseSocialBlocking(): SocialBlockingState = SocialBlockingState(
+        enabled = boolean("enabled", true),
+        wholeBlocked = stringArray("wholeBlocked").map { it.trim() }.filter { it.isNotEmpty() }.toSet(),
+        youtube = boolean("youtube", true),
+        facebook = boolean("facebook", true),
+        snapchat = boolean("snapchat", true),
+    )
 
     // ------------------------------------------------------ strict accessors
 

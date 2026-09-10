@@ -64,6 +64,7 @@ fun BlockingScreen(
     onOpenWebsites: () -> Unit = {},
     onOpenTitleBlock: () -> Unit = {},
     onOpenOtherFeatures: () -> Unit = {},
+    onOpenSocialBlocking: () -> Unit = {},
     viewModel: BlockingViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -117,6 +118,7 @@ MoreGrid(
                 onOpenTitleBlock = onOpenTitleBlock,
                 onOpenAntiTamper = onOpenAntiTamper,
                 onOpenOtherFeatures = onOpenOtherFeatures,
+                onOpenSocialBlocking = onOpenSocialBlocking,
                 onComingSoon = { viewModel.showToast(comingSoonToast) }
             )
             Spacer(Modifier.size(16.dp))
@@ -510,6 +512,7 @@ private fun MoreGrid(
     onOpenTitleBlock: () -> Unit,
     onOpenAntiTamper: () -> Unit,
     onOpenOtherFeatures: () -> Unit,
+    onOpenSocialBlocking: () -> Unit,
     onComingSoon: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -519,7 +522,7 @@ private fun MoreGrid(
                 variant = IconVariant.Amber,
                 title = stringResource(R.string.blk_card_appfeature),
                 sub = stringResource(R.string.blk_card_appfeature_sub),
-                onClick = onComingSoon,
+                onClick = onOpenSocialBlocking,
                 modifier = Modifier.weight(1f)
             )
             MoreCard(

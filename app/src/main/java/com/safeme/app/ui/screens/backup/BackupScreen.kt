@@ -504,4 +504,5 @@ private fun sectionLabelRes(section: BackupSection): Int = when (section) {
     BackupSection.A11Y_PROTECTION -> R.string.backup_section_a11y
     BackupSection.CONTENT_ENGINE -> R.string.backup_section_content_engine
     BackupSection.BLOCK_SCREEN -> R.string.backup_section_block_screen
+    BackupSection.SOCIAL_BLOCKING -> R.string.backup_section_social
 }

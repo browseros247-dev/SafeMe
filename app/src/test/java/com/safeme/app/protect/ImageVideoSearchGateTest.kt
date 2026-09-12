@@ -23,8 +23,8 @@ class ImageVideoSearchGateTest {
     @Test
     fun googleImages_adultTerm_matches() {
         val texts = listOf(
-            "https://www.google.com/search?q=xxx&tbm=isch",
-            "xxx images",
+            "https://www.google.com/search?q=xnxx&tbm=isch",
+            "xnxx images",
         )
         val m = ImageVideoSearchGate.matches("com.android.chrome", texts, state())
         assertNotNull(m)
@@ -34,7 +34,7 @@ class ImageVideoSearchGateTest {
 
     @Test
     fun googleVideos_adultTerm_matches() {
-        val texts = listOf("google.com/search?q=xxx&tbm=vid")
+        val texts = listOf("google.com/search?q=xnxx&tbm=vid")
         val m = ImageVideoSearchGate.matches("com.android.chrome", texts, state())
         assertNotNull(m)
         assertEquals(ImageVideoSearchGate.KIND_VIDEOS, m!!.kind)
@@ -50,7 +50,7 @@ class ImageVideoSearchGateTest {
 
     @Test
     fun duckDuckGoImages_adultTerm_matches() {
-        val texts = listOf("duckduckgo.com/?q=xxx&iax=images&ia=images")
+        val texts = listOf("duckduckgo.com/?q=xnxx&iax=images&ia=images")
         val m = ImageVideoSearchGate.matches("com.microsoft.emmx", texts, state())
         assertNotNull(m)
         assertEquals(ImageVideoSearchGate.KIND_IMAGES, m!!.kind)
@@ -58,7 +58,7 @@ class ImageVideoSearchGateTest {
 
     @Test
     fun yandexVideoSearch_adultTerm_matches() {
-        val texts = listOf("yandex.com/video/search?text=xxx")
+        val texts = listOf("yandex.com/video/search?text=xnxx")
         val m = ImageVideoSearchGate.matches("com.brave.browser", texts, state())
         assertNotNull(m)
         assertEquals(ImageVideoSearchGate.KIND_VIDEOS, m!!.kind)
@@ -77,7 +77,7 @@ class ImageVideoSearchGateTest {
     fun adultWordOnNormalPage_neverMatches() {
         val texts = listOf(
             "https://en.wikipedia.org/wiki/Sex_education",
-            "an article mentioning xxx movies in a film-history context",
+            "an article mentioning xnxx movies in a film-history context",
         )
         assertNull(ImageVideoSearchGate.matches("com.android.chrome", texts, state()))
     }
@@ -89,19 +89,19 @@ class ImageVideoSearchGateTest {
 
     @Test
     fun nonBrowserPackage_neverMatches() {
-        val texts = listOf("google.com/search?q=xxx&tbm=isch")
+        val texts = listOf("google.com/search?q=xnxx&tbm=isch")
         assertNull(ImageVideoSearchGate.matches("com.instagram.android", texts, state()))
         assertNull(ImageVideoSearchGate.matches(null, texts, state()))
     }
 
     @Test
     fun whitelistKeyword_suppressesMatch() {
-        val texts = listOf("google.com/search?q=xxx&tbm=isch")
+        val texts = listOf("google.com/search?q=xnxx&tbm=isch")
         assertNull(
             ImageVideoSearchGate.matches(
                 "com.android.chrome",
                 texts,
-                state(whitelist = listOf("xxx")),
+                state(whitelist = listOf("xnxx")),
             ),
         )
     }

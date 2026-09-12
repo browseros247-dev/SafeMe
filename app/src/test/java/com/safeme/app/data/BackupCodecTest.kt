@@ -305,4 +305,38 @@ class BackupCodecTest {
         assertEquals(emptyList<QuickActionType>(), snapshot.quickActions)
         assertEquals(listOf(BackupSection.QUICK_ACTIONS), snapshot.presentSections)
     }
+
+    @Test
+    fun exactAlarmDismissalSurvivesRoundTrip() {
+        val base = fullSnapshot()
+        val original = base.copy(
+            schedules = base.schedules?.copy(exactAlarmWarningDismissed = true),
+        )
+        assertEquals(original, successOf(decode(encode(original))))
+    }
+
+    @Test
+    fun schedules_wrapRuleSurvivesRoundTrip() {
+        val base = fullSnapshot()
+        val wrap = ScheduleBlock(
+            id = "bedtime", name = "Bedtime", days = listOf(0),
+            startMinute = 22 * 60, endMinute = 7 * 60,
+            mode = ScheduleMode.BOTH, appPackages = listOf("com.tiktok"), enabled = true,
+        )
+        val original = base.copy(schedules = base.schedules?.copy(schedules = listOf(wrap)))
+        assertEquals(original, successOf(decode(encode(original))))
+    }
+
+    @Test
+    fun schedules_equalStartEndDroppedOnDecode() {
+        val base = fullSnapshot()
+        val bad = ScheduleBlock(
+            id = "bad", name = "Bad", days = listOf(0),
+            startMinute = 22 * 60, endMinute = 22 * 60,
+            mode = ScheduleMode.BOTH, appPackages = listOf("com.tiktok"), enabled = true,
+        )
+        val snapshot = base.copy(schedules = base.schedules?.copy(schedules = listOf(bad)))
+        val decoded = successOf(decode(encode(snapshot)))
+        assertTrue(decoded.schedules?.schedules.isNullOrEmpty())
+    }
 }

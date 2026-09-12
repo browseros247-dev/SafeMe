@@ -127,6 +127,9 @@ failure, and rollback.
   updates the setting but does not launch the tunnel; the app's
   consent-required design means the user starts it from the VPN screen.
 - **`blockedToday` is transient** — `writeBlockingPrefs` intentionally does
-  not restore the daily counter.
+  not restore the daily counter (nor its `blocked_date` key). The counter
+  rolls over lazily by date key: stale dates read as 0, the next increment
+  starts the new day at 1, and screen-resume paths persist the rollover —
+  so a restore can never resurrect yesterday's count.
 - Older schema versions (e.g. `schemaVersion: 0`) are accepted; the
   `UNSUPPORTED_VERSION` path only guards *newer* files.

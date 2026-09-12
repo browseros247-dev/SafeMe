@@ -14,11 +14,14 @@ import com.safeme.app.data.schedulePrefs
 import com.safeme.app.data.scheduleTimeLabel
 import com.safeme.app.data.scheduleWindowLabel
 import com.safeme.app.data.setA11yWarningDismissed
+import com.safeme.app.data.setExactAlarmWarningDismissed
 import com.safeme.app.data.setExcludedApps
 import com.safeme.app.data.shouldShowA11yWarning
+import com.safeme.app.data.shouldShowExactAlarmWarning
 import com.safeme.app.data.toggleSchedule
 import com.safeme.app.protect.ScheduleEvaluator
 import com.safeme.app.ui.util.isAccessibilityEnabled
+import com.safeme.app.ui.util.isExactAlarmGranted
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -48,6 +51,7 @@ data class ScheduleUiState(
     val heroPill: String = "",
     val nextBoundary: String = "",
     val showA11yWarning: Boolean = false,
+    val showExactAlarmWarning: Boolean = false,
     val excludedApps: Set<String> = emptySet(),
     val installedApps: List<InstalledApp> = emptyList(),
     val appsLoaded: Boolean = false,
@@ -67,13 +71,22 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     @Volatile
     private var lastA11yWarningDismissed: Boolean = false
 
+    @Volatile
+    private var lastExactAlarmDismissed: Boolean = false
+
     init {
         viewModelScope.launch {
             getApplication<Application>().schedulePrefs().collect { state ->
                 lastSchedules = state.schedules
                 lastA11yWarningDismissed = state.a11yWarningDismissed
+                lastExactAlarmDismissed = state.exactAlarmWarningDismissed
                 _uiState.update {
-                    buildUiState(state.schedules, state.a11yWarningDismissed, state.excludedApps)
+                    buildUiState(
+                        state.schedules,
+                        state.a11yWarningDismissed,
+                        state.exactAlarmWarningDismissed,
+                        state.excludedApps,
+                    )
                 }
             }
         }
@@ -82,6 +95,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private fun buildUiState(
         schedules: List<ScheduleBlock>,
         a11yWarningDismissed: Boolean,
+        exactAlarmDismissed: Boolean,
         excludedApps: Set<String>,
     ): ScheduleUiState {
         val app = getApplication<Application>()
@@ -150,6 +164,11 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 isAccessibilityEnabled(app),
                 a11yWarningDismissed,
             ),
+            showExactAlarmWarning = shouldShowExactAlarmWarning(
+                schedules,
+                isExactAlarmGranted(app),
+                exactAlarmDismissed,
+            ),
             excludedApps = excludedApps,
         )
     }
@@ -158,6 +177,13 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     fun dismissA11yWarning() {
         viewModelScope.launch {
             getApplication<Application>().setA11yWarningDismissed(true)
+        }
+    }
+
+    /** Hides the exact-alarm banner until alarms are granted again. */
+    fun dismissExactAlarmWarning() {
+        viewModelScope.launch {
+            getApplication<Application>().setExactAlarmWarningDismissed(true)
         }
     }
 
@@ -184,11 +210,12 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     /**
      * Re-reads live service state (called on screen resume). When the
      * accessibility service is now enabled, clears any prior dismissal so a
-     * future disable re-arms the banner.
+     * future disable re-arms the banner. Same for the exact-alarm grant.
      */
     fun refresh() {
         val app = getApplication<Application>()
         val a11yEnabled = isAccessibilityEnabled(app)
+        val exactGranted = isExactAlarmGranted(app)
         viewModelScope.launch {
             val dismissed = if (a11yEnabled) {
                 if (lastA11yWarningDismissed) app.setA11yWarningDismissed(false)
@@ -196,12 +223,23 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             } else {
                 lastA11yWarningDismissed
             }
+            val exactDismissed = if (exactGranted) {
+                if (lastExactAlarmDismissed) app.setExactAlarmWarningDismissed(false)
+                false
+            } else {
+                lastExactAlarmDismissed
+            }
             _uiState.update {
                 it.copy(
                     showA11yWarning = shouldShowA11yWarning(
                         lastSchedules,
                         a11yEnabled,
                         dismissed,
+                    ),
+                    showExactAlarmWarning = shouldShowExactAlarmWarning(
+                        lastSchedules,
+                        exactGranted,
+                        exactDismissed,
                     )
                 )
             }

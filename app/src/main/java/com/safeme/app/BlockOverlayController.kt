@@ -522,15 +522,18 @@ internal fun blockActivityTitle(type: String, label: String, matched: String): S
     "title" -> "Settings page blocked"
     "schedule" -> "Blocked $label"
     "pu" -> "Uninstall blocked"
+    "socialWhole" -> "App blocked"
+    "socialTab" -> "Tab blocked"
     else -> if (matched.isNotEmpty()) "Keyword blocked" else "Blocked $label"
 }
 
 /** Pure subtitle for the activity feed entry — mirrors BlockGateActivity.addBlockActivity. */
-internal fun blockActivitySub(type: String, matched: String): String = when {
-    matched.isNotEmpty() -> matched
-    type == "schedule" -> "Launch blocked by schedule"
-    type == "pu" -> "Prevent Uninstall is on"
-    else -> "Blocked by SafeMe"
+internal fun blockActivitySub(type: String, matched: String): String = when (type) {
+    "schedule" -> "Launch blocked by schedule"
+    "pu" -> "Prevent Uninstall is on"
+    "socialWhole" -> if (matched.isNotEmpty()) "Blocked by Social Media Blocking — whole-app ($matched)" else "Blocked by Social Media Blocking — whole-app"
+    "socialTab" -> if (matched.isNotEmpty()) "Blocked by Social Media Blocking — tab ($matched)" else "Blocked by Social Media Blocking — tab"
+    else -> if (matched.isNotEmpty()) matched else "Blocked by SafeMe"
 }
 
 /** Gate message: the persisted custom message, else the resource default. */
@@ -550,5 +553,7 @@ internal fun blockGateWhyReason(
         if (matched.isNotEmpty()) "Why: Settings page blocked by SafeMe ($matched)" else "Why: Settings page blocked by SafeMe"
     "pu" -> puMessage
     "schedule" -> scheduleMessage
+    "socialWhole" -> if (matched.isNotEmpty()) "Why: app blocked by Social Media Blocking ($matched)" else "Why: app blocked by Social Media Blocking"
+    "socialTab" -> if (matched.isNotEmpty()) "Why: tab blocked by Social Media Blocking ($matched)" else "Why: tab blocked by Social Media Blocking"
     else -> if (matched.isNotEmpty()) "Why: $matched blocked by SafeMe" else "Why: this content or action was blocked by an active SafeMe rule"
 }

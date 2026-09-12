@@ -92,6 +92,7 @@ singleton's idempotent semantics).
   on. Idle processes do no periodic reads.
 - **Boundary alarms degrade gracefully**: on API 31+ without the exact-alarm
   permission, schedule alarms are inexact; the 60 s ticker bounds the drift.
+  A Schedule-screen banner offers the Settings grant when schedules are active.
 - **Boot re-arm**: all three mechanisms (VPN, a11y protection, schedules)
   restore after `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`.
 - **Deduped logging**: the activity feed collapses consecutive duplicate

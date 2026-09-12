@@ -212,8 +212,8 @@
     <string name="blk_seg_websites">Websites</string>
     <string name="blk_imgvid_title">Block Image &amp; Video Search</string>
     <string name="blk_imgvid_sub">Adult-term searches · Google · Bing · DuckDuckGo · Yandex</string>    <string name="blk_more">More blocking</string>
-    <string name="blk_card_appfeature">App-Feature</string>
-    <string name="blk_card_appfeature_sub">Reels · Shorts · Stories</string>
+    <string name="blk_card_appfeature">Social Media Blocking</string>
+    <string name="blk_card_appfeature_sub">Whole apps or just tabs · Reels · Shorts · Spotlight</string>
     <string name="blk_card_blockscreen">Block Screen</string>
     <string name="blk_card_blockscreen_sub">Message · close-gate</string>
     <string name="blk_card_vpn">DNS &amp; VPN Filtering</string>
@@ -300,6 +300,10 @@
     <string name="sch_warn_a11y_sub">This schedule blocks app launches, so it won\'t work until SafeMe\'s Accessibility Service is enabled.</string>
     <string name="sch_warn_a11y_enable">Enable</string>
     <string name="sch_warn_a11y_dismiss">Dismiss warning</string>
+    <string name="sch_warn_exact_title">Precise schedule timing is off</string>
+    <string name="sch_warn_exact_sub">Schedules may start or stop minutes late until you allow SafeMe to set exact alarms.</string>
+    <string name="sch_warn_exact_enable">Enable</string>
+    <string name="sch_warn_exact_dismiss">Dismiss warning</string>
 
     <string name="sch_exclude_title">Exclude Apps</string>
     <string name="sch_exclude_sub">Never blocked by any schedule</string>
@@ -333,9 +337,12 @@
     <string name="sche_save">Save changes</string>
     <string name="sche_delete">Delete schedule</string>
     <string name="sche_note">Boundary alarms + 15-min safety net + boot re-arm keep this schedule enforced.</string>
+    <string name="sche_enabled">Enabled</string>
+    <string name="sche_enabled_sub">Turn off to pause this schedule without deleting it</string>
     <string name="sche_toast_name">Give your schedule a name</string>
     <string name="sche_toast_day">Pick at least one day</string>
-    <string name="sche_toast_time">Start must be before end</string>
+    <string name="sche_toast_time">Start and end can\'t be the same</string>
+    <string name="sche_overnight">Ends next day</string>
     <string name="sche_toast_saved">Schedule saved — alarms set</string>
     <string name="sche_toast_deleted">Schedule deleted</string>
     <plurals name="sche_toast_apps">
@@ -645,4 +652,55 @@
     <string name="al_gate_bio_title">Unlock SafeMe</string>
     <string name="al_gate_bio_negative">Use another method</string>
     <string name="al_gate_password_placeholder">Enter password</string>
+
+    <!-- Social Media Blocking -->
+    <string name="social_title">Social Media Blocking</string>
+    <string name="social_sub">Block a whole app at launch, or target specific addictive tabs.</string>
+    <string name="social_master_sub_on">Whole apps &amp; tabs protected</string>
+    <string name="social_master_sub_off">Paused — tap to protect</string>
+    <string name="social_master_on">Master ON</string>
+    <string name="social_master_off">Master OFF</string>
+    <string name="social_launch">%1$d launch</string>
+    <string name="social_tabs">%1$d/3 tabs</string>
+    <string name="social_qfm_title">QUICK FOCUS MODE</string>
+    <string name="social_qfm_sub">1-Tap Preset</string>
+    <string name="social_preset_deep">Deep Work</string>
+    <string name="social_preset_deep_sub">All apps &amp; tabs</string>
+    <string name="social_preset_balanced">Balanced</string>
+    <string name="social_preset_balanced_sub">Tabs only</string>
+    <string name="social_preset_relax">Relax</string>
+    <string name="social_preset_relax_sub">All paused</string>
+    <string name="social_launch_title">LAUNCH BLOCK</string>
+    <string name="social_launch_pill">Full App</string>
+    <string name="social_launch_sub">Entire app is blocked before opening.</string>
+    <string name="social_add">Add</string>
+    <string name="social_tab_title">IN-APP TAB BLOCK</string>
+    <string name="social_tab_active">%1$d active</string>
+    <string name="social_tab_sub">Keep useful functions, block endless feeds &amp; reels.</string>
+    <string name="social_tiktok_sub">Blocked entirely before opening</string>
+    <string name="social_instagram_sub">Blocked entirely before opening</string>
+    <string name="social_xtwitter_sub">Timeline &amp; notifications restricted</string>
+    <string name="social_reddit_sub">Infinite feeds restricted</string>
+    <string name="social_twitch_sub">Live streams restricted</string>
+    <string name="social_youtube_title">YouTube Shorts</string>
+    <string name="social_youtube_sub">Main video search &amp; subscriptions stay active</string>
+    <string name="social_facebook_title">Facebook Reels</string>
+    <string name="social_facebook_sub">Events, groups &amp; Messenger stay active</string>
+    <string name="social_snapchat_title">Snapchat Spotlight</string>
+    <string name="social_snapchat_sub">Direct messaging &amp; camera stay active</string>
+    <string name="social_footnote">How it works — Whole-app blocks on launch. Tab overlays the view. 250ms throttle · 4s cooldown. No root, no VPN.</string>
+    <string name="social_sheet_title">Block entire apps</string>
+    <string name="social_sheet_sub">Pick apps to block completely — All Apps (includes TikTok &amp; Instagram). Persistent launch gate.</string>
+    <string name="social_search_placeholder">Search apps… (try TikTok, Instagram)</string>
+    <string name="social_toast_on">Social Media Blocking — on</string>
+    <string name="social_toast_off">Social Media Blocking — off</string>
+    <string name="social_toast_launch_blocked">%1$s blocked</string>
+    <string name="social_toast_launch_allowed">%1$s allowed</string>
+    <string name="social_toast_master_required">Turn on Master first</string>
+    <string name="social_toast_tab_blocked">%1$s blocked</string>
+    <string name="social_toast_tab_allowed">%1$s allowed</string>
+    <string name="social_toast_preset_deep">Deep Work — all apps &amp; tabs</string>
+    <string name="social_toast_preset_balanced">Balanced — tabs only</string>
+    <string name="social_toast_preset_relax">Relax — all paused</string>
+    <string name="backup_section_social">Social Media Blocking</string>
 </resources>

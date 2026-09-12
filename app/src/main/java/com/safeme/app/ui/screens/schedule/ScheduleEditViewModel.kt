@@ -35,6 +35,7 @@ data class ScheduleEditUiState(
     val startMinute: Int = 21 * 60,
     val endMinute: Int = 23 * 60,
     val mode: ScheduleMode = ScheduleMode.BOTH,
+    val enabled: Boolean = true,
     val selectedApps: Set<String> = emptySet(),
     val installedApps: List<InstalledApp> = emptyList(),
     val appsLoaded: Boolean = false,
@@ -68,6 +69,7 @@ class ScheduleEditViewModel(
                     startMinute = existing?.startMinute ?: (21 * 60),
                     endMinute = existing?.endMinute ?: (23 * 60),
                     mode = existing?.mode ?: ScheduleMode.BOTH,
+                    enabled = resolveEditedEnabled(editId, existing?.enabled),
                     selectedApps = existing?.appPackages?.toSet() ?: emptySet(),
                 )
             }
@@ -100,6 +102,10 @@ class ScheduleEditViewModel(
 
     fun setMode(mode: ScheduleMode) {
         _uiState.update { it.copy(mode = mode) }
+    }
+
+    fun setEnabled(value: Boolean) {
+        _uiState.update { it.copy(enabled = value) }
     }
 
     fun toggleApp(pkg: String) {
@@ -139,7 +145,7 @@ class ScheduleEditViewModel(
             _toasts.tryEmit(app.getString(R.string.sche_toast_day))
             return false
         }
-        if (state.endMinute <= state.startMinute) {
+        if (!isValidScheduleWindow(state.startMinute, state.endMinute)) {
             _toasts.tryEmit(app.getString(R.string.sche_toast_time))
             return false
         }
@@ -151,7 +157,7 @@ class ScheduleEditViewModel(
             endMinute = state.endMinute,
             mode = state.mode,
             appPackages = state.selectedApps.toList(),
-            enabled = true,
+            enabled = state.enabled,
         )
         viewModelScope.launch {
             if (state.editId != null) {
@@ -190,3 +196,22 @@ class ScheduleEditViewModel(
             ScheduleEditViewModel(app, editId) as T
     }
 }
+
+/**
+ * B10: a schedule window is valid unless start and end coincide. Overnight
+ * windows (`endMinute < startMinute`) spill into the next day. Range
+ * 0..1439 is enforced by the time picker (`hour % 24`, `minute % 60`), so
+ * only the degenerate case is rejected here. Single source of truth for
+ * the editor save path and the time-picker sheet.
+ */
+internal fun isValidScheduleWindow(startMinute: Int, endMinute: Int): Boolean =
+    startMinute != endMinute
+
+/**
+ * B6: resolves the editor's `enabled` flag. New schedules default on; edits
+ * preserve the stored flag. A missing stored value (e.g. the schedule was
+ * deleted elsewhere while editing) fails safe to on — and the subsequent
+ * `updateSchedule()` already no-ops when the id matches nothing.
+ */
+internal fun resolveEditedEnabled(editId: String?, storedEnabled: Boolean?): Boolean =
+    if (editId == null) true else storedEnabled ?: true

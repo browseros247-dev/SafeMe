@@ -1,16 +1,14 @@
 // ---------- Screen registry ----------
-  const NAV = {home:'Home',block:'Block',focus:'Focus',schedule:'Schedule',profile:'Profile'};
+  const NAV = {home:'Home',block:'Block',schedule:'Schedule',profile:'Profile'};
   const SCREENS = {
-    welcome:{group:'Onboarding'}, permissions:{group:'Onboarding'}, permbattery:{group:'Onboarding'}, permalarms:{group:'Onboarding'}, perma11y:{group:'Onboarding'},
-    home:{group:'Main',nav:true}, block:{group:'Main',nav:true}, focus:{group:'Main',nav:true},
-    schedule:{group:'Main',nav:true}, profile:{group:'Main',nav:true},
-    keywords:{group:'Blocking'}, appfeature:{group:'Blocking'},
-    safebrowse:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, antitamper:{group:'Blocking'}, selfprotect:{group:'Blocking'}, titleblock:{group:'Blocking'},
-    applock:{group:'Protection'}, accountability:{group:'Protection'}, backup:{group:'Protection'},
-    crash:{group:'Protection'}, troubleshoot:{group:'Protection'}, about:{group:'Protection'}, protected:{group:'Protection'}, relay:{group:'Protection'},
-    history:{group:'Focus & Schedules'}, focusactive:{group:'Focus & Schedules'}, focuswhitelist:{group:'Focus & Schedules'}, scheduleedit:{group:'Focus & Schedules'}
+    welcome:{group:'Onboarding'}, permissions:{group:'Onboarding'}, permbattery:{group:'Onboarding'}, perma11y:{group:'Onboarding'},
+    home:{group:'Main',nav:true}, block:{group:'Main',nav:true}, schedule:{group:'Main',nav:true}, profile:{group:'Main',nav:true},
+    keywords:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, antitamper:{group:'Blocking'},
+    selfprotect:{group:'Blocking'}, servicepicker:{group:'Blocking'}, titleblock:{group:'Blocking'}, otherfeatures:{group:'Blocking'}, socialblocking:{group:'Blocking'},
+    applock:{group:'Protection'}, backup:{group:'Protection'}, troubleshoot:{group:'Protection'}, about:{group:'Protection'},
+    history:{group:'Activity & Schedules'}, scheduleedit:{group:'Activity & Schedules'}, quickactions:{group:'Activity & Schedules'}
   };
-  const ORDER = ['welcome','permissions','permbattery','permalarms','perma11y','home','block','focus','schedule','profile','keywords','appfeature','safebrowse','blockscreen','vpn','antitamper','selfprotect','titleblock','applock','accountability','backup','crash','troubleshoot','about','protected','relay','history','focusactive','focuswhitelist','scheduleedit'];
+  const ORDER = ['welcome','permissions','permbattery','perma11y','home','block','schedule','profile','keywords','blockscreen','vpn','antitamper','selfprotect','servicepicker','titleblock','otherfeatures','socialblocking','applock','backup','troubleshoot','about','history','scheduleedit','quickactions'];
   let stack = [];
 
   // Build prototype navigator
@@ -48,47 +46,44 @@
   function permBack(name){ if(wasOnboarded) back(); else nav(name); }
   function permAdvance(btn){
     const nx = btn.dataset.next;
-    if(nx) nav(nx);
-    else finishOnboard();
+    if(nx) nav(nx); else finishOnboard();
   }
+
+  /* Production flow: 3 steps (notifications, battery, accessibility). */
   function grantPerm(btn){
-    const nx = btn.dataset.next;
-    const screen = btn.closest('.perm-screen');
-    if(screen){
-      screen.classList.add('done');
-      toast('Permission granted ✓');
-      permStatus();
-      setTimeout(()=>{ if(nx) nav(nx); else finishOnboard(); }, 900);
-    } else {
-      const card = btn.closest('[data-perm]');
-      if(!card) return;
-      btn.textContent='Granted ✓';
-      btn.classList.remove('btn-primary','btn-secondary');
-      btn.classList.add('btn-secondary');
-      btn.disabled = true;
-      toast('Permission granted ✓');
-      permStatus();
-      permAdvance(btn);
-    }
+    const key = btn.dataset.perm;
+    if(btn.classList.contains('granted')){ permAdvance(btn); return; }
+    btn.classList.add('granted');
+    btn.textContent = 'Granted \u2713';
+    if(key) localStorage.setItem('safeme_perm_'+key,'1');
+    toast('Permission granted \u2713');
+    permStatus();
+    setTimeout(()=>permAdvance(btn), 700);
   }
+
   function skipPerm(btn){
-    toast('Skipped — you can grant it later from Profile');
+    toast('Skipped \u2014 you can grant it later from Profile');
     permAdvance(btn);
   }
+
   function finishOnboard(){
-    const required=[...document.querySelectorAll('[data-perm][data-required]')];
-    const missing = required.filter(c=>!c.querySelector('[data-grant]').disabled);
-    if(missing.length){ toast('Grant the required permissions to continue'); return; }
+    const ok = ['notifications','a11y'].every(k=>localStorage.getItem('safeme_perm_'+k)==='1');
+    if(!ok){ toast('Grant the required permissions to continue'); nav('permissions'); return; }
+    const was = !!localStorage.getItem('safeme_onboarded');
     localStorage.setItem('safeme_onboarded','1');
+    toast(was ? 'All permissions granted \u2014 you\u2019re fully protected' : 'Welcome to SafeMe \u2014 you\u2019re protected');
     nav('home');
-    toast(wasOnboarded ? 'Permissions updated — you’re protected' : 'Welcome to SafeMe — you’re protected');
   }
+
   function permStatus(){
-    const cards=[...document.querySelectorAll('[data-perm]')];
-    const total=cards.length;
-    const granted=cards.filter(c=>c.querySelector('[data-grant]').disabled).length;
-    const card=document.getElementById('permCardSub');
-    if(card) card.textContent=(total && granted>=total)?'All permissions granted ✓':(granted+' of '+(total||4)+' granted · finish setup');
+    const keys = ['notifications','battery','a11y'];
+    const granted = keys.filter(k=>localStorage.getItem('safeme_perm_'+k)==='1').length;
+    const el = document.getElementById('permCardSub');
+    if(el) el.textContent = granted + ' of 3 granted \u00b7 finish setup';
+    keys.forEach(k=>{
+      const btn = document.querySelector('.grant-pill[data-perm="'+k+'"]');
+      if(btn && localStorage.getItem('safeme_perm_'+k)==='1'){ btn.classList.add('granted'); btn.textContent='Granted \u2713'; }
+    });
   }
 
   // hash router
@@ -117,73 +112,11 @@
     });
   });
 
-  // ---------- Keyword chips / filter ----------
-  let kwCat='all', kwQuery='', kwEditId=null, siteCat='all', siteQuery='', siteEditId=null;
-  function applyKwFilter(){
-    document.querySelectorAll('#kwAllList .li').forEach(r=>{
-      const t = r.querySelector('.t');
-      const catOk = kwCat==='all' || r.dataset.cat===kwCat;
-      const qOk = !kwQuery || (t && t.textContent.includes(kwQuery));
-      r.style.display = (catOk && qOk) ? '' : 'none';
-    });
+  // ---------- Sheet category chips (KeywordManagerScreen CategoryPicker) ----------
+  function pickCat(btn){
+    btn.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    btn.classList.add('on');
   }
-  document.querySelectorAll('#kwAllChips .chip').forEach(c=>{
-    c.addEventListener('click', ()=>{
-      document.querySelectorAll('#kwAllChips .chip').forEach(x=>x.classList.remove('on'));
-      c.classList.add('on');
-      kwCat = c.dataset.cat;
-      applyKwFilter();
-    });
-  });
-  function filterKwAll(v){ kwQuery=v; applyKwFilter(); }
-  function applySiteFilter(){
-    document.querySelectorAll('#siteAllList .li').forEach(r=>{
-      const t = r.querySelector('.t');
-      const catOk = siteCat==='all' || r.dataset.cat===siteCat;
-      const qOk = !siteQuery || (t && t.textContent.toLowerCase().includes(siteQuery));
-      r.style.display = (catOk && qOk) ? '' : 'none';
-    });
-  }
-  function filterSites(v){ siteQuery=v.trim().toLowerCase(); applySiteFilter(); }
-  document.querySelectorAll('#siteChips .chip').forEach(c=>{
-    c.addEventListener('click', ()=>{
-      document.querySelectorAll('#siteChips .chip').forEach(x=>x.classList.remove('on'));
-      c.classList.add('on');
-      siteCat = c.dataset.cat;
-      applySiteFilter();
-    });
-  });
-  function openManage(which){
-    kwCat='all'; kwQuery=''; kwEditId=null;
-    document.querySelectorAll('#kwAllChips .chip').forEach(x=>x.classList.remove('on'));
-    const allChip = document.querySelector('#kwAllChips .chip[data-cat="all"]');
-    if(allChip) allChip.classList.add('on');
-    applyKwFilter();
-    siteCat='all'; siteQuery=''; siteEditId=null;
-    document.querySelectorAll('#siteChips .chip').forEach(x=>x.classList.remove('on'));
-    const siteAll = document.querySelector('#siteChips .chip[data-cat="all"]');
-    if(siteAll) siteAll.classList.add('on');
-    applySiteFilter();
-    const btn = document.querySelector('#sheetKwAll .tabs.u button[data-panel="'+(which==='site'?'mg-site':'mg-kw')+'"]');
-    if(btn) btn.click();
-    document.getElementById('scrim').classList.add('show');
-    document.getElementById('sheetKwAll').classList.add('show');
-  }
-  function updateMgCard(){
-    const nk = document.querySelectorAll('#kwAllList .li').length;
-    const ns = document.querySelectorAll('#siteAllList .li').length;
-    const nw = document.querySelectorAll('#wlAllList .li').length;
-    const s = document.getElementById('mgCardSub');
-    if(s) s.textContent = nk+' keywords · '+ns+' websites · '+nw+' trusted';
-  }
-  function removeRow(btn){
-    const li = btn.closest('.li');
-    if(!li) return;
-    li.remove();
-    updateMgCard();
-    toast('Removed');
-  }
-  updateMgCard();
 
   // ---------- App catalog (single source of truth for every App Picker) ----------
   const APP_CATS = ['Social','Video & Music','Messaging','Payment','Shopping','Games','News & Productivity','Other'];
@@ -268,8 +201,7 @@
         if(!hit) return;
         shown++;
         const on=sel.has(a.name);
-        const click=mode==='single' ? 'pickTitleApp(this)' : 'togSel(this)';
-        rows += '<div class="li" data-app="'+a.name+'" onclick="'+click+'">'+appChip(a)
+        rows += '<div class="li" data-app="'+a.name+'" onclick="togSel(this)">'+appChip(a)
              + '<div class="tx"><div class="t">'+a.name+'</div><div class="s">'+a.pkg+'</div></div>'
              + '<div class="checkbox'+(on?' on':'')+'"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div></div>';
       });
@@ -284,14 +216,14 @@
   // Rebuild the active picker from the shared catalog when its sheet opens.
   function refreshAppPicker(id){
     const cfg={
-      sheetTitleApps:['titleAppList','titleAppSearch','single'],
       sheetApps:['appList','appSearch','multi'],
-      sheetVpnApps:['vpnAppList','vpnAppSearch','multi']
+      sheetVpnApps:['vpnAppList','vpnAppSearch','multi'],
+      sheetSocialApps:['socialAppList','socialAppSearch','multi']
     }[id];
     if(!cfg) return;
     const host=document.getElementById(cfg[0]);
     const search=document.getElementById(cfg[1]); if(search) search.value='';
-    const sel = id==='sheetTitleApps' ? (titleApp?new Set([titleApp]):new Set()) : (id==='sheetApps'?appPickSel:vpnPickSel);
+    const sel = id==='sheetApps' ? appPickSel : id==='sheetVpnApps' ? vpnPickSel : SOCIAL.wholeBlocked;
     renderAppPicker(host, cfg[2], sel, '');
     updatePickerCounts();
   }
@@ -302,27 +234,22 @@
     document.getElementById('scrim').classList.add('show');
     document.getElementById(id).classList.add('show');
     if(id==='sheetDelay'){ startDelay(); }
-    if(id==='sheetTitleApps'||id==='sheetApps'||id==='sheetVpnApps'){ refreshAppPicker(id); }
+    if(id==='sheetApps'||id==='sheetVpnApps'||id==='sheetSocialApps'){ refreshAppPicker(id); }
     if(id==='sheetTitle'){
-      titleEditId=null; titleApp='';
+      titleEditId=null;
       const tt=document.getElementById('titleSheetTitle'); if(tt) tt.textContent='Add title rule';
       const sb=document.getElementById('titleSaveBtn'); if(sb) sb.textContent='Add Title';
       const dl=document.getElementById('titleDel'); if(dl) dl.style.display='none';
       const inp=document.getElementById('titleInput'); if(inp) inp.value='';
       document.querySelectorAll('#sheetTitle #titleMode button').forEach((b,i)=>b.classList.toggle('on',i===0));
-      document.querySelectorAll('#sheetTitle #titleScope button').forEach((b,i)=>b.classList.toggle('on',i===0));
-      const an=document.getElementById('titleAppName'); if(an) an.textContent='Choose an app';
-      const aw=document.getElementById('titleAppWrap'); if(aw) aw.style.display='none';
     }
     if(id==='sheetKw'){
-      kwEditId=null;
       const kt=document.getElementById('kwSheetTitle'); if(kt) kt.textContent='Add keyword';
       const kb=document.getElementById('kwSaveBtn'); if(kb) kb.textContent='Add';
       const ki=document.getElementById('kwInput'); if(ki) ki.value='';
       document.querySelectorAll('#kwCat .chip').forEach((b,i)=>b.classList.toggle('on',i===0));
     }
     if(id==='sheetSite'){
-      siteEditId=null;
       const st=document.getElementById('siteSheetTitle'); if(st) st.textContent='Add website';
       const sb=document.getElementById('siteSaveBtn'); if(sb) sb.textContent='Add';
       const si=document.getElementById('siteInput'); if(si) si.value='';
@@ -349,79 +276,30 @@
   }
   function addKeyword(){
     const v = document.getElementById('kwInput').value.trim();
-    if(!v){ toast('Keyword can’t be empty'); return; }
-    const cat = document.querySelector('#kwCat .chip.on').textContent;
-    if(kwEditId && kwEditId.isConnected){
-      const row = kwEditId;
-      row.dataset.cat=cat;
-      row.querySelector('.t').textContent=v;
-      const s=row.querySelector('.s');
-      const m = s && /(\d+) hits today/.exec(s.textContent);
-      if(s) s.textContent=cat+' · '+(m?m[1]:'0')+' hits today';
-      kwEditId=null;
-      closeSheets(); applyKwFilter(); updateMgCard(); toast('Keyword updated');
-      return;
-    }
-    const row = document.createElement('div');
-    row.className='li'; row.dataset.cat=cat;
-    row.innerHTML = `<div class="ic r"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg></div><div class="tx"><div class="t">${v}</div><div class="s">${cat} · 0 hits today</div></div><button class="act" onclick="openKwEdit(this)"><svg viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button><button class="act" style="color:var(--danger)" onclick="removeRow(this)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>`;
-    const list = document.getElementById('kwAllList');
-    list.insertBefore(row, list.firstChild);
-    closeSheets(); applyKwFilter(); updateMgCard(); toast('Keyword added to '+cat);
-  }
-  function openKwEdit(li){
-    if(!li) return;
-    openSheet('sheetKw');
-    kwEditId = li;
-    const kt=document.getElementById('kwSheetTitle'); if(kt) kt.textContent='Edit keyword';
-    const kb=document.getElementById('kwSaveBtn'); if(kb) kb.textContent='Save';
-    const ki=document.getElementById('kwInput'); if(ki) ki.value=(li.querySelector('.t')||{textContent:''}).textContent;
-    const cat = li.dataset.cat || 'Custom';
-    document.querySelectorAll('#kwCat .chip').forEach(b=>b.classList.toggle('on',b.textContent===cat));
+    if(!v){ toast('Keyword can\u2019t be empty'); return; }
+    const cat = document.querySelector('#kwCat .chip.on').textContent.trim();
+    if(kwSource==='screen'){ kwSource='manage'; if(kwSave(v,cat)) closeSheets(); return; }
+    toast('Keyword saved');
   }
   function addSite(){
     const si = document.getElementById('siteInput');
     let v = (si.value||'').trim().replace(/^https?:\/\//i,'').replace(/\/+$/,'').toLowerCase();
-    if(!v){ toast('Website can’t be empty'); return; }
+    if(!v){ toast('Website can\u2019t be empty'); return; }
     if(/\s/.test(v) || v.indexOf('.')===-1){ toast('Enter a valid domain (e.g. example.com)'); return; }
-    const cat = document.querySelector('#siteCat .chip.on').textContent;
-    const sameEdit = siteEditId && siteEditId.isConnected && siteEditId.querySelector('.t').textContent===v;
-    if(!sameEdit){
-      const dup = [...document.querySelectorAll('#siteAllList .t')].some(t=>t.textContent===v);
-      if(dup){ toast('Already on the list'); return; }
-    }
-    if(siteEditId && siteEditId.isConnected){
-      const row = siteEditId;
-      row.dataset.cat=cat;
-      row.querySelector('.t').textContent=v;
-      row.querySelector('.s').textContent=cat+' · blocked';
-      siteEditId=null;
-      closeSheets(); applySiteFilter(); updateMgCard(); toast('Website updated');
-      return;
-    }
-    const row = document.createElement('div');
-    row.className='li'; row.dataset.cat=cat;
-    row.innerHTML = `<div class="ic d"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a14 14 0 000 18M12 3a14 14 0 010 18M3 12h18"/></svg></div><div class="tx"><div class="t">${v}</div><div class="s">${cat} · blocked</div></div><button class="act" onclick="openSiteEdit(this)"><svg viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button><button class="act" style="color:var(--danger)" onclick="removeRow(this)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>`;
-    const list = document.getElementById('siteAllList');
-    list.insertBefore(row, list.firstChild);
-    closeSheets(); applySiteFilter(); updateMgCard(); toast('Website added');
-  }
-  function openSiteEdit(li){
-    if(!li) return;
-    openSheet('sheetSite');
-    siteEditId = li;
-    const st=document.getElementById('siteSheetTitle'); if(st) st.textContent='Edit website';
-    const sb=document.getElementById('siteSaveBtn'); if(sb) sb.textContent='Save';
-    const si=document.getElementById('siteInput'); if(si) si.value=(li.querySelector('.t')||{textContent:''}).textContent;
-    const cat = li.dataset.cat || 'Custom';
-    document.querySelectorAll('#siteCat .chip').forEach(b=>b.classList.toggle('on',b.textContent===cat));
+    const cat = document.querySelector('#siteCat .chip.on').textContent.trim();
+    if(kwSource==='screen'){ kwSource='manage'; if(kwSave(v,cat)) closeSheets(); return; }
+    toast('Website saved');
   }
   function togSel(li){
     const c=li.querySelector('.checkbox'); c.classList.toggle('on');
     const name=li.dataset.app||(li.querySelector('.t')||{textContent:''}).textContent;
-    const set = li.closest('#appList') ? appPickSel : (li.closest('#vpnAppList') ? vpnPickSel : null);
+    let set = null;
+    if(li.closest('#appList')) set = appPickSel;
+    else if(li.closest('#vpnAppList')) set = vpnPickSel;
+    else if(li.closest('#socialAppList')) set = SOCIAL.wholeBlocked;
     if(set){ if(c.classList.contains('on')) set.add(name); else set.delete(name); }
     updatePickerCounts();
+    if(set===SOCIAL.wholeBlocked) renderSocial();
   }
 
   // ---------- Time delay gate ----------
@@ -509,7 +387,6 @@
   renderBlockPreview();
 
   // ---------- Presets / pickers ----------
-  function pickPreset(el){ document.querySelectorAll('.preset').forEach(p=>p.classList.remove('on')); el.classList.add('on'); }
   function pickDns(el){
     const l=el.closest('.list'); l.querySelectorAll('.checkbox').forEach(c=>c.classList.remove('on')); el.querySelector('.checkbox').classList.add('on');
     vpnPreset=el.querySelector('.t').textContent;
@@ -520,7 +397,6 @@
     } else { toast('Preset: '+vpnPreset); }
     vpnStatus();
   }
-  function pickAcc(el){ const l=el.closest('.list'); l.querySelectorAll('.checkbox').forEach(c=>c.classList.remove('on')); el.querySelector('.checkbox').classList.add('on'); toast('Accountability type set'); }
   // ---------- App Lock ----------
   let lockState='off', lockMethod='pin', lockCode='', lockAuto='Immediately';
   let wizMethod='pin', wizPin='', wizValPin='', patOrder=[], patOrderV=[];
@@ -648,10 +524,6 @@
   try{ mqDark.addEventListener('change', applyTheme); }catch(e){ mqDark.addListener(applyTheme); }
   initTheme();
 
-  // ---------- Focus ----------
-  function startFocus(){
-    nav('focusactive'); toast('Focus started — 25:00 countdown');
-  }
   let schedEditId=null, timeTarget='start', timeH=21, timeM=0;
   function h12(h){ return (h%12)||12; }
   function fmt12h(h24){ const p=h24.split(':'); const h=+p[0], m=p[1]; return h12(h)+'<span class="sep">:</span>'+m+'<span class="ampm"> '+(h<12?'AM':'PM')+'</span>'; }
@@ -663,26 +535,28 @@
     if(!days.length){ toast('Pick at least one day'); return; }
     const st=document.getElementById('timeStart'), en=document.getElementById('timeEnd');
     const start=(st&&st.dataset.h24)||'21:00', end=(en&&en.dataset.h24)||'23:00';
-    if(start>=end){ toast('Start must be before end'); return; }
+    if(start===end){ toast('Start and end can\u2019t be the same'); return; }
     const mode=(document.querySelector('#sc-scheduleedit .seg button.on')||{textContent:'Both'}).textContent;
-    const apps=(parseInt((document.getElementById('schedAppCount')||{}).textContent||'12',10)||0);
+    const apps=(parseInt((document.getElementById('schedAppCount')||{}).textContent||'0',10)||0);
+    const enEl=document.getElementById('schedEnabled');
+    const enabled=!enEl||enEl.classList.contains('on');
     const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    const o={name:name.value.trim(),days:daysLabel(days),daysraw:days.map(i=>dayNames[i]).join(','),start:start,end:end,mode:mode,modetxt:modeTxt(mode),apps:apps};
+    const o={name:name.value.trim(),days:daysLabel(days),daysraw:days.map(i=>dayNames[i]).join(','),start:start,end:end,mode:mode,modetxt:modeTxt(mode),apps:apps,enabled:enabled};
     const html=schedCardHTML(o);
     if(schedEditId){ schedEditId.outerHTML=html; schedEditId=null; }
     else { document.getElementById('schedList').insertAdjacentHTML('beforeend',html); }
     schedCount(); nav('schedule'); toast('Schedule saved — alarms set');
   }
   function schedCardHTML(o){
-    return '<div class="sched-card" data-name="'+o.name+'" data-days="'+o.days+'" data-daysraw="'+o.daysraw+'" data-start="'+o.start+'" data-end="'+o.end+'" data-mode="'+o.mode+'" data-modetxt="'+o.modetxt+'" data-apps="'+o.apps+'">'+
+    return '<div class="sched-card" data-name="'+o.name+'" data-days="'+o.days+'" data-daysraw="'+o.daysraw+'" data-start="'+o.start+'" data-end="'+o.end+'" data-mode="'+o.mode+'" data-modetxt="'+o.modetxt+'" data-apps="'+o.apps+'" data-enabled="'+(o.enabled===false?'0':'1')+'">'+
       '<div class="sched-head">'+
         '<div class="ic o"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></div>'+
         '<div class="tx"><div class="t">'+o.name+'</div><div class="s">'+o.days+'</div></div>'+
-        '<div class="sw on" data-toggle></div>'+
+        '<div class="sw'+(o.enabled===false?'':' on')+'" data-toggle></div>'+
       '</div>'+
       '<div class="sched-body">'+
-        '<div class="sched-time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="sched-time-txt">'+o.start+' – '+o.end+'</span></div>'+
-        '<div class="sched-pills"><span class="pill g">'+o.modetxt+'</span><span class="pill b">'+o.apps+' apps</span></div>'+
+        '<div class="sched-time"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="sched-time-txt">'+o.start+' – '+o.end+(o.end<o.start?' (+1)':'')+'</span></div>'+
+        '<div class="sched-pills"><span class="pill g">'+o.modetxt+'</span><span class="pill b">'+(Number(o.apps)?o.apps+' apps':'All apps')+'</span></div>'+
       '</div>'+
       '<div class="sched-foot"><span class="sched-next"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Next · '+o.days+'</span><button class="btn btn-ghost sm" onclick="openSchedEdit(this)">Edit</button></div>'+
     '</div>';
@@ -706,8 +580,9 @@
       days.forEach((d,i)=>d.classList.toggle('on',i<3));
       setTimep(ts,'21:00'); setTimep(te,'23:00');
       seg.forEach(b=>b.classList.toggle('on',b.textContent==='Both'));
-      if(apc) apc.textContent='12 apps selected';
-      if(aps) aps.textContent='TikTok, Instagram, YouTube, Reddit…';
+      if(apc) apc.textContent='No apps selected';
+      if(aps) aps.textContent='No apps — schedule blocks everything';
+      const en0=document.getElementById('schedEnabled'); if(en0) en0.classList.add('on');
       nav('scheduleedit'); return;
     }
     const c=btn.closest('.sched-card'); schedEditId=c;
@@ -719,8 +594,10 @@
     days.forEach((d,i)=>d.classList.toggle('on',raw.includes(dayNames[i])));
     setTimep(ts,c.dataset.start||'21:00'); setTimep(te,c.dataset.end||'23:00');
     seg.forEach(b=>b.classList.toggle('on',b.textContent===c.dataset.mode));
-    if(apc) apc.textContent=(c.dataset.apps||'12')+' apps selected';
-    if(aps) aps.textContent='Tap Choose to change apps';
+    const n=Number(c.dataset.apps||0);
+    if(apc) apc.textContent=n?(n+' apps selected'):'No apps selected';
+    if(aps) aps.textContent=n?'Tap Choose to change apps':'No apps — schedule blocks everything';
+    const en=document.getElementById('schedEnabled'); if(en) en.classList.toggle('on', c.dataset.enabled!=='0');
     nav('scheduleedit');
   }
   function togDay(btn){
@@ -757,7 +634,9 @@
     const el=document.getElementById(timeTarget==='start'?'timeStart':'timeEnd');
     setTimep(el,v);
     const a=(document.getElementById('timeStart').dataset.h24)||'21:00', b=(document.getElementById('timeEnd').dataset.h24)||'23:00';
-    if(a>=b){ toast('Start must be before end'); return; }
+    const cap=document.getElementById('schedOvernight');
+    if(cap) cap.style.display = (b<a)?'block':'none';
+    if(a===b){ toast('Start and end can\u2019t be the same'); return; }
     closeSheets();
   }
   function delSchedule(){
@@ -775,15 +654,17 @@
       const first=on?[...all].find(c=>c.querySelector('.sw').classList.contains('on')):null;
       sub.textContent=first?('Next boundary · '+(first.dataset.name||'Schedule')+' at '+(first.dataset.start||'--:--')):(on===0&&all.length?'All schedules paused':'No schedules yet — create one');
     }
+    const emp=document.getElementById('schedEmpty'); if(emp) emp.style.display=all.length?'none':'block';
+    const hs=document.getElementById('homeSchedules'); if(hs) hs.textContent=String(on);
   }
   schedCount();
 
   // ---------- Title Block ----------
-  let titleEditId=null, titleApp='';
+  let titleEditId=null;
   function titleSearch(){
     const q=(document.getElementById('titleSearch').value||'').trim().toLowerCase();
     let shown=0;
-    document.querySelectorAll('#titleList .li').forEach(r=>{
+    document.querySelectorAll('#titleList .kw-row').forEach(r=>{
       const hit=!q||(r.querySelector('.t').textContent+' '+(r.querySelector('.s').textContent||'')).toLowerCase().includes(q);
       r.style.display=hit?'':'none';
       if(hit) shown++;
@@ -795,31 +676,24 @@
     const v=(inp&&inp.value.trim())||'';
     if(!v){ toast('Enter a title to block'); return; }
     const mode=(document.querySelector('#sheetTitle #titleMode button.on')||{textContent:'Contains'}).textContent;
-    const scope=(document.querySelector('#sheetTitle #titleScope button.on')||{textContent:'All Apps'}).textContent;
-    if(scope==='Specific App'&&!titleApp){ toast('Choose an app to target'); return; }
-    const dup=[...document.querySelectorAll('#titleList .li')].some(r=>r!==titleEditId&&r.querySelector('.t').textContent.toLowerCase()===v.toLowerCase());
+    const dup=[...document.querySelectorAll('#titleList .kw-row')].some(r=>r!==titleEditId&&r.querySelector('.t').textContent.toLowerCase()===v.toLowerCase());
     if(dup){ toast('Rule already exists'); return; }
     const row=document.createElement('div');
-    row.className='li';
-    row.innerHTML='<div class="ic d"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div><div class="tx"><div class="t"></div><div class="s"></div></div><div class="sw on" data-toggle></div><button class="act" style="color:var(--danger)" onclick="editTitle(this)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button>';
+    row.className='kw-row';
+    row.innerHTML='<div class="ic d"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div><div class="tx"><div class="t"></div><div class="s"></div></div><div class="sw on" data-toggle></div><button class="act" onclick="editTitle(this)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>';
     row.querySelector('.t').textContent=v;
-    row.querySelector('.s').textContent=mode+' · '+scope+(scope==='Specific App'&&titleApp?' · '+titleApp:'');
+    row.querySelector('.s').textContent=mode;
     if(titleEditId){ titleEditId.replaceWith(row); titleEditId=null; }
     else { document.getElementById('titleList').appendChild(row); }
     titleCount(); titleSearch(); closeSheets(); toast('Rule added');
   }
   function editTitle(btn){
-    const li=btn.closest('.li');
+    const li=btn.closest('.kw-row');
     titleEditId=li;
     const v=li.querySelector('.t').textContent;
-    const parts=(li.querySelector('.s').textContent||'').split(' · ');
-    const mode=parts[0]||'Contains', scope=parts[1]||'All Apps', app=parts.slice(2).join(' · ');
-    titleApp=app;
+    const mode=(li.querySelector('.s').textContent||'Contains');
     const inp=document.getElementById('titleInput'); if(inp) inp.value=v;
     document.querySelectorAll('#sheetTitle #titleMode button').forEach(b=>b.classList.toggle('on',b.textContent===mode));
-    document.querySelectorAll('#sheetTitle #titleScope button').forEach(b=>b.classList.toggle('on',b.textContent===scope));
-    titleScopeChg();
-    const an=document.getElementById('titleAppName'); if(an) an.textContent=app||'Choose an app';
     const tt=document.getElementById('titleSheetTitle'); if(tt) tt.textContent='Edit title rule';
     const sb=document.getElementById('titleSaveBtn'); if(sb) sb.textContent='Save changes';
     const dl=document.getElementById('titleDel'); if(dl) dl.style.display='';
@@ -832,7 +706,7 @@
     closeSheets(); titleCount(); toast('Rule deleted');
   }
   function titleCount(){
-    const all=document.querySelectorAll('#titleList .li');
+    const all=document.querySelectorAll('#titleList .kw-row');
     const on=[...all].filter(r=>r.querySelector('.sw').classList.contains('on')).length;
     const h=document.getElementById('titleHeroTitle'); if(h) h.textContent=all.length?(on?'Title blocking is on':'Title blocking is paused'):'No title rules yet';
     const tag=document.querySelector('#titleHero .tag'); if(tag) tag.textContent=all.length?(on?'Active':'Paused'):'Setup';
@@ -845,31 +719,6 @@
     const inp=document.getElementById('titleInput');
     if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') addTitle(); });
   })();
-  function titleScopeChg(){
-    const scope=(document.querySelector('#sheetTitle #titleScope button.on')||{textContent:'All Apps'}).textContent;
-    const aw=document.getElementById('titleAppWrap'); if(aw) aw.style.display=scope==='Specific App'?'':'none';
-  }
-  function pickTitleApp(btn){
-    titleApp=btn.dataset.app||btn.querySelector('.t').textContent;
-    document.querySelectorAll('#sheetTitleApps .li .checkbox').forEach(c=>c.classList.remove('on'));
-    const cb=btn.querySelector('.checkbox'); if(cb) cb.classList.add('on');
-    const an=document.getElementById('titleAppName'); if(an) an.textContent=titleApp;
-    closeSheets(); toast('App selected: '+titleApp);
-  }
-  function filterTitleApps(q){
-    const v=(q||'').trim().toLowerCase();
-    document.querySelectorAll('#titleAppList .app-group').forEach(g=>{
-      let any=false;
-      g.querySelectorAll('.li').forEach(r=>{
-        const t=(r.querySelector('.t').textContent+' '+(r.querySelector('.s')||{textContent:''}).textContent).toLowerCase();
-        const hit=!v||t.includes(v);
-        r.style.display=hit?'':'none';
-        if(hit) any=true;
-      });
-      g.style.display=any?'':'none';
-    });
-  }
-
   function updatePickerCounts(){
     const a=document.getElementById('selAllAppsBtn'), b=document.getElementById('deselAllAppsBtn');
     if(a) a.textContent='Select All ('+appPickSel.size+')';
@@ -877,6 +726,9 @@
     const c=document.getElementById('selAllVpnBtn'), d=document.getElementById('deselAllVpnBtn');
     if(c) c.textContent='Select All ('+vpnPickSel.size+')';
     if(d) d.textContent='Deselect All ('+vpnPickSel.size+')';
+    const e=document.getElementById('selAllSocialBtn'), f=document.getElementById('deselAllSocialBtn');
+    if(e) e.textContent='Select All ('+SOCIAL.wholeBlocked.size+')';
+    if(f) f.textContent='Deselect All ('+SOCIAL.wholeBlocked.size+')';
   }
   function selectAllApps(){
     const q=(document.getElementById('appSearch')||{}).value||'';
@@ -915,6 +767,204 @@
       g.style.display=any?'':'none';
     });
   }
+
+  // ---------- Social Media Blocking (two gates) ----------
+  const SOCIAL_KEY='safeme_social_blocking_v1';
+  const SOCIAL={ enabled: true, wholeBlocked: new Set(['TikTok','Instagram','X / Twitter','Reddit','Twitch']), youtube:true, facebook:true, snapchat:true };
+  function loadSocial(){
+    try{
+      const raw=localStorage.getItem(SOCIAL_KEY); if(!raw) return;
+      const j=JSON.parse(raw)||{};
+      SOCIAL.enabled=!!j.enabled;
+      SOCIAL.wholeBlocked=new Set(Array.isArray(j.wholeBlocked)?j.wholeBlocked:[]);
+      if(typeof j.youtube==='boolean') SOCIAL.youtube=j.youtube;
+      if(typeof j.facebook==='boolean') SOCIAL.facebook=j.facebook;
+      if(typeof j.snapchat==='boolean') SOCIAL.snapchat=j.snapchat;
+    }catch(e){}
+  }
+  function saveSocial(){
+    try{ localStorage.setItem(SOCIAL_KEY, JSON.stringify({enabled:SOCIAL.enabled, wholeBlocked:[...SOCIAL.wholeBlocked], youtube:SOCIAL.youtube, facebook:SOCIAL.facebook, snapchat:SOCIAL.snapchat})); }catch(e){}
+  }
+  function appByName(name){ return APPS.find(a=>a.name===name) || {name:name, bg:'#25282E', fg:'#9A9AA0', ic:'<circle cx="12" cy="12" r="8"/>'};
+  }
+  function renderSocial(){
+    const m=document.getElementById('socialMaster');
+    if(m) m.classList.toggle('on', SOCIAL.enabled);
+    // master pill — SafeMe light
+    const mp=document.getElementById('socialMasterPill');
+    if(mp){
+      if(SOCIAL.enabled){
+        mp.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(46,125,91,.12)"></span>Master ON';
+        mp.style.color='var(--success)';
+      } else {
+        mp.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:var(--ink-3)"></span>Master OFF';
+        mp.style.color='var(--ink-3)';
+      }
+    }
+    const ms=document.getElementById('socialMasterSub');
+    if(ms) ms.textContent = SOCIAL.enabled ? 'Whole apps & tabs protected' : 'Paused — tap to protect';
+    const hw=document.getElementById('socialHeroWhole');
+    if(hw){ hw.textContent = SOCIAL.wholeBlocked.size+' launch'; }
+    const ht=document.getElementById('socialHeroTabs');
+    if(ht){
+      const gated = (SOCIAL.youtube?1:0)+(SOCIAL.facebook?1:0)+(SOCIAL.snapchat?1:0);
+      ht.textContent = (SOCIAL.enabled?gated:0)+'/3 tabs';
+    }
+    const tabPill=document.getElementById('tabActivePill');
+    if(tabPill){
+      const gated = (SOCIAL.youtube?1:0)+(SOCIAL.facebook?1:0)+(SOCIAL.snapchat?1:0);
+      const active = SOCIAL.enabled ? gated : 0;
+      tabPill.textContent = active+' active';
+      tabPill.style.background = active? 'var(--brand-soft)' : 'var(--surface)';
+      tabPill.style.color = active? 'var(--brand-dark)' : 'var(--ink-3)';
+      tabPill.style.borderColor = active? 'rgba(217,119,87,.25)' : 'var(--line)';
+    }
+    // launch rows
+    document.querySelectorAll('.launch-row .sw').forEach(sw=>{
+      const name=sw.dataset.launch;
+      const on = SOCIAL.enabled && SOCIAL.wholeBlocked.has(name);
+      sw.classList.toggle('on', on);
+    });
+    document.querySelectorAll('.launch-row').forEach(row=>{
+      row.style.opacity = SOCIAL.enabled ? '1' : '.45';
+      row.style.pointerEvents = SOCIAL.enabled ? 'auto' : 'none';
+    });
+    // presets highlight
+    const deep=document.getElementById('presetDeep'), bal=document.getElementById('presetBalanced'), rel=document.getElementById('presetRelax');
+    const wholeN=SOCIAL.wholeBlocked.size;
+    const tabsN=(SOCIAL.youtube?1:0)+(SOCIAL.facebook?1:0)+(SOCIAL.snapchat?1:0);
+    let preset='none';
+    if(!SOCIAL.enabled) preset='relax';
+    else if(wholeN>=4 && tabsN===3) preset='deep';
+    else if(wholeN===0 && tabsN===3) preset='balanced';
+    if(deep){ deep.style.background = preset==='deep' ? 'var(--brand-soft)' : 'var(--surface)'; deep.style.borderColor = preset==='deep' ? 'var(--brand)' : 'var(--line)'; deep.style.borderWidth = preset==='deep' ? '1.5px' : '1px'; }
+    if(bal){ bal.style.background = preset==='balanced' ? 'var(--brand-soft)' : 'var(--surface)'; bal.style.borderColor = preset==='balanced' ? 'var(--brand)' : 'var(--line)'; bal.style.borderWidth = preset==='balanced' ? '1.5px' : '1px'; }
+    if(rel){ rel.style.background = preset==='relax' ? 'var(--brand-soft)' : 'var(--surface)'; rel.style.borderColor = preset==='relax' ? 'var(--brand)' : 'var(--line)'; rel.style.borderWidth = preset==='relax' ? '1.5px' : '1px'; }
+
+    // tabs
+    const yt=document.getElementById('socialYoutube'); if(yt) yt.classList.toggle('on', SOCIAL.enabled && SOCIAL.youtube);
+    const fb=document.getElementById('socialFacebook'); if(fb) fb.classList.toggle('on', SOCIAL.enabled && SOCIAL.facebook);
+    const sc=document.getElementById('socialSnapchat'); if(sc) sc.classList.toggle('on', SOCIAL.enabled && SOCIAL.snapchat);
+    document.querySelectorAll('#sc-socialblocking .list .sw, #sc-socialblocking [id^="social"] .sw').forEach(sw=>{
+      // keep minimal dim already handled, but ensure tabs dim when master off
+    });
+    // hide compat
+    const ws=document.getElementById('socialWholeSub'); if(ws) ws.style.display='none';
+    const chips=document.getElementById('socialWholeChips'); if(chips) chips.style.display='none';
+    const cp=document.getElementById('socialCountPill'); if(cp) cp.style.display='none';
+    // dynamic extra apps beyond default 5
+    const launchList=document.getElementById('launchList');
+    if(launchList){
+      const defaults=new Set(['TikTok','Instagram','X / Twitter','Reddit','Twitch']);
+      launchList.querySelectorAll('.launch-row.extra').forEach(r=>{
+        const nm=r.dataset.app;
+        if(!SOCIAL.wholeBlocked.has(nm)) r.remove();
+      });
+      SOCIAL.wholeBlocked.forEach(name=>{
+        if(defaults.has(name)) return;
+        const exists = launchList.querySelector('.launch-row[data-app="'+name+'"]');
+        if(exists) return;
+        const a=appByName(name);
+        const row=document.createElement('div');
+        row.className='launch-row extra';
+        row.dataset.app=name;
+        row.style.display='flex';
+        row.style.alignItems='center';
+        row.style.gap='12px';
+        row.style.background='var(--surface)';
+        row.style.border='1px solid var(--line)';
+        row.style.borderRadius='16px';
+        row.style.padding='12px';
+        const ic=document.createElement('div');
+        ic.style.width='42px'; ic.style.height='42px'; ic.style.borderRadius='14px'; ic.style.background=a.bg; ic.style.color=a.fg;
+        ic.style.display='flex'; ic.style.alignItems='center'; ic.style.justifyContent='center'; ic.style.flex='none';
+        ic.innerHTML='<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round">'+a.ic+'</svg>';
+        const tx=document.createElement('div'); tx.style.flex='1'; tx.style.minWidth='0';
+        tx.innerHTML='<div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">'+name+'</div><div style="font-size:11.5px;color:var(--ink-2);margin-top:2px">'+a.pkg+'</div>';
+        const sw=document.createElement('div'); sw.className='sw on'; sw.dataset.launch=name;
+        sw.onclick=function(){ togLaunch(sw, name); };
+        sw.classList.toggle('on', SOCIAL.enabled && SOCIAL.wholeBlocked.has(name));
+        row.appendChild(ic); row.appendChild(tx); row.appendChild(sw);
+        launchList.appendChild(row);
+      });
+    }
+    updatePickerCounts();
+  }
+  function applyPreset(which){
+    if(which==='deep'){
+      SOCIAL.enabled=true;
+      SOCIAL.wholeBlocked=new Set(['TikTok','Instagram','X / Twitter','Reddit','Twitch']);
+      SOCIAL.youtube=true; SOCIAL.facebook=true; SOCIAL.snapchat=true;
+    } else if(which==='balanced'){
+      SOCIAL.enabled=true;
+      SOCIAL.wholeBlocked.clear();
+      SOCIAL.youtube=true; SOCIAL.facebook=true; SOCIAL.snapchat=true;
+    } else if(which==='relax'){
+      SOCIAL.enabled=false;
+    }
+    saveSocial(); renderSocial();
+    const labels={deep:'Deep Work \u2014 all apps & tabs', balanced:'Balanced \u2014 tabs only', relax:'Relax \u2014 all paused'};
+    toast(labels[which]);
+  }
+  function togLaunch(el, name){
+    if(!SOCIAL.enabled){ toast('Turn on Master first'); return; }
+    if(SOCIAL.wholeBlocked.has(name)) SOCIAL.wholeBlocked.delete(name);
+    else SOCIAL.wholeBlocked.add(name);
+    saveSocial(); renderSocial();
+    toast(name + (SOCIAL.wholeBlocked.has(name) ? ' blocked' : ' allowed'));
+  }
+  function togSocialMaster(el){
+    SOCIAL.enabled = !SOCIAL.enabled;
+    el.classList.toggle('on', SOCIAL.enabled);
+    saveSocial(); renderSocial();
+    toast(SOCIAL.enabled ? 'Social Media Blocking — on' : 'Social Media Blocking — off');
+    actAdd(SOCIAL.enabled?'block':'schedule', SOCIAL.enabled?'Social blocking enabled':'Social blocking paused', SOCIAL.enabled? (SOCIAL.wholeBlocked.size+' whole · '+(SOCIAL.youtube+SOCIAL.facebook+SOCIAL.snapchat)+' tabs') : 'Master off · both gates paused', new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  }
+  function togSocialFeature(el, key){
+    if(!SOCIAL.enabled){ toast('Turn on Social Media Blocking first'); return; }
+    if(key==='youtube') SOCIAL.youtube=!SOCIAL.youtube;
+    if(key==='facebook') SOCIAL.facebook=!SOCIAL.facebook;
+    if(key==='snapchat') SOCIAL.snapchat=!SOCIAL.snapchat;
+    saveSocial(); renderSocial();
+    const labels={youtube:'YouTube Shorts',facebook:'Facebook Reels',snapchat:'Snapchat Spotlight'};
+    const on = key==='youtube'?SOCIAL.youtube : key==='facebook'?SOCIAL.facebook : SOCIAL.snapchat;
+    toast(labels[key]+' '+(on?'blocked':'allowed'));
+  }
+  function openSocialApps(){ refreshAppPicker('sheetSocialApps'); document.getElementById('scrim').classList.add('show'); document.getElementById('sheetSocialApps').classList.add('show'); }
+  function filterSocialApps(q){
+    const v=(q||'').trim().toLowerCase();
+    document.querySelectorAll('#socialAppList .app-group').forEach(g=>{
+      let any=false;
+      g.querySelectorAll('.li').forEach(r=>{
+        const t=(r.querySelector('.t').textContent+' '+(r.querySelector('.s')||{textContent:''}).textContent).toLowerCase();
+        const hit=!v||t.includes(v);
+        r.style.display=hit?'':'none';
+        if(hit) any=true;
+      });
+      g.style.display=any?'':'none';
+    });
+  }
+  function selectAllSocialApps(){
+    const q=(document.getElementById('socialAppSearch')||{}).value||'';
+    APPS.forEach(a=>SOCIAL.wholeBlocked.add(a.name));
+    renderAppPicker(document.getElementById('socialAppList'),'multi',SOCIAL.wholeBlocked,q);
+    updatePickerCounts(); renderSocial(); saveSocial(); toast('All apps blocked (whole-app)');
+  }
+  function deselectAllSocialApps(){
+    const q=(document.getElementById('socialAppSearch')||{}).value||'';
+    SOCIAL.wholeBlocked.clear();
+    renderAppPicker(document.getElementById('socialAppList'),'multi',SOCIAL.wholeBlocked,q);
+    updatePickerCounts(); renderSocial(); saveSocial(); toast('Cleared whole-app blocks');
+  }
+  function socialAppsDone(){
+    saveSocial(); renderSocial(); closeSheets();
+    toast(SOCIAL.wholeBlocked.size ? SOCIAL.wholeBlocked.size+' app'+(SOCIAL.wholeBlocked.size===1?'':'s')+' blocked (whole-app)' : 'No whole-app blocks');
+  }
+  function socialRemoveApp(name){
+    SOCIAL.wholeBlocked.delete(name);
+    saveSocial(); renderSocial(); toast(name+' — unblocked');
+  }
+  loadSocial();
 
   // ---------- DNS & VPN ----------
   let vpnPreset='Cloudflare Family', dnsV4='1.1.1.1', dnsV6='', vpnWhitelist=[], vpnNotif='Default';
@@ -1011,15 +1061,225 @@
     setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, 2400);
   }
 
+
+  // ---------- Keyword Manager (production layout) ----------
+  const KW = { keywords:{blocklist:[], whitelist:[]}, websites:{blocked:[], trusted:[]} };
+  let kwSelType='keywords', kwSelTab='blocklist', kwSource='manage', kwEditing=null;
+  const KWCAT = {};
+  /* Block screen's Manage card: production navigates (keywords?type=..&tab=..),
+     it does not open a sheet. */
+  function kwGo(type){ kwType(type); nav('keywords'); }
+  const KW_EMPTY = {
+    'keywords|blocklist':'No custom keywords yet. Add one to get started.',
+    'keywords|whitelist':'No whitelisted keywords.',
+    'websites|blocked':'No custom websites blocked yet.',
+    'websites|trusted':'No trusted websites.'
+  };
+  function kwOverride(){ return kwSelTab==='whitelist'||kwSelTab==='trusted'; }
+  function kwLabels(){
+    const note=document.getElementById('kwNote');
+    if(note){
+      note.style.display = kwOverride()?'block':'none';
+      note.textContent = kwSelTab==='trusted' ? 'Trusted websites override the blocked list.' : 'Whitelist keywords override the blocklist.';
+    }
+    const lbl=document.getElementById('kwAddLabel');
+    if(lbl) lbl.textContent = kwOverride()
+      ? (kwSelType==='keywords'?'Add whitelist':'Add trusted')
+      : (kwSelType==='keywords'?'Add keyword':'Add website');
+    const q=document.getElementById('kwQuery');
+    if(q) q.placeholder = kwSelType==='keywords' ? 'Search keywords…' : 'Search websites…';
+  }
+  function kwType(t){
+    kwSelType = t;
+    kwSelTab  = t==='keywords' ? 'blocklist' : 'blocked';
+    document.querySelectorAll('[data-seg="kwtype"] button').forEach(b=>b.classList.toggle('on', b.dataset.val===t));
+    document.querySelectorAll('[data-seg="kwtab"] button').forEach(b=>{
+      b.classList.toggle('hidden', b.dataset.for!==t);
+      b.classList.toggle('on', b.dataset.val===kwSelTab);
+    });
+    const q=document.getElementById('kwQuery'); if(q) q.value='';
+    kwLabels(); kwRender();
+  }
+  function kwTab(tab){
+    kwSelTab = tab;
+    document.querySelectorAll('[data-seg="kwtab"] button').forEach(b=>b.classList.toggle('on', b.dataset.val===tab));
+    kwLabels(); kwRender();
+  }
+  function kwRender(){
+    const q=(document.getElementById('kwQuery').value||'').trim().toLowerCase();
+    const items=(KW[kwSelType][kwSelTab]||[]).filter(v=>v.toLowerCase().indexOf(q)>=0);
+    const host=document.getElementById('kwList');
+    if(host) host.innerHTML = items.map(kwRowHTML).join('');
+    const empty=document.getElementById('kwEmpty');
+    if(empty){
+      empty.style.display = items.length?'none':'block';
+      empty.textContent = KW_EMPTY[kwSelType+'|'+kwSelTab];
+    }
+    kwMgCard();
+  }
+  function kwMgCard(){
+    const s2=document.getElementById('mgCardSub');
+    if(s2) s2.textContent = KW.keywords.blocklist.length+' keywords · '+KW.websites.blocked.length+' websites · '+KW.websites.trusted.length+' trusted';
+  }
+  function kwRowHTML(v){
+    const art = kwSelType==='keywords'
+      ? '<path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/>'
+      : '<circle cx="12" cy="12" r="9"/><path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20M2 12h20"/>';
+    const sub = kwOverride() ? (kwSelType==='keywords'?'Whitelisted':'Trusted') : ((KWCAT[v]||'Custom')+' · blocked');
+    return '<div class="kw-row" data-val="'+v+'"><div class="ic '+(kwOverride()?'g':'r')+'"><svg viewBox="0 0 24 24">'+art+'</svg></div>'
+      + '<div class="tx"><div class="t">'+v+'</div><div class="s">'+sub+'</div></div>'
+      + '<button class="act" onclick="kwEdit(this)"><svg viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>'
+      + '<button class="act" style="color:var(--danger)" onclick="kwRemove(this)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button></div>';
+  }
+  function kwAdd(){ kwEditing=null; kwSource='screen'; openSheet(kwSelType==='keywords'?'sheetKw':'sheetSite'); }
+  function kwEdit(btn){
+    const row=btn.closest('.kw-row'); if(!row) return;
+    kwEditing=row.dataset.val; kwSource='screen';
+    openSheet(kwSelType==='keywords'?'sheetKw':'sheetSite');
+    const inp=document.getElementById(kwSelType==='keywords'?'kwInput':'siteInput');
+    if(inp) inp.value=kwEditing;
+  }
+  function kwRemove(btn){
+    const row=btn.closest('.kw-row'); if(!row) return;
+    const v=row.dataset.val;
+    KW[kwSelType][kwSelTab] = KW[kwSelType][kwSelTab].filter(x=>x!==v);
+    delete KWCAT[v];
+    kwRender(); toast('Deleted');
+  }
+  function kwSave(v, cat){
+    const list = KW[kwSelType][kwSelTab];
+    if(kwEditing){
+      const i = list.indexOf(kwEditing);
+      if(i>=0){ list[i]=v; delete KWCAT[kwEditing]; }
+      if(cat) KWCAT[v]=cat;
+      kwEditing=null; kwRender(); toast('Updated'); return true;
+    }
+    if(list.indexOf(v)>=0){ toast('Already on the list'); return false; }
+    list.push(v); if(cat) KWCAT[v]=cat; kwRender();
+    toast((kwSelType==='keywords'?'Keyword':'Website')+' added to '+kwSelTab);
+    return true;
+  }
+
+  // ---------- Activity log (Home feed + History) ----------
+  const ACTIVITY = [];
+  function actAdd(type,title,sub,time){
+    const last = ACTIVITY[0];
+    if(last && last.type===type && last.title===title) return;
+    ACTIVITY.unshift({type:type,title:title,sub:sub,time:time});
+    if(ACTIVITY.length>50) ACTIVITY.length=50;
+    feedRender(); histRender();
+  }
+  function actDot(t){
+    return ({block:'var(--brand)',schedule:'var(--success)',vpn:'var(--warning)',a11y:'var(--danger)'})[t] || 'var(--ink-3)';
+  }
+  function feedRender(){
+    const host=document.getElementById('homeFeed'), empty=document.getElementById('homeFeedEmpty');
+    if(!host) return;
+    host.innerHTML = ACTIVITY.slice(0,3).map(e=>
+      '<div class="f"><span class="fd" style="background:'+actDot(e.type)+'"></span><div class="ft">'
+      + '<div class="t">'+e.title+'</div><div class="s">'+e.sub+'</div><div class="tm">'+e.time+'</div></div></div>').join('');
+    if(empty) empty.style.display = ACTIVITY.length?'none':'block';
+  }
+  function histRender(){
+    const host=document.getElementById('histList'), empty=document.getElementById('histEmpty');
+    if(!host) return;
+    host.innerHTML = ACTIVITY.map(e=>
+      '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">'
+      + '<span style="width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none;background:'+actDot(e.type)+'"></span>'
+      + '<div style="flex:1"><div style="font-size:14px;font-weight:600">'+e.title+'</div>'
+      + '<div style="font-size:12px;color:var(--ink-2);margin-top:2px">'+e.sub+'</div>'
+      + '<div style="font-size:11px;color:var(--ink-3);margin-top:3px">'+e.time+'</div></div></div>').join('');
+    if(empty) empty.style.display = ACTIVITY.length?'none':'block';
+  }
+
+  // ---------- Schedule banners / Accessibility protection ----------
+  function dismissBanner(btn){ const b=btn.closest('.banner'); if(b) b.style.display='none'; }
+  function apToggleAdb(btn){
+    const box=document.getElementById('apAdb'); if(!box) return;
+    const show = box.style.display==='none';
+    box.style.display = show?'block':'none';
+    btn.textContent = show?'Hide instructions':'Show ADB setup instructions';
+  }
+  function svcSearch(inp){
+    const q=(inp.value||'').trim().toLowerCase(); let n=0;
+    document.querySelectorAll('#svcList .svc-row').forEach(r=>{
+      const hit=!q||r.dataset.name.toLowerCase().indexOf(q)>=0;
+      r.style.display=hit?'':'none'; if(hit) n++;
+    });
+    const e=document.getElementById('svcEmpty'); if(e) e.style.display=n?'none':'block';
+  }
+
+  // ---------- Quick actions ----------
+  const QA_POOL=[
+    {id:'keyword', t:'Add keyword',  s:'Block more sites'},
+    {id:'schedule',t:'New schedule', s:'Recurring window'},
+    {id:'backup',  t:'Backup',       s:'Export to JSON'},
+    {id:'applock', t:'App lock',     s:'Protect apps'},
+    {id:'websites',t:'Websites',     s:'Block sites'},
+    {id:'vpn',     t:'VPN',          s:'Internet filtering'},
+    {id:'history', t:'History',      s:'View activity'}
+  ];
+  const QA_ICON={
+    keyword:'M4 9h16M4 15h16M10 3L8 21M16 3l-2 18',
+    schedule:'M4 5h16v16H4z|M4 10h16M9 3v4M15 3v4',
+    backup:'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3',
+    applock:'M6 11h12v9H6z|M9 11V8a3 3 0 016 0v3',
+    websites:'M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20M2 12h20',
+    vpn:'M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z|M9 12l2 2 4-4',
+    history:'M12 7v5l3 2|M21 12a9 9 0 11-3-6.7'
+  };
+  const QA_TARGET={keyword:'keywords',schedule:'scheduleedit',backup:'backup',applock:'applock',websites:'keywords',vpn:'vpn',history:'history'};
+  let qaOn=['keyword','schedule','backup','applock'];
+  function qaIcon(id){ return (QA_ICON[id]||'').split('|').map(d=>'<path d="'+d+'"/>').join(''); }
+  function qaRow(a,on,i,total){
+    const arrows = '<button class="act" onclick="qaMove('+i+',-1)" '+(i===0?'disabled style="opacity:.3"':'')+'><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>'
+      + '<button class="act" onclick="qaMove('+i+',1)" '+(i===total-1?'disabled style="opacity:.3"':'')+'><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'
+      + '<button class="act" style="color:var(--danger)" onclick="qaRemove('+i+')"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+    const add = '<button class="act" onclick="qaAdd(\''+a.id+'\')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>';
+    return '<div class="kw-row" style="border-radius:16px;padding:12px 14px;margin-bottom:8px">'
+      + '<div class="ic" style="width:36px;height:36px;border-radius:11px"><svg viewBox="0 0 24 24" style="width:18px;height:18px">'+qaIcon(a.id)+'</svg></div>'
+      + '<div class="tx"><div class="t">'+a.t+'</div><div class="s">'+a.s+'</div></div>' + (on?arrows:add) + '</div>';
+  }
+  function qaRender(){
+    const on=qaOn.map(id=>QA_POOL.filter(a=>a.id===id)[0]).filter(Boolean);
+    const hidden=QA_POOL.filter(a=>qaOn.indexOf(a.id)<0);
+    const onHost=document.getElementById('qaOn'), addHost=document.getElementById('qaAdd'), empty=document.getElementById('qaEmpty');
+    if(onHost) onHost.innerHTML = on.map((a,i)=>qaRow(a,true,i,on.length)).join('');
+    if(addHost) addHost.innerHTML = hidden.map(a=>qaRow(a,false)).join('');
+    if(empty) empty.style.display = on.length?'none':'block';
+    homeQuickRender();
+  }
+  function qaMove(i,d){ const j=i+d; if(j<0||j>=qaOn.length) return; const t=qaOn[i]; qaOn[i]=qaOn[j]; qaOn[j]=t; qaRender(); }
+  function qaRemove(i){ qaOn.splice(i,1); qaRender(); }
+  function qaAdd(id){ if(qaOn.indexOf(id)<0) qaOn.push(id); qaRender(); }
+  function qaReset(){ qaOn=['keyword','schedule','backup','applock']; qaRender(); toast('Restore default actions'); }
+  function homeQuickRender(){
+    const grid=document.querySelector('#sc-home .grid2'); if(!grid) return;
+    if(!qaOn.length){
+      grid.innerHTML='<div style="grid-column:1/-1;font-size:12.5px;line-height:18px;color:var(--ink-2)">No quick actions yet — tap Edit to add some</div>';
+      return;
+    }
+    grid.innerHTML = qaOn.map(id=>{
+      const a=QA_POOL.filter(x=>x.id===id)[0]; if(!a) return '';
+      return '<button class="qa" onclick="nav(\''+QA_TARGET[id]+'\')"><div class="ic"><svg viewBox="0 0 24 24">'+qaIcon(id)+'</svg></div>'
+        + '<div class="t">'+a.t+'</div><div class="s">'+a.s+'</div></button>';
+    }).join('');
+  }
+
   // ---------- Boot ----------
   (function boot(){
     const onboarded = localStorage.getItem('safeme_onboarded');
     const m = location.hash.match(/#\/s\/(\w+)/);
     const name = (m && document.getElementById('sc-'+m[1])) ? m[1] : null;
-    const obScreens = ['welcome','permissions','permbattery','permalarms','perma11y'];
+    const obScreens = ['welcome','permissions','permbattery','perma11y'];
     if(!onboarded){ show(name || 'welcome'); }
     else if(name && !obScreens.includes(name)){ nav(name); }
     else { show('home'); }
     // permissions init
     permStatus();
+    kwType('keywords');
+    qaRender();
+    feedRender();
+    histRender();
+    renderSocial();
   })();

@@ -67,7 +67,8 @@ private fun h12(hour24: Int): Int = (hour24 % 12).let { if (it == 0) 12 else it 
 /**
  * Prototype `sheetTime`: Hours/Minutes steppers with 40dp circular −/+ buttons,
  * 30sp tabular values, an AM/PM segment and Cancel/Done. Done validates the
- * window ordering ("Start must be before end") and refuses to close otherwise.
+ * degenerate window (start == end, "Start and end can't be the same") and
+ * refuses to close otherwise; overnight windows (end < start) are allowed.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,13 +210,12 @@ fun TimePickerSheet(
                     text = stringResource(R.string.sche_done),
                     onClick = {
                         val value = minuteValue()
-                        val other = if (target == TimeTarget.START) endMinute else startMinute
-                        val violates = if (target == TimeTarget.START) {
-                            value >= other
+                        val ok = if (target == TimeTarget.START) {
+                            isValidScheduleWindow(value, endMinute)
                         } else {
-                            value <= other
+                            isValidScheduleWindow(startMinute, value)
                         }
-                        if (violates) {
+                        if (!ok) {
                             error = timeError
                             return@PrimaryPill
                         }

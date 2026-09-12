@@ -16,12 +16,14 @@ import com.safeme.app.BlockOverlayController
 import com.safeme.app.R
 import com.safeme.app.data.BlockingPrefsState
 import com.safeme.app.data.BundledKeywords
+import com.safeme.app.data.SocialBlockingState
 import com.safeme.app.data.TitleBlockRule
 import com.safeme.app.data.TitleMatchMode
 import com.safeme.app.data.blockingPrefs
 import com.safeme.app.data.contentEnginePrefs
 import com.safeme.app.data.normalizeDomain
 import com.safeme.app.data.preventUninstallPrefs
+import com.safeme.app.data.socialBlockingPrefs
 import com.safeme.app.protect.A11yProtectionGuard
 import com.safeme.app.protect.A11yProtectionUtils
 import com.safeme.app.protect.BrowserUrlGate
@@ -29,9 +31,10 @@ import com.safeme.app.protect.DeviceAdminUtils
 import com.safeme.app.protect.ImageVideoSearchGate
 import com.safeme.app.protect.PrivateDnsBlockers
 import com.safeme.app.protect.ProtectedSystemPages
-import com.safeme.app.protect.VpnBlockers
 import com.safeme.app.protect.ScheduleEngine
+import com.safeme.app.protect.SocialBlockingGate
 import com.safeme.app.protect.UninstallBlockers
+import com.safeme.app.protect.VpnBlockers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -99,6 +102,12 @@ internal fun shouldThrottleAppContentRecheck(
     isClick: Boolean,
 ): Boolean = !isClick && nowMs - lastRecheckMs < APP_CONTENT_RECHECK_THROTTLE_MS
 
+internal fun shouldThrottleSocialTabRecheck(
+    lastRecheckMs: Long,
+    nowMs: Long,
+    isClick: Boolean,
+): Boolean = !isClick && nowMs - lastRecheckMs < SocialBlockingGate.APP_CONTENT_RECHECK_THROTTLE_MS
+
 /**
  * Core blocking engine.
  *
@@ -159,6 +168,20 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     @Volatile
     private var cachedImageVideoSearchEnabled: Boolean = false
+
+    @Volatile
+    private var cachedSocialState: SocialBlockingState? = null
+
+    @Volatile
+    private var lastSocialWholeBlockKey: String? = null
+
+    @Volatile
+    private var lastSocialWholeBlockAt: Long = 0L
+
+    @Volatile
+    private var lastSocialTabProbeMs: Long = 0L
+
+    private val socialTabCooldown = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     @Volatile
     private var lastBlockKey: String? = null
@@ -270,6 +293,16 @@ class SafeMeAccessibilityService : AccessibilityService() {
             cachedState = BlockingPrefsState()
             Log.w(TAG, "exclude: initial cachedState read failed — using defaults", t)
         }
+        runCatching {
+            runBlocking {
+                val initialSocial = this@SafeMeAccessibilityService.socialBlockingPrefs().first()
+                cachedSocialState = initialSocial
+                Log.d(TAG, "social: initial cachedSocial enabled=${initialSocial.enabled} whole=${initialSocial.wholeBlocked.size} tabs=${initialSocial.activeTabs}")
+            }
+        }.onFailure { t ->
+            cachedSocialState = SocialBlockingState()
+            Log.w(TAG, "social: initial read failed — using defaults", t)
+        }
         serviceScope.launch {
             try {
                 preventUninstallPrefs().collect {
@@ -296,6 +329,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 }
             } catch (t: Throwable) {
                 Log.d(TAG, "blockingPrefs collect failed — using initial cached state", t)
+            }
+        }
+        serviceScope.launch {
+            try {
+                socialBlockingPrefs().collect { state ->
+                    cachedSocialState = state
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "socialBlockingPrefs collect failed — using last cached", t)
             }
         }
         // PU watchdog: enforces eviction of our own a11y detail page on every
@@ -368,7 +410,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (Companion.consumeGateDismissedPending()) {
             lastPuBlockAt = 0L
             lastBlockAt = 0L
-            Log.d(TAG, "PU: gate dismissed — cooldowns re-armed")
+            lastSocialWholeBlockAt = 0L
+            lastSocialWholeBlockKey = null
+            socialTabCooldown.clear()
+            lastSocialTabProbeMs = 0L
+            Log.d(TAG, "PU: gate dismissed — cooldowns re-armed (incl social)")
             schedulePostDismissalReprobes()
         }
     }
@@ -546,6 +592,14 @@ class SafeMeAccessibilityService : AccessibilityService() {
             } catch (t: Throwable) {
                 Log.w(TAG, "app content-event check failed — fail open", t)
             }
+            // [Social tab gate] Tab overlay probe for Shorts/Reels/Spotlight on content events
+            if (cachedSocialState?.enabled == true) {
+                try {
+                    handleSocialTabContentEvent(snapshot)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "social tab content-event check failed — fail open", t)
+                }
+            }
             return
         }
 
@@ -612,6 +666,56 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (isScheduleBlocked(pkg)) {
             launchScheduleGate(pkg)
             return
+        }
+
+        // Social Media Blocking — independent of BlockingPrefsState.blockingEnabled
+        // Whole-app launch gate (persistent) + in-app tab gate (Shorts/Reels/Spotlight)
+        try {
+            val social = cachedSocialState
+            if (social != null && social.enabled) {
+                // Whole-app: block on launch (TYPE_WINDOW_STATE_CHANGED)
+                if (SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) {
+                    val key = "socialWhole|$pkg"
+                    val now = SystemClock.elapsedRealtime()
+                    if (!(lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < COOLDOWN_MS)) {
+                        lastSocialWholeBlockKey = key
+                        lastSocialWholeBlockAt = now
+                        launchSocialWholeGate(pkg)
+                    }
+                    return
+                }
+                // Tab gate: only for allow-list pkgs, throttled 250ms + 4s cooldown per pkg|vertical
+                val vertical = SocialBlockingGate.verticalFor(pkg)
+                if (vertical != null && SocialBlockingGate.isVerticalEnabled(vertical, social.youtube, social.facebook, social.snapchat)) {
+                    val now = SystemClock.elapsedRealtime()
+                    if (!shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, false)) {
+                        lastSocialTabProbeMs = now
+                        val key = SocialBlockingGate.throttleKey(pkg, vertical)
+                        val last = socialTabCooldown[key] ?: 0L
+                        if (now - last >= SocialBlockingGate.GATE_COOLDOWN_MS) {
+                            val root = try { rootInActiveWindow } catch (_: Throwable) { null }
+                            if (root != null) {
+                                try {
+                                    val tabNode = SocialBlockingGate.findTabNode(root, vertical)
+                                    if (tabNode != null) {
+                                        try {
+                                            socialTabCooldown[key] = now
+                                            launchSocialTabGate(pkg, vertical)
+                                            return
+                                        } finally {
+                                            try { tabNode.recycle() } catch (_: Throwable) {}
+                                        }
+                                    }
+                                } finally {
+                                    recycle(root)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "social gate check failed — fail open", t)
         }
 
         val state = cachedState ?: return
@@ -2019,6 +2123,63 @@ class SafeMeAccessibilityService : AccessibilityService() {
         lastScheduleBlockAt = now
         // [Overlay gate] Same universal overlay host as every other gate type.
         BlockOverlayController.show(this, pkg, "", "schedule")
+    }
+
+    private fun launchSocialWholeGate(pkg: String) {
+        val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+        Log.d(TAG, "social whole gate launched (pkg=$pkg label=$label)")
+        BlockOverlayController.show(this, pkg, label, "socialWhole")
+    }
+
+    private fun launchSocialTabGate(pkg: String, vertical: SocialBlockingGate.SocialVertical) {
+        val label = when (vertical) {
+            SocialBlockingGate.SocialVertical.SHORTS -> "YouTube Shorts"
+            SocialBlockingGate.SocialVertical.REELS -> "Facebook Reels"
+            SocialBlockingGate.SocialVertical.SPOTLIGHT -> "Snapchat Spotlight"
+        }
+        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical)")
+        BlockOverlayController.show(this, pkg, label, "socialTab")
+    }
+
+    /**
+     * Social tab re-check on content-changed / click / focus inside FEATURE_PACKAGES.
+     * Throttled 250ms (non-click) + 4s cooldown per pkg|vertical. Only runs when
+     * social.enabled && vertical enabled. Finds tab label node (Shorts/Reels/Spotlight)
+     * and overlay the tab node; keeps Feed/Messages/Profile scrollable.
+     */
+    private fun handleSocialTabContentEvent(snapshot: EventSnapshot) {
+        rearmCooldownsIfGateDismissed()
+        val pkg = snapshot.pkg ?: return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage || pkg == "com.android.systemui") return
+        val social = cachedSocialState ?: return
+        if (!social.enabled) return
+        val vertical = SocialBlockingGate.verticalFor(pkg) ?: return
+        if (!SocialBlockingGate.isVerticalEnabled(vertical, social.youtube, social.facebook, social.snapchat)) return
+
+        val now = SystemClock.elapsedRealtime()
+        val isClick = snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED
+        if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isClick)) return
+        lastSocialTabProbeMs = now
+
+        val key = SocialBlockingGate.throttleKey(pkg, vertical)
+        val last = socialTabCooldown[key] ?: 0L
+        if (now - last < SocialBlockingGate.GATE_COOLDOWN_MS) return
+
+        val root = try { rootInActiveWindow } catch (_: Throwable) { null } ?: return
+        try {
+            val rootPkg = runCatching { root.packageName?.toString() }.getOrNull()
+            if (rootPkg != null && rootPkg != pkg) return
+            val tabNode = try { SocialBlockingGate.findTabNode(root, vertical) } catch (_: Throwable) { null } ?: return
+            try {
+                socialTabCooldown[key] = now
+                launchSocialTabGate(pkg, vertical)
+            } finally {
+                try { tabNode.recycle() } catch (_: Throwable) {}
+            }
+        } finally {
+            recycle(root)
+        }
     }
 
     /**

@@ -35,9 +35,10 @@ enum class ScheduleMode(val label: String) {
  *
  * @param days Day-of-week indices in the prototype's order: 0=Mon … 6=Sun.
  * @param startMinute Minutes from midnight when the window starts (0..1439).
- * @param endMinute Minutes from midnight when the window ends; always greater
- *   than [startMinute] (the UI validates "Start must be before end", matching
- *   the prototype — schedules never wrap past midnight in this design).
+ * @param endMinute Minutes from midnight when the window ends; must not equal
+ *   [startMinute]. May be less than [startMinute] for overnight windows,
+ *   which spill into the next day (the UI validates "Start and end can't be
+ *   the same").
  * @param appPackages Packages targeted by this rule. Empty means "no apps
  *   picked" → the schedule blocks everything ([blocksAllApps]).
  */
@@ -58,6 +59,8 @@ data class SchedulePrefsState(
     val schedules: List<ScheduleBlock> = emptyList(),
     /** User dismissed the "Accessibility Service required" banner. */
     val a11yWarningDismissed: Boolean = false,
+    /** User dismissed the "Precise schedule timing" banner. */
+    val exactAlarmWarningDismissed: Boolean = false,
     /** Global exclusion list: packages never blocked by any schedule. */
     val excludedApps: Set<String> = emptySet(),
 )
@@ -66,6 +69,7 @@ private val Context.scheduleDataStore by preferencesDataStore(name = "schedule_p
 
 val KEY_SCHEDULES_JSON = stringPreferencesKey("schedules_json")
 val KEY_A11Y_WARN_DISMISSED = booleanPreferencesKey("a11y_warn_dismissed")
+val KEY_EXACT_ALARM_WARN_DISMISSED = booleanPreferencesKey("exact_alarm_warn_dismissed")
 val KEY_EXCLUDED_APPS = stringSetPreferencesKey("excluded_apps")
 
 /** Prototype day order: Mon … Sun. */
@@ -78,6 +82,7 @@ fun Context.schedulePrefs(): Flow<SchedulePrefsState> =
             SchedulePrefsState(
                 schedules = schedulesFromJson(prefs[KEY_SCHEDULES_JSON]),
                 a11yWarningDismissed = prefs[KEY_A11Y_WARN_DISMISSED] ?: false,
+                exactAlarmWarningDismissed = prefs[KEY_EXACT_ALARM_WARN_DISMISSED] ?: false,
                 excludedApps = prefs[KEY_EXCLUDED_APPS] ?: emptySet(),
             )
         }
@@ -86,6 +91,13 @@ fun Context.schedulePrefs(): Flow<SchedulePrefsState> =
 suspend fun Context.setA11yWarningDismissed(dismissed: Boolean) {
     scheduleDataStore.edit { prefs ->
         prefs[KEY_A11Y_WARN_DISMISSED] = dismissed
+    }
+}
+
+/** Persist the "Precise schedule timing" banner dismissal. */
+suspend fun Context.setExactAlarmWarningDismissed(dismissed: Boolean) {
+    scheduleDataStore.edit { prefs ->
+        prefs[KEY_EXACT_ALARM_WARN_DISMISSED] = dismissed
     }
 }
 
@@ -136,7 +148,7 @@ fun schedulesFromJson(json: String?): List<ScheduleBlock> {
                 if (days.isEmpty()) continue
                 val start = o.optInt("st", -1)
                 val end = o.optInt("en", -1)
-                if (start !in 0..1439 || end !in 0..1439 || end <= start) continue
+                if (start !in 0..1439 || end !in 0..1439 || end == start) continue
                 val mode = ScheduleMode.fromName(o.optString("m")) ?: continue
                 val apps = buildList {
                     val a = o.optJSONArray("a")
@@ -203,6 +215,7 @@ suspend fun Context.writeSchedulePrefs(state: SchedulePrefsState) {
     scheduleDataStore.edit { prefs ->
         prefs[KEY_SCHEDULES_JSON] = schedulesToJson(state.schedules)
         prefs[KEY_A11Y_WARN_DISMISSED] = state.a11yWarningDismissed
+        prefs[KEY_EXACT_ALARM_WARN_DISMISSED] = state.exactAlarmWarningDismissed
         prefs[KEY_EXCLUDED_APPS] = state.excludedApps
     }
 }
@@ -228,6 +241,22 @@ fun shouldShowA11yWarning(
     return schedules.any { it.enabled && requiresAccessibility(it.mode) }
 }
 
+/**
+ * Visibility of the "Precise schedule timing" banner: API 31+, at least one
+ * ENABLED schedule exists, exact alarms are not granted, and the user hasn't
+ * dismissed the warning. A paused schedule never nags. [sdkInt] is injectable
+ * for unit tests (defaults to the device SDK).
+ */
+fun shouldShowExactAlarmWarning(
+    schedules: List<ScheduleBlock>,
+    granted: Boolean,
+    dismissed: Boolean,
+    sdkInt: Int = android.os.Build.VERSION.SDK_INT,
+): Boolean {
+    if (sdkInt < android.os.Build.VERSION_CODES.S || granted || dismissed) return false
+    return schedules.any { it.enabled }
+}
+
 // ---------------------------------------------------------------- pure helpers
 
 /** Prototype `daysLabel`: "Daily" for all 7 days, else "Mon · Wed · Fri". */
@@ -249,6 +278,10 @@ fun scheduleModeLabel(mode: ScheduleMode): String = when (mode) {
 fun scheduleTimeLabel(minute: Int): String =
     "${(minute / 60).toString().padStart(2, '0')}:${(minute % 60).toString().padStart(2, '0')}"
 
-/** "21:00 – 23:00" card time row (prototype uses an en-dash with spaces). */
+/**
+ * "21:00 – 23:00" card time row (prototype uses an en-dash with spaces).
+ * Overnight windows append " (+1)" to mark the spill into the next day.
+ */
 fun scheduleWindowLabel(startMinute: Int, endMinute: Int): String =
-    "${scheduleTimeLabel(startMinute)} – ${scheduleTimeLabel(endMinute)}"
+    "${scheduleTimeLabel(startMinute)} – ${scheduleTimeLabel(endMinute)}" +
+        if (endMinute < startMinute) " (+1)" else ""

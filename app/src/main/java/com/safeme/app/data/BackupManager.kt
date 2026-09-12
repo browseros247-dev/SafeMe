@@ -45,6 +45,7 @@ suspend fun Context.createBackup(): BackupFile {
         a11yProtection = a11yProtectionPrefs().first(),
         contentEngine = contentEnginePrefs().first(),
         blockScreen = blockScreenPrefs().first(),
+        socialBlocking = socialBlockingPrefs().first(),
     )
     val jsonc = BackupCodec.toJsonc(snapshot, appVersion = version, createdAt = now.toString())
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmm"))
@@ -112,6 +113,7 @@ fun Context.backupStores(): Map<BackupSection, BackupStateStore> = mapOf(
     BackupSection.A11Y_PROTECTION to A11yProtectionStore(this),
     BackupSection.CONTENT_ENGINE to ContentEngineStore(this),
     BackupSection.BLOCK_SCREEN to BlockScreenStore(this),
+    BackupSection.SOCIAL_BLOCKING to SocialBlockingStore(this),
 )
 
 private class BlockingStore(private val context: Context) : BackupStateStore {
@@ -174,5 +176,12 @@ private class BlockScreenStore(private val context: Context) : BackupStateStore 
     override suspend fun read(): Any? = context.blockScreenPrefs().first()
     override suspend fun write(value: Any?) {
         if (value != null) context.writeBlockScreenPrefs(value as BlockScreenPrefsState)
+    }
+}
+
+private class SocialBlockingStore(private val context: Context) : BackupStateStore {
+    override suspend fun read(): Any? = context.socialBlockingPrefs().first()
+    override suspend fun write(value: Any?) {
+        if (value != null) context.writeSocialBlockingPrefs(value as SocialBlockingState)
     }
 }

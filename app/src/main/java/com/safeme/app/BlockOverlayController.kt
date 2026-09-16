@@ -236,11 +236,17 @@ object BlockOverlayController {
             val prefs = runCatching { appContext.blockScreenPrefs().first() }
                 .getOrDefault(BlockScreenPrefsState())
             mainHandler.post {
-                if (!showing) return@post
+                // [H1 race] A tab-cover dismissal posted between show() and
+                // this task can flip showing=false first; a preempting full
+                // gate must still attach (it was explicitly requested), so
+                // only the plain dedupe path honors a concurrent dismissal.
+                if (!showing && !preemptTabCover) return@post
                 try {
                     if (preemptTabCover) {
                         Log.d(TAG, "full gate ($type) preempts tab cover — removing tab window")
                         detachOverlayWindow()
+                        showing = true
+                        showingType = type
                     }
                     attachOverlay(context, pkg, matched, type, prefs, coverAboveY)
                     registerScreenWakeReceiver(appContext)

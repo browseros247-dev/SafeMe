@@ -117,8 +117,10 @@ object SocialBlockingGate {
     /**
      * Result of an active-tab probe.
      *
-     * [coverAboveY] — screen Y of the bottom-nav bar's top edge; the tab cover
-     * spans 0..coverAboveY so the nav stays visible and tappable. Null when no
+     * [coverAboveY] — screen Y of the bottom-nav bar's top edge. NOTE (V9):
+     * the service now always presents FULL-screen tab covers (identical block
+     * screen to every other gate); this value is retained for diagnostics and
+     * a possible return to scoped covers. Null when no
      * nav bar could be identified (fullscreen feed) → caller covers the full
      * screen, which is correct because the whole screen IS the blocked surface.
      */
@@ -178,9 +180,9 @@ object SocialBlockingGate {
                     isPlausibleFullscreenSurface(visible, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)
                 }.getOrDefault(false)
                 if (accept) {
-                    val top = rect.top
                     runCatching { node.recycle() }
-                    return TabHit(if (top > 0) top else null, matchedVia = id)
+                    // [V9] Fullscreen player ⇒ fullscreen cover (null).
+                    return TabHit(null, matchedVia = id)
                 }
                 runCatching { node.recycle() }
             }
@@ -226,7 +228,8 @@ object SocialBlockingGate {
                     node.getBoundsInScreen(rect)
                     isPlausibleFullscreenSurface(visible, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)
                 }.getOrDefault(false)
-                if (accept) return TabHit(if (rect.top > 0) rect.top else null, matchedVia = viewId ?: cls)
+                // [V9] Fullscreen player ⇒ fullscreen cover (null).
+                if (accept) return TabHit(null, matchedVia = viewId ?: cls)
             }
             for (i in 0 until node.childCount) {
                 val child = try { node.getChild(i) } catch (_: Throwable) { null } ?: continue

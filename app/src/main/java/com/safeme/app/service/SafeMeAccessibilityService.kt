@@ -2217,9 +2217,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
         socialTabCoverConfirmed = confirmed
         socialTabCoverRaisedAtMs = SystemClock.elapsedRealtime()
         Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical coverAboveY=$coverAboveY confirmed=$confirmed via=$via)")
-        // Scoped cover: spans 0..coverAboveY so the bottom nav stays visible
-        // and tappable; null (fullscreen feed, no nav identified) → full cover.
-        BlockOverlayController.show(this, pkg, label, "socialTab", coverAboveY)
+        // [V9] Always a FULL-screen cover: the identical block screen every
+        // other gate shows (owner decision — overrides the old nav-usable
+        // scoping). coverAboveY stays in the log for diagnostics; the
+        // controller's scoped-window machinery remains intact and dormant.
+        BlockOverlayController.show(this, pkg, label, "socialTab")
     }
 
     /**
@@ -2424,8 +2426,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // Tree evidence arrived — the cover is confirmed from here on and
             // keeps the snappy probe-based dismissal.
             socialTabCoverConfirmed = true
-            // Still on the blocked tab — keep the cover fitted to the nav bar.
-            BlockOverlayController.refitTabCover(hit.coverAboveY)
+            // Still on the blocked tab. [V9] Covers are always full-screen
+            // now — refit(null) is a provable no-op (early-return on equal
+            // height) kept as an OEM-quirk safety net.
+            BlockOverlayController.refitTabCover(null)
         } finally {
             recycle(root)
         }

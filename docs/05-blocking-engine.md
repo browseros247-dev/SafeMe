@@ -123,3 +123,47 @@ On a match, the service launches `BlockGateActivity` with
   [04](04-security-architecture.md).
 - **VPN**: on-screen URL/keyword blocking for browsers is this service's job;
   the VPN only filters DNS. The two complement, they do not overlap.
+
+## 7. Social Media Blocking gates
+
+Two independent gates, evaluated AFTER the Prevent-Uninstall guards and the
+schedule launch block, and independent of the keyword master switch
+(`SocialBlockingPrefs`, master `enabled` flag):
+
+### Whole-app launch gate
+
+`pkg ∈ wholeBlocked` (minus `SYSTEM_EXEMPT`) → full-screen gate, persistent,
+Close → HOME. Four delivery layers share ONE cooldown key
+(`socialWhole|pkg`, 4 s) so they can never double-gate:
+
+1. **Fast lane** — O(1) membership check on the main thread in
+   `onAccessibilityEvent`, before the serial event queue (queue backlog can
+   never delay the cover).
+2. **Window-state path** — the original evaluation point in `handleEvent`.
+3. **Content backstop** — set lookup on ANY event from a blocked package:
+   OEMs (Vivo/FuntouchOS) drop or delay window-state events, and any app
+   that paints emits content events.
+4. **Watchdog probe** — rides the always-running 250 ms watchdog tick;
+   covers the hot task-resume case where BOTH window-state and content
+   events are missing. Layers 3–4 skip the 1.5 s post-dismissal window so
+   trailing events can't re-raise the gate over the HOME transition.
+
+### In-app tab gate (Shorts / Reels / Spotlight)
+
+Allow-listed packages only (`SocialBlockingGate.TAB_RULES`; TikTok and
+Instagram are whole-app only). Fires **only while the vertical's tab is the
+SELECTED bottom-nav tab** — the caption merely being present in the tree
+(bottom-nav labels always are) never gates. The cover is a SCOPED overlay:
+the window spans `0..coverAboveY` (nav-bar top, found via the full-width
+ancestor in the bottom 30% of the screen), so the bottom nav stays visible
+and tappable — Feed/Messages/Profile remain usable. Fullscreen-feed hits
+(no nav identified) cover the full screen.
+
+The cover is **supervised** from the service's `isShowing()` branch: it is
+dismissed (no HOME eject) the moment the user leaves the blocked tab or the
+app, refit when the nav bar moves (rotation), and handed off to the
+whole-app gate if the package becomes whole-blocked. Dismissal clears the
+per-`pkg|vertical` cooldown so re-entering the tab re-blocks instantly; the
+cover's own Close button keeps the 4 s cooldown as a snooze. Tab covers do
+not increment `blockedToday` and do not add activity-feed entries. A full
+gate always preempts a tab cover.

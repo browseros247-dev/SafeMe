@@ -118,8 +118,19 @@ object BlockOverlayController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /** Gate type for the scoped Social Media tab cover (see [showTabGate semantics in show]). */
+    private const val TYPE_SOCIAL_TAB = "socialTab"
+
     @Volatile
     private var showing = false
+
+    /**
+     * Type of the cover currently up, set SYNCHRONOUSLY in [show] (before the
+     * main-thread hop) so concurrent detection paths can distinguish a scoped
+     * tab cover from a full gate. Empty when nothing is showing.
+     */
+    @Volatile
+    private var showingType = ""
     private var overlayView: View? = null
     private var wm: WindowManager? = null
     private var overlayLp: WindowManager.LayoutParams? = null
@@ -132,6 +143,12 @@ object BlockOverlayController {
     private var lastMatched = ""
     private var lastType = ""
     private var lastPrefs: BlockScreenPrefsState? = null
+
+    // [H2] Scoped-cover geometry must survive a full rebuild: refreshOverlay
+    // reuses the stored LayoutParams (sized window survives), but
+    // reattachOverlay reconstructs from these last-show params — without this
+    // field a rebuilt tab cover would come back FULL-SCREEN.
+    private var lastCoverAboveY: Int? = null
 
     private var screenWakeReceiverRegistered = false
     private val screenWakeReceiver = object : BroadcastReceiver() {
@@ -147,6 +164,16 @@ object BlockOverlayController {
 
     /** True while the overlay window is attached (or its show is in flight). */
     fun isShowing(): Boolean = showing
+
+    /** True while the cover currently up is the scoped Social Media TAB cover. */
+    fun isShowingTabCover(): Boolean = showing && showingType == TYPE_SOCIAL_TAB
+
+    /** Package the current cover was raised over (empty-safe), or null when nothing is up. */
+    fun coveredPackage(): String? {
+        if (!showing) return null
+        val pkg = lastPkg
+        return pkg.ifEmpty { null }
+    }
 
     /**
      * Re-asserts a gate that the system may have removed while the controller
@@ -178,9 +205,20 @@ object BlockOverlayController {
      * Raises the block gate for [pkg] with the given [matched]/[type] context
      * (the exact triple [BlockGateActivity] receives). Falls back to the
      * activity when overlay permission is missing.
+     *
+     * [coverAboveY] — when non-null (Social Media TAB gate only), the window
+     * spans 0..coverAboveY instead of the full screen, leaving the app's
+     * bottom nav bar visible AND tappable (the window simply doesn't span
+     * it). Every other caller passes nothing → byte-identical full-screen
+     * behavior.
      */
-    fun show(context: Context, pkg: String, matched: String, type: String) {
-        if (showing) return
+    fun show(context: Context, pkg: String, matched: String, type: String, coverAboveY: Int? = null) {
+        // [H1] A full gate always wins over a scoped tab cover: mark the old
+        // window for immediate removal at attach time (same main-looper
+        // queue, so ordering is guaranteed) and proceed. Tab-over-tab and
+        // full-over-full still dedupe exactly as before.
+        val preemptTabCover = showing && showingType == TYPE_SOCIAL_TAB && type != TYPE_SOCIAL_TAB
+        if (showing && !preemptTabCover) return
         // Set synchronously so concurrent detection paths dedupe before the
         // main-thread hop. [context] MUST be the AccessibilityService: the
         // WindowManager for the overlay has to come from the service's own
@@ -188,6 +226,9 @@ object BlockOverlayController {
         // TYPE_ACCESSIBILITY_OVERLAY). The application context is used only
         // for DataStore/prefs and bookkeeping.
         showing = true
+        showingType = type
+        lastPkg = pkg
+        lastType = type
         val appContext = context.applicationContext
         scope.launch {
             // Load persisted Block Screen settings off-thread; defaults are
@@ -197,32 +238,47 @@ object BlockOverlayController {
             mainHandler.post {
                 if (!showing) return@post
                 try {
-                    attachOverlay(context, pkg, matched, type, prefs)
+                    if (preemptTabCover) {
+                        Log.d(TAG, "full gate ($type) preempts tab cover — removing tab window")
+                        detachOverlayWindow()
+                    }
+                    attachOverlay(context, pkg, matched, type, prefs, coverAboveY)
                     registerScreenWakeReceiver(appContext)
-                    // Bookkeeping that BlockGateActivity performed on first
-                    // creation: blocked-today counter + activity feed entry.
-                    scope.launch {
-                        runCatching { appContext.incrementBlockedToday() }
-                        runCatching {
-                            val label = runCatching {
-                                appContext.packageManager.getApplicationLabel(
-                                    appContext.packageManager.getApplicationInfo(pkg, 0)
-                                ).toString()
-                            }.getOrDefault(pkg.ifBlank { "an app" })
-                            appContext.addActivity(
-                                ACTIVITY_BLOCK,
-                                blockActivityTitle(type, label, matched),
-                                blockActivitySub(type, matched),
-                            )
+                    // [H5] Bookkeeping that BlockGateActivity performed on
+                    // first creation: blocked-today counter + activity feed
+                    // entry. TAB covers are excluded — they are a soft,
+                    // self-dismissing cover and repeated tab entries would
+                    // inflate the counters.
+                    if (type != TYPE_SOCIAL_TAB) {
+                        scope.launch {
+                            runCatching { appContext.incrementBlockedToday() }
+                            runCatching {
+                                val label = runCatching {
+                                    appContext.packageManager.getApplicationLabel(
+                                        appContext.packageManager.getApplicationInfo(pkg, 0)
+                                    ).toString()
+                                }.getOrDefault(pkg.ifBlank { "an app" })
+                                appContext.addActivity(
+                                    ACTIVITY_BLOCK,
+                                    blockActivityTitle(type, label, matched),
+                                    blockActivitySub(type, matched),
+                                )
+                            }
                         }
                     }
                 } catch (t: Throwable) {
                     // Never let the gate fail silently: reset and use the
-                    // activity fallback so the block still happens.
+                    // activity fallback so the block still happens. TAB
+                    // covers never use the activity fallback — an activity
+                    // would eject to HOME and break the keep-the-app-usable
+                    // contract; the service's tab watch re-raises instead.
                     Log.e(TAG, "overlay addView failed — activity fallback", t)
                     showing = false
+                    showingType = ""
                     lastContext = null
-                    launchFallbackActivity(context, pkg, matched, type)
+                    if (type != TYPE_SOCIAL_TAB) {
+                        launchFallbackActivity(context, pkg, matched, type)
+                    }
                 }
             }
         }
@@ -240,6 +296,7 @@ object BlockOverlayController {
         matched: String,
         type: String,
         prefs: BlockScreenPrefsState,
+        coverAboveY: Int? = null,
     ) {
         val owner = OverlayLifecycleOwner().apply { performCreate() }
         // The ComposeView defaults to DisposeOnDetachedFromWindow for
@@ -257,7 +314,11 @@ object BlockOverlayController {
                             context.getString(R.string.bs_preview_msg_default),
                         ),
                         whyOn = prefs.whyOn,
-                        onClose = { dismiss() },
+                        // TAB cover Close = stay in the app (no HOME eject) and
+                        // keep the 4 s gate cooldown as a natural snooze — the
+                        // content-event probe re-raises the cover once it
+                        // expires if the user is still on the blocked tab.
+                        onClose = { if (type == TYPE_SOCIAL_TAB) dismissTabCover(clearCooldown = false) else dismiss() },
                         whyReason = blockGateWhyReason(
                             type,
                             matched,
@@ -292,9 +353,19 @@ object BlockOverlayController {
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
+        // [Tab cover] Scoped window: spans 0..coverAboveY (gravity TOP) so
+        // the app's bottom nav bar stays visible AND tappable — touches
+        // outside the window bounds reach the app naturally. Full-screen
+        // (MATCH_PARENT) for every other caller and for fullscreen-feed tab
+        // hits where no nav bar was identified.
+        val windowHeight = if (coverAboveY != null && coverAboveY > 0) {
+            coverAboveY
+        } else {
+            WindowManager.LayoutParams.MATCH_PARENT
+        }
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            windowHeight,
             // NopoX parity (2032): accessibility overlays are exempt from
             // Settings' HIDE_NON_SYSTEM_OVERLAY_WINDOWS force-hide, so the
             // gate presents over App Info reliably. Requires the a11y service
@@ -327,6 +398,23 @@ object BlockOverlayController {
         lastMatched = matched
         lastType = type
         lastPrefs = prefs
+        lastCoverAboveY = coverAboveY
+    }
+
+    /**
+     * Removes ONLY the window/lifecycle of the current cover, keeping the
+     * controller's "showing" bookkeeping intact — used by the [H1] preemption
+     * path where a full gate immediately replaces a tab cover (the subsequent
+     * attach in the same main-looper task re-populates every field).
+     */
+    private fun detachOverlayWindow() {
+        try {
+            overlayView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
+        } catch (_: Throwable) {
+        }
+        lifecycleOwner?.destroy()
+        overlayView = null
+        lifecycleOwner = null
     }
 
     /**
@@ -368,6 +456,7 @@ object BlockOverlayController {
         val matched = lastMatched
         val type = lastType
         val prefs = lastPrefs ?: BlockScreenPrefsState()
+        val coverY = lastCoverAboveY
         try {
             try {
                 overlayView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
@@ -378,10 +467,14 @@ object BlockOverlayController {
             overlayLp = null
             lifecycleOwner?.destroy()
             lifecycleOwner = null
-            attachOverlay(ctx, pkg, matched, type, prefs)
+            // [H2] Geometry rides along so a rebuilt tab cover never comes
+            // back full-screen.
+            attachOverlay(ctx, pkg, matched, type, prefs, coverY)
         } catch (t: Throwable) {
             removeOverlay()
-            launchFallbackActivity(ctx, pkg, matched, type)
+            if (type != TYPE_SOCIAL_TAB) {
+                launchFallbackActivity(ctx, pkg, matched, type)
+            }
         }
     }
 
@@ -436,10 +529,63 @@ object BlockOverlayController {
         lifecycleOwner = null
         lastContext = null
         lastPrefs = null
+        lastCoverAboveY = null
         showing = false
+        showingType = ""
         if (screenWakeReceiverRegistered) {
             screenWakeReceiverRegistered = false
             runCatching { ctx?.unregisterReceiver(screenWakeReceiver) }
+        }
+    }
+
+    /**
+     * Removes a TAB cover WITHOUT launching HOME — the user stays in the app
+     * (the whole point of the scoped cover). No-op unless a tab cover is up.
+     *
+     * [clearCooldown] — true when the user navigated away from the blocked
+     * tab: signals the standard gate-dismissal path, which re-arms every
+     * cooldown (including the per-vertical tab cooldown), so re-entering the
+     * tab re-blocks instantly. False for the cover's own Close button: the
+     * gate cooldown set at fire time survives as a ~4 s snooze, after which
+     * the content probe re-raises the cover if the tab is still active.
+     */
+    fun dismissTabCover(clearCooldown: Boolean = true) {
+        mainHandler.post {
+            if (!showing || showingType != TYPE_SOCIAL_TAB) return@post
+            Log.d(TAG, "tab cover dismissed (clearCooldown=$clearCooldown)")
+            removeOverlay()
+            if (clearCooldown) {
+                try {
+                    SafeMeAccessibilityService.onGateDismissed()
+                } catch (_: Throwable) {
+                }
+            }
+        }
+    }
+
+    /**
+     * Re-fits the tab cover when the nav bar moved (rotation, font scale,
+     * nav show/hide). Cheap no-op when the height is unchanged; called from
+     * the service's tab watch on its throttled probe cadence.
+     */
+    fun refitTabCover(coverAboveY: Int?) {
+        mainHandler.post {
+            if (!showing || showingType != TYPE_SOCIAL_TAB) return@post
+            val view = overlayView ?: return@post
+            val lp = overlayLp ?: return@post
+            val wanted = if (coverAboveY != null && coverAboveY > 0) {
+                coverAboveY
+            } else {
+                WindowManager.LayoutParams.MATCH_PARENT
+            }
+            if (lp.height == wanted) return@post
+            lp.height = wanted
+            try {
+                wm?.updateViewLayout(view, lp)
+                Log.d(TAG, "tab cover refit to height=$wanted")
+            } catch (_: Throwable) {
+                // Mid-transition; the next watch tick retries.
+            }
         }
     }
 

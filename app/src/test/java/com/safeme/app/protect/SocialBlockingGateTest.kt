@@ -186,11 +186,10 @@ class SocialBlockingGateTest {
 
     @Test
     fun knownIds_documentedForYoutubeOnly() {
+        // [V10] Only the canonical fullscreen surface; reel_recycler (generic
+        // reel-list id: shelf scrollers, channel grids) is intentionally absent.
         assertEquals(
-            listOf(
-                "com.google.android.youtube:id/reel_watch_fragment_root",
-                "com.google.android.youtube:id/reel_recycler",
-            ),
+            listOf("com.google.android.youtube:id/reel_watch_fragment_root"),
             SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second.knownIds,
         )
         // Other verticals keep empty lists → the fast-path is a literal no-op
@@ -393,9 +392,13 @@ class SocialBlockingGateTest {
     @Test
     fun fullscreenSurface_areaThresholdAndDegenerateCases() {
         val w = 1080; val h = 2400
-        // 64% of screen → rejected; 66% → accepted.
-        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.64).toInt(), w, h))
-        assertTrue(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.66).toInt(), w, h))
+        // [V10] Threshold raised to 0.80: 79% of screen (oversized shelf band)
+        // → rejected; 81% → accepted. A real player is ≈100%.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.79).toInt(), w, h))
+        assertTrue(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.81).toInt(), w, h))
+        // The old 0.65–0.75 shelf band must now be firmly rejected.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.65).toInt(), w, h))
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.75).toInt(), w, h))
         // Degenerate geometry → rejected.
         assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, 0, h, w, h))
         assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, 0, w, h))

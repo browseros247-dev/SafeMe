@@ -59,11 +59,12 @@ object SocialBlockingGate {
         "com.google.android.youtube" to (SocialVertical.SHORTS to TabRule(
             Regex("""\bshorts\b""", RegexOption.IGNORE_CASE),
             listOf("shorts", "reel"),
-            // Documented Shorts surfaces (stable since ~2021, StackOverflow 2025).
-            listOf(
-                "com.google.android.youtube:id/reel_watch_fragment_root",
-                "com.google.android.youtube:id/reel_recycler",
-            ),
+            // [V10] Only the canonical FULLSCREEN surface. reel_recycler was
+            // dropped: it is the generic reel-LIST id (Home shelf scrollers,
+            // channel grids) and fast-pathing it caused area-borderline false
+            // positives. The BFS token scan still catches a genuinely
+            // fullscreen reel_recycler (>=0.80), so recall is preserved.
+            listOf("com.google.android.youtube:id/reel_watch_fragment_root"),
         )),
         "com.facebook.katana" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
         "com.facebook.lite" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
@@ -239,8 +240,15 @@ object SocialBlockingGate {
         return null
     }
 
-    /** Fraction of screen area a token node must cover to count as the fullscreen player. */
-    private const val MIN_FULLSCREEN_AREA_FRACTION = 0.65
+    /**
+     * Fraction of screen area a token node must cover to count as the
+     * fullscreen player. [V10] Raised 0.65 → 0.80: the Home Shorts shelf
+     * (tall cards + header) reaches ~65–75% on smaller/16:9 devices while
+     * genuinely visible mid-scroll; a real fullscreen player is ≈100% of
+     * displayMetrics area (its bounds include the system bars). Clean
+     * separation in both directions.
+     */
+    private const val MIN_FULLSCREEN_AREA_FRACTION = 0.80
 
     /**
      * Visibility-verified fullscreen acceptance — the SINGLE rule both L2 paths
@@ -348,7 +356,14 @@ object SocialBlockingGate {
             if (text.isNotEmpty() && pattern.containsMatchIn(text) &&
                 (isSelfOrAncestorSelected(node) || hasSelectedChild(node))
             ) {
-                return TabHit(navBarTopAbove(node, screenWidthPx, screenHeightPx))
+                // [V10] Accept ONLY in bottom-nav context: the selected caption
+                // must sit inside the full-width bottom bar (navBarTopAbove,
+                // <=4 hops up). A channel page's "Shorts" TAB STRIP (top of
+                // page) is browsing chrome, not the Shorts destination —
+                // covering it was the channel-page false positive. No nav
+                // context → keep scanning, never gate.
+                val navTop = navBarTopAbove(node, screenWidthPx, screenHeightPx)
+                if (navTop != null) return TabHit(navTop, matchedVia = "navTab")
             }
             for (i in 0 until node.childCount) {
                 val child = try { node.getChild(i) } catch (_: Throwable) { null } ?: continue

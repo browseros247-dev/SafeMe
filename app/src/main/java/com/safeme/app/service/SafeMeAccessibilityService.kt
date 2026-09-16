@@ -2262,15 +2262,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 launchSocialTabGate(pkg, vertical, hit.coverAboveY, via = hit.matchedVia)
                 return
             }
-            // L2a-cls: the fullscreen player's window class carries the token
-            // (e.g. Spotlight/Reel fragment names) even when the tree exposes
-            // neither a selected nav item nor a token view-id yet.
-            if (SocialBlockingGate.matchesToken(snapshot.cls, vertical)) {
-                Log.d(TAG, "social tab gate: cls token fired (vertical=$vertical cls=${snapshot.cls})")
-                socialTabCooldown[key] = now
-                launchSocialTabGate(pkg, vertical, null, via = "cls")
-                return
-            }
+            // [V10] The former L2a-cls branch was REMOVED here: this handler
+            // only receives content/click/focus events, whose className is the
+            // SOURCE VIEW's class (shelves, scrollers) — never the window class
+            // the branch assumed it saw. It could therefore only fire on
+            // arbitrary scrolled views with a reel/shorts class name: the
+            // Home-scroll false positive. Window-class gating, if ever needed,
+            // belongs in the window path with the actual window class.
             // L2b: bottom-nav-region click whose label matches the vertical —
             // deterministic user-intent signal for navs exposing no selection
             // state. Cover anchored above the tapped nav item (stays tappable).

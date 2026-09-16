@@ -66,11 +66,17 @@ private data class LaunchItem(
     val subtitle: String,
     val bg: Color,
     val fg: Color,
+    /**
+     * Packages whose real launcher icon represents this row — first INSTALLED
+     * one wins (family support: TikTok/Instagram ship multiple packages per
+     * logical app). Defaults to the row's own pkg for single-package apps.
+     */
+    val iconPackages: List<String> = listOf(pkg),
 )
 
 private val DEFAULT_LAUNCH: List<LaunchItem> = listOf(
-    LaunchItem("TikTok", "com.zhiliaoapp.musically", "Blocked entirely before opening", Color(0xFFFDEEE2), Color(0xFFF97316)),
-    LaunchItem("Instagram", "com.instagram.android", "Blocked entirely before opening", Color(0xFFFDEAF4), Color(0xFFE1306C)),
+    LaunchItem("TikTok", "com.zhiliaoapp.musically", "Blocked entirely before opening", Color(0xFFFDEEE2), Color(0xFFF97316), SocialBlockingPrefs.TIKTOK_PACKAGES.toList()),
+    LaunchItem("Instagram", "com.instagram.android", "Blocked entirely before opening", Color(0xFFFDEAF4), Color(0xFFE1306C), SocialBlockingPrefs.INSTAGRAM_PACKAGES.toList()),
     LaunchItem("X / Twitter", "com.twitter.android", "Timeline & notifications restricted", Color(0xFFEFEFEF), Color(0xFF0F1419)),
     LaunchItem("Reddit", "com.reddit.frontpage", "Infinite feeds restricted", Color(0xFFFDE7E7), Color(0xFFFF4500)),
     LaunchItem("Twitch", "tv.twitch.android.app", "Live streams restricted", Color(0xFFF3E8FF), Color(0xFF9146FF)),
@@ -374,8 +380,15 @@ private fun LaunchRow(item: LaunchItem, checked: Boolean, enabled: Boolean, onTo
             modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(item.bg).border(1.dp, colors.line, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            // Initial for custom; keep light rendering for known
-            Text(text = item.label.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = item.fg)
+            // Real launcher icon of the installed app (family-aware); the
+            // pastel initial remains as the not-installed fallback.
+            InstalledAppIcon(
+                packageNames = item.iconPackages,
+                size = 30.dp,
+                fallback = {
+                    Text(text = item.label.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = item.fg)
+                },
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -417,6 +430,7 @@ private fun TabBlockSection(
                 subtitle = "Main video search & subscriptions stay active",
                 bg = Color(0xFFFDE7E7),
                 fg = Color(0xFFFF0000),
+                packages = listOf("com.google.android.youtube"),
                 checked = enabled && youtube,
                 enabled = enabled,
                 onToggle = onYoutube,
@@ -426,6 +440,7 @@ private fun TabBlockSection(
                 subtitle = "Events, groups & Messenger stay active",
                 bg = Color(0xFFE7F0FD),
                 fg = Color(0xFF1877F2),
+                packages = listOf("com.facebook.katana", "com.facebook.lite"),
                 checked = enabled && facebook,
                 enabled = enabled,
                 onToggle = onFacebook,
@@ -435,6 +450,7 @@ private fun TabBlockSection(
                 subtitle = "Direct messaging & camera stay active",
                 bg = Color(0xFFFDF3E3),
                 fg = Color(0xFFB78A00),
+                packages = listOf("com.snapchat.android"),
                 checked = enabled && snapchat,
                 enabled = enabled,
                 onToggle = onSnapchat,
@@ -444,7 +460,7 @@ private fun TabBlockSection(
 }
 
 @Composable
-private fun TabRow(title: String, subtitle: String, bg: Color, fg: Color, checked: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun TabRow(title: String, subtitle: String, bg: Color, fg: Color, packages: List<String>, checked: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     val colors = LocalAppColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -460,7 +476,15 @@ private fun TabRow(title: String, subtitle: String, bg: Color, fg: Color, checke
             modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(bg).border(1.dp, colors.line, RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = title.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = fg)
+            // Real launcher icon when the host app is installed; pastel
+            // initial fallback otherwise (row stays meaningful either way).
+            InstalledAppIcon(
+                packageNames = packages,
+                size = 30.dp,
+                fallback = {
+                    Text(text = title.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = fg)
+                },
+            )
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -589,7 +613,15 @@ private fun SocialPickerSheet(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(colors.brandSoft), contentAlignment = Alignment.Center) {
-                            Text(text = app.label.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.brandDark)
+                            // Real launcher icon (picker apps are installed by
+                            // definition); letter kept as decode-failure fallback.
+                            InstalledAppIcon(
+                                packageNames = listOf(app.packageName),
+                                size = 28.dp,
+                                fallback = {
+                                    Text(text = app.label.take(1).uppercase(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.brandDark)
+                                },
+                            )
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {

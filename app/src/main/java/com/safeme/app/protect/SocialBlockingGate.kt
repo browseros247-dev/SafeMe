@@ -33,7 +33,17 @@ object SocialBlockingGate {
      * present). Ships empty: no behavior until the escalation is adopted,
      * so adding L2 detection later is a data edit, not an engine change.
      */
-    data class TabRule(val label: Regex, val tokenHints: List<String> = emptyList())
+    data class TabRule(
+        val label: Regex,
+        val tokenHints: List<String> = emptyList(),
+        /**
+         * Fully-qualified view ids of the vertical's KNOWN fullscreen surfaces
+         * (e.g. YouTube's documented Shorts player ids). Probed via the
+         * framework's deep single-IPC search — any depth, no BFS budget — and
+         * still gated by the >=65%-screen area verification. Empty = no-op.
+         */
+        val knownIds: List<String> = emptyList(),
+    )
 
     /**
      * Allow-list for tab gating — exactly 3 logical features (plus Facebook
@@ -46,7 +56,15 @@ object SocialBlockingGate {
         // "shorts_*", FB Reel views contain "reel", Spotlight contains "spotlight").
         // The >=65%-screen-area bound in findFullscreenTokenNode is what keeps
         // Home-feed shelf cards and thumbnails from ever firing them.
-        "com.google.android.youtube" to (SocialVertical.SHORTS to TabRule(Regex("""\bshorts\b""", RegexOption.IGNORE_CASE), listOf("shorts", "reel"))),
+        "com.google.android.youtube" to (SocialVertical.SHORTS to TabRule(
+            Regex("""\bshorts\b""", RegexOption.IGNORE_CASE),
+            listOf("shorts", "reel"),
+            // Documented Shorts surfaces (stable since ~2021, StackOverflow 2025).
+            listOf(
+                "com.google.android.youtube:id/reel_watch_fragment_root",
+                "com.google.android.youtube:id/reel_recycler",
+            ),
+        )),
         "com.facebook.katana" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
         "com.facebook.lite" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
         "com.snapchat.android" to (SocialVertical.SPOTLIGHT to TabRule(Regex("""\bspotlight\b""", RegexOption.IGNORE_CASE), listOf("spotlight"))),
@@ -124,9 +142,49 @@ object SocialBlockingGate {
         val rule = TAB_RULES.values.firstOrNull { it.first == vertical }?.second ?: return null
         // L1/L1b first — every path that fires today fires identically.
         findFirstSelectedTab(root, rule.label, screenWidthPx, screenHeightPx)?.let { return it }
+        // knownIds fast-path: framework deep search — immune to the BFS budget
+        // that Home-feed debris can exhaust mid-transition.
+        findKnownIdFullscreenNode(root, rule.knownIds, screenWidthPx, screenHeightPx)?.let { return it }
         // L2: fullscreen player token (Shorts opened from Home, Reel, Spotlight)
         // — only consulted where L1 found nothing.
         return findFullscreenTokenNode(root, rule.tokenHints, screenWidthPx, screenHeightPx)
+    }
+
+    /**
+     * knownIds fast-path: for each documented fullscreen-surface id, one
+     * framework search ([AccessibilityNodeInfo.findAccessibilityNodeInfosByViewId]
+     * — single IPC, any depth, no probe budget), then the SAME >=65%-screen
+     * area verification as the BFS token scan, so this path can never fire on
+     * shelf cards or thumbnails. Empty list = no-op; fail-open on dying
+     * windows; every returned node recycled.
+     */
+    private fun findKnownIdFullscreenNode(
+        root: AccessibilityNodeInfo,
+        knownIds: List<String>,
+        screenWidthPx: Int,
+        screenHeightPx: Int,
+    ): TabHit? {
+        if (knownIds.isEmpty() || screenWidthPx <= 0 || screenHeightPx <= 0) return null
+        val screenArea = screenWidthPx.toLong() * screenHeightPx
+        val rect = Rect()
+        for (id in knownIds) {
+            val found = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull() ?: continue
+            for (node in found) {
+                node ?: continue
+                val big = runCatching {
+                    node.getBoundsInScreen(rect)
+                    rect.width() > 0 && rect.height() > 0 &&
+                        rect.width().toLong() * rect.height() >= screenArea * MIN_FULLSCREEN_AREA_FRACTION
+                }.getOrDefault(false)
+                if (big) {
+                    val top = rect.top
+                    runCatching { node.recycle() }
+                    return TabHit(if (top > 0) top else null)
+                }
+                runCatching { node.recycle() }
+            }
+        }
+        return null
     }
 
     /**
@@ -149,9 +207,9 @@ object SocialBlockingGate {
         var scanned = 0
         val visited = mutableSetOf<Int>()
         val rect = Rect()
-        while (deque.isNotEmpty() && scanned < MAX_STRINGS) {
+        while (deque.isNotEmpty() && scanned < TOKEN_SCAN_MAX_NODES) {
             val (node, depth) = deque.removeFirst()
-            if (depth > MAX_DEPTH) continue
+            if (depth > TOKEN_SCAN_MAX_DEPTH) continue
             val id = System.identityHashCode(node)
             if (!visited.add(id)) continue
             scanned++
@@ -178,6 +236,16 @@ object SocialBlockingGate {
 
     /** Fraction of screen area a token node must cover to count as the fullscreen player. */
     private const val MIN_FULLSCREEN_AREA_FRACTION = 0.65
+
+    /**
+     * The L2a token scan runs with its OWN budget, larger than L1's 200/12:
+     * it only executes after L1 + knownIds missed, behind the 250 ms probe
+     * throttle and the 4 s gate cooldown, and a Home→Shorts transition tree
+     * can carry substantial feed debris before the player subtree. L1 keeps
+     * its original tighter limits — tab detection behavior is untouched.
+     */
+    const val TOKEN_SCAN_MAX_NODES = 400
+    const val TOKEN_SCAN_MAX_DEPTH = 14
 
     /** L2b helpers — pure so they are unit-testable without a11y trees. */
 

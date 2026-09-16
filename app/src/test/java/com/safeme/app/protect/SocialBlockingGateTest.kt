@@ -176,6 +176,53 @@ class SocialBlockingGateTest {
         assertEquals(250L, SocialBlockingGate.APP_CONTENT_RECHECK_THROTTLE_MS)
         assertEquals(4_000L, SocialBlockingGate.GATE_COOLDOWN_MS)
         assertEquals(2_000L, SocialBlockingGate.UNCONFIRMED_COVER_GRACE_MS)
+        // L2a token scan has its own larger budget; the fast-path makes the
+        // documented YouTube ids budget-independent entirely.
+        assertEquals(400, SocialBlockingGate.TOKEN_SCAN_MAX_NODES)
+        assertEquals(14, SocialBlockingGate.TOKEN_SCAN_MAX_DEPTH)
+    }
+
+    // ---------- knownIds fast-path registry (V7 fix A) ----------
+
+    @Test
+    fun knownIds_documentedForYoutubeOnly() {
+        assertEquals(
+            listOf(
+                "com.google.android.youtube:id/reel_watch_fragment_root",
+                "com.google.android.youtube:id/reel_recycler",
+            ),
+            SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second.knownIds,
+        )
+        // Other verticals keep empty lists → the fast-path is a literal no-op
+        // for them (zero behavior change until an id is documented).
+        assertTrue(SocialBlockingGate.TAB_RULES.getValue("com.facebook.katana").second.knownIds.isEmpty())
+        assertTrue(SocialBlockingGate.TAB_RULES.getValue("com.facebook.lite").second.knownIds.isEmpty())
+        assertTrue(SocialBlockingGate.TAB_RULES.getValue("com.snapchat.android").second.knownIds.isEmpty())
+    }
+
+    @Test
+    fun knownIds_areFullyQualifiedResourceIds() {
+        for ((pkg, pair) in SocialBlockingGate.TAB_RULES) {
+            for (id in pair.second.knownIds) {
+                assertTrue(
+                    "knownId must be a fully-qualified resource id ($pkg): $id",
+                    id.startsWith("com.google.android.youtube:id/") && id.length > "com.google.android.youtube:id/".length
+                )
+            }
+        }
+    }
+
+    @Test
+    fun knownIds_tokenHintsStayConsistentForYoutube() {
+        // The documented ids' stable fragments are also covered by the BFS
+        // token scan — two independent paths to the same surfaces.
+        val rule = SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second
+        for (id in rule.knownIds) {
+            assertTrue(
+                "knownId $id must contain a tokenHint",
+                rule.tokenHints.any { it in id }
+            )
+        }
     }
 
     // ---------- family-aware whole-app decision (Issue 1 / Fix A) ----------

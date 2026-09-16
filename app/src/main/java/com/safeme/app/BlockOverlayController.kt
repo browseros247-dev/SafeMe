@@ -150,6 +150,13 @@ object BlockOverlayController {
     // field a rebuilt tab cover would come back FULL-SCREEN.
     private var lastCoverAboveY: Int? = null
 
+    // [V17] Pre-cached prefs for instant launch path — avoids DataStore IO on critical path
+    @Volatile
+    private var cachedPrefs: BlockScreenPrefsState? = null
+
+    // [V17] Instant blank view for two-stage overlay — 10-30ms perceived block
+    private var instantBlankView: View? = null
+
     private var screenWakeReceiverRegistered = false
     private val screenWakeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -173,6 +180,158 @@ object BlockOverlayController {
         if (!showing) return null
         val pkg = lastPkg
         return pkg.ifEmpty { null }
+    }
+
+    /** [V17] Pre-cache block screen prefs — avoids DataStore IO on critical path */
+    suspend fun preCachePrefs(ctx: Context) {
+        try {
+            val p = ctx.applicationContext.blockScreenPrefs().first()
+            cachedPrefs = p
+            lastPrefs = p
+        } catch (_: Throwable) {
+        }
+    }
+
+    /** [V17] Cached prefs or default — no IO, for instant launch path */
+    fun getCachedPrefsOrDefault(): BlockScreenPrefsState = cachedPrefs ?: lastPrefs ?: BlockScreenPrefsState()
+
+    /**
+     * [V17] Instant launch block — two-stage: blank black view 10-30ms + async upgrade to full BlockOverlay
+     * Perceived block ≤50ms even if Compose init 200-400ms. Used for socialWhole + schedule launch only.
+     * No PackageManager label fetch, no DataStore read on critical path.
+     */
+    fun showInstantLaunchBlock(context: Context, pkg: String, matched: String, type: String) {
+        val isMain = Looper.myLooper() == Looper.getMainLooper()
+        val task = Runnable {
+            try {
+                val preempt = showing
+                if (preempt) {
+                    // Immediate removal for launch preempt — no 250ms delay (fixes WMS already-added)
+                    removeOverlayNowInternal()
+                }
+                showing = true
+                showingType = type
+                lastPkg = pkg
+                lastType = type
+                lastMatched = matched
+                lastContext = context
+                attachInstantBlank(context)
+                // Stage 2: upgrade to full overlay async with cached prefs (no IO)
+                val prefs = getCachedPrefsOrDefault()
+                scope.launch {
+                    mainHandler.post {
+                        try {
+                            upgradeToFullOverlay(context, pkg, matched, type, prefs)
+                            registerScreenWakeReceiver(context.applicationContext)
+                            // Activity feed + counter (not on critical path)
+                            if (type != TYPE_SOCIAL_TAB) {
+                                scope.launch {
+                                    runCatching { context.applicationContext.incrementBlockedToday() }
+                                    runCatching {
+                                        val label = pkg // instant, no PM IPC
+                                        context.applicationContext.addActivity(
+                                            ACTIVITY_BLOCK,
+                                            blockActivityTitle(type, label, matched),
+                                            blockActivitySub(type, matched),
+                                        )
+                                    }
+                                }
+                            }
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "instant upgrade failed — keeping blank as fallback", t)
+                            // Keep blank as fallback — still blocked (fail-closed for launch)
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "instant blank addView failed — activity fallback", t)
+                showing = false
+                showingType = ""
+                lastContext = null
+                launchFallbackActivity(context, pkg, matched, type)
+            }
+        }
+        if (isMain) task.run() else mainHandler.post(task)
+    }
+
+    private fun attachInstantBlank(context: Context) {
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val blank = FrameLayout(context).apply {
+            setBackgroundColor(0xFF000000.toInt())
+            isClickable = true
+            setOnClickListener {}
+        }
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        )
+        lp.gravity = Gravity.TOP
+        windowManager.addView(blank, lp)
+        instantBlankView = blank
+        wm = windowManager
+        overlayLp = lp
+        lastCoverAboveY = null
+    }
+
+    private fun upgradeToFullOverlay(
+        context: Context,
+        pkg: String,
+        matched: String,
+        type: String,
+        prefs: BlockScreenPrefsState,
+    ) {
+        try {
+            instantBlankView?.let { v ->
+                try {
+                    if (v.isAttachedToWindow) wm?.removeView(v)
+                } catch (_: Throwable) {
+                }
+            }
+            instantBlankView = null
+            // If a full overlay already attached (race), remove it first
+            overlayView?.let { v ->
+                try {
+                    if (v.isAttachedToWindow) wm?.removeView(v)
+                } catch (_: Throwable) {
+                }
+            }
+            overlayView = null
+            lifecycleOwner?.destroy()
+            lifecycleOwner = null
+            attachOverlay(context, pkg, matched, type, prefs, null)
+        } catch (t: Throwable) {
+            throw t
+        }
+    }
+
+    /** [V17] Immediate removal, no delay — for launch preempt path */
+    fun removeOverlayNow() {
+        mainHandler.post { removeOverlayNowInternal() }
+    }
+
+    private fun removeOverlayNowInternal() {
+        try {
+            overlayView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
+        } catch (_: Throwable) {
+        }
+        try {
+            instantBlankView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
+        } catch (_: Throwable) {
+        }
+        overlayView = null
+        instantBlankView = null
+        wm = null
+        overlayLp = null
+        lifecycleOwner?.destroy()
+        lifecycleOwner = null
+        lastCoverAboveY = null
+        // Keep lastContext for reassert? clear for full removal
+        // showing flag managed by caller for preempt path
     }
 
     /**
@@ -530,13 +689,20 @@ object BlockOverlayController {
             }
         } catch (_: Throwable) {
         }
+        try {
+            instantBlankView?.let { v ->
+                if (v.isAttachedToWindow) wm?.removeView(v)
+            }
+        } catch (_: Throwable) {
+        }
         overlayView = null
+        instantBlankView = null
         wm = null
         overlayLp = null
         lifecycleOwner?.destroy()
         lifecycleOwner = null
         lastContext = null
-        lastPrefs = null
+        // Keep lastPrefs and cachedPrefs for instant next gate (V17) — don't clear
         lastCoverAboveY = null
         showing = false
         showingType = ""

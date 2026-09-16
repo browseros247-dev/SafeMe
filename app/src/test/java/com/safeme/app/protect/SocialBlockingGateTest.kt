@@ -322,14 +322,22 @@ class SocialBlockingGateTest {
     }
 
     @Test
-    fun bottomNavClick_onlyBottomFifthOfScreen() {
+    fun bottomNavClick_needsNavRegionAndNavItemSize() {
         val h = 2400
-        assertTrue(SocialBlockingGate.isBottomNavClick(1920, h))  // exactly 80%
-        assertTrue(SocialBlockingGate.isBottomNavClick(2300, h))
-        assertFalse(SocialBlockingGate.isBottomNavClick(1919, h)) // just above the region
-        assertFalse(SocialBlockingGate.isBottomNavClick(1200, h))
-        assertFalse(SocialBlockingGate.isBottomNavClick(null, h))
-        assertFalse(SocialBlockingGate.isBottomNavClick(2300, 0)) // unknown screen height → fail closed
+        val navH = 170 // real nav item ≈ 7% of screen height
+        assertTrue(SocialBlockingGate.isBottomNavClick(1920, navH, h))  // exactly 80%
+        assertTrue(SocialBlockingGate.isBottomNavClick(2300, navH, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(1919, navH, h)) // just above the region
+        assertFalse(SocialBlockingGate.isBottomNavClick(1200, navH, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(null, navH, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(2300, null, h)) // no bounds → fail closed
+        assertFalse(SocialBlockingGate.isBottomNavClick(2300, navH, 0)) // unknown screen height → fail closed
+        // V8: bottom-of-feed cards (>= 25% screen height) can never pass.
+        assertFalse(SocialBlockingGate.isBottomNavClick(2100, 700, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(2100, 0, h))
+        // Boundary: exactly 20% of screen height is still nav-sized; +1 px is not.
+        assertTrue(SocialBlockingGate.isBottomNavClick(2100, h / 5, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(2100, h / 5 + 1, h))
     }
 
     @Test
@@ -344,13 +352,55 @@ class SocialBlockingGateTest {
     @Test
     fun navClickFor_needsBothNavRegionAndLabel() {
         val h = 2400
+        val navH = 170
+        val cardH = 700
         // Nav-region click on the blocked caption → gate.
-        assertTrue(SocialBlockingGate.isNavClickFor(listOf("Spotlight"), 2280, h, SocialVertical.SPOTLIGHT))
+        assertTrue(SocialBlockingGate.isNavClickFor(listOf("Spotlight"), 2280, navH, h, SocialVertical.SPOTLIGHT))
         // Mid-screen click on a video TITLED "Shorts…" → must NOT gate (G2).
-        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Epic shorts compilation"), 1100, h, SocialVertical.SHORTS))
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Epic shorts compilation"), 1100, navH, h, SocialVertical.SHORTS))
         // Nav-region click on a DIFFERENT tab → must NOT gate.
-        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Home"), 2280, h, SocialVertical.SHORTS))
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Home"), 2280, navH, h, SocialVertical.SHORTS))
         // No bounds (stale source node) → fail closed.
-        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Spotlight"), null, h, SocialVertical.SPOTLIGHT))
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Spotlight"), null, navH, h, SocialVertical.SPOTLIGHT))
+        // V8: bottom-of-feed card titled "…shorts…" → must NOT gate (height cap).
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Epic shorts compilation"), 2100, cardH, h, SocialVertical.SHORTS))
+    }
+
+    // ---------- V8: visibility-verified fullscreen acceptance ----------
+
+    @Test
+    fun fullscreenSurface_rejectsInvisibleFullscreenBounds() {
+        val w = 1080; val h = 2400
+        // The Home-screen false positive: a PRELOADED Shorts fragment, hidden
+        // (alpha-0 → isVisibleToUser=false) but carrying fullscreen bounds.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(false, 0, 0, w, h, w, h))
+        // The genuinely playing Short: visible + fullscreen → accepted.
+        assertTrue(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, h, w, h))
+    }
+
+    @Test
+    fun fullscreenSurface_rejectsOffScreenPreloads() {
+        val w = 1080; val h = 2400
+        // Laid out below the fold (off-screen preload position).
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, h, w, 2 * h, w, h))
+        // Laid out to the right of the screen.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, w, 0, 2 * w, h, w, h))
+        // Partially off-screen but still covering >=65% → accepted (real players
+        // often extend under the status/nav bars).
+        assertTrue(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, -200, w, h - 200, w, h))
+    }
+
+    @Test
+    fun fullscreenSurface_areaThresholdAndDegenerateCases() {
+        val w = 1080; val h = 2400
+        // 64% of screen → rejected; 66% → accepted.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.64).toInt(), w, h))
+        assertTrue(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, (h * 0.66).toInt(), w, h))
+        // Degenerate geometry → rejected.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, 0, h, w, h))
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, 0, w, h))
+        // Unknown screen dimensions → fail closed.
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, h, 0, h))
+        assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, h, w, 0))
     }
 }

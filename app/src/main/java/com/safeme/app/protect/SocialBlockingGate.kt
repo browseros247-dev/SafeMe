@@ -122,7 +122,7 @@ object SocialBlockingGate {
      * nav bar could be identified (fullscreen feed) → caller covers the full
      * screen, which is correct because the whole screen IS the blocked surface.
      */
-    class TabHit(val coverAboveY: Int?)
+    class TabHit(val coverAboveY: Int?, val matchedVia: String? = null)
 
     /**
      * Finds the vertical's tab node and accepts it ONLY when the node itself or
@@ -165,21 +165,22 @@ object SocialBlockingGate {
         screenHeightPx: Int,
     ): TabHit? {
         if (knownIds.isEmpty() || screenWidthPx <= 0 || screenHeightPx <= 0) return null
-        val screenArea = screenWidthPx.toLong() * screenHeightPx
         val rect = Rect()
         for (id in knownIds) {
             val found = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull() ?: continue
             for (node in found) {
                 node ?: continue
-                val big = runCatching {
+                // Preloaded (invisible) Shorts surfaces carry fullscreen bounds —
+                // only a VISIBLE, on-screen surface may gate. Fail closed here.
+                val visible = runCatching { node.isVisibleToUser }.getOrDefault(false)
+                val accept = runCatching {
                     node.getBoundsInScreen(rect)
-                    rect.width() > 0 && rect.height() > 0 &&
-                        rect.width().toLong() * rect.height() >= screenArea * MIN_FULLSCREEN_AREA_FRACTION
+                    isPlausibleFullscreenSurface(visible, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)
                 }.getOrDefault(false)
-                if (big) {
+                if (accept) {
                     val top = rect.top
                     runCatching { node.recycle() }
-                    return TabHit(if (top > 0) top else null)
+                    return TabHit(if (top > 0) top else null, matchedVia = id)
                 }
                 runCatching { node.recycle() }
             }
@@ -201,7 +202,6 @@ object SocialBlockingGate {
         screenHeightPx: Int,
     ): TabHit? {
         if (tokenHints.isEmpty() || screenWidthPx <= 0 || screenHeightPx <= 0) return null
-        val screenArea = screenWidthPx.toLong() * screenHeightPx
         val deque: ArrayDeque<Pair<AccessibilityNodeInfo, Int>> = ArrayDeque()
         deque.add(root to 0)
         var scanned = 0
@@ -219,12 +219,14 @@ object SocialBlockingGate {
             val tokenHit = (viewId != null && tokenHints.any { it in viewId }) ||
                 (cls != null && tokenHints.any { it in cls })
             if (tokenHit) {
-                val big = runCatching {
+                // Same visibility-verified acceptance as the knownIds path —
+                // invisible preloads / off-screen surfaces never gate.
+                val visible = runCatching { node.isVisibleToUser }.getOrDefault(false)
+                val accept = runCatching {
                     node.getBoundsInScreen(rect)
-                    rect.width() > 0 && rect.height() > 0 &&
-                        rect.width().toLong() * rect.height() >= screenArea * MIN_FULLSCREEN_AREA_FRACTION
+                    isPlausibleFullscreenSurface(visible, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)
                 }.getOrDefault(false)
-                if (big) return TabHit(if (rect.top > 0) rect.top else null)
+                if (accept) return TabHit(if (rect.top > 0) rect.top else null, matchedVia = viewId ?: cls)
             }
             for (i in 0 until node.childCount) {
                 val child = try { node.getChild(i) } catch (_: Throwable) { null } ?: continue
@@ -236,6 +238,34 @@ object SocialBlockingGate {
 
     /** Fraction of screen area a token node must cover to count as the fullscreen player. */
     private const val MIN_FULLSCREEN_AREA_FRACTION = 0.65
+
+    /**
+     * Visibility-verified fullscreen acceptance — the SINGLE rule both L2 paths
+     * (knownIds fast-path, BFS token scan) must pass. A node qualifies only when
+     * it is VISIBLE to the user (isVisibleToUser: attached + VISIBLE + alpha>0),
+     * covers >=65% of the screen, and its bounds intersect the visible screen.
+     *
+     * This is what keeps YouTube's PRELOADED Shorts fragments (pre-warmed for
+     * instant open; hidden via alpha-0 or off-screen layout but still carrying
+     * fullscreen bounds in the a11y tree) from ever gating the Home screen.
+     * Fail-closed for this check: unknown visibility/bounds -> no gate. Pure —
+     * unit-tested decision table.
+     */
+    fun isPlausibleFullscreenSurface(
+        isVisible: Boolean,
+        left: Int, top: Int, right: Int, bottom: Int,
+        screenWidthPx: Int, screenHeightPx: Int,
+    ): Boolean {
+        if (!isVisible) return false
+        if (screenWidthPx <= 0 || screenHeightPx <= 0) return false
+        val w = right - left
+        val h = bottom - top
+        if (w <= 0 || h <= 0) return false
+        if (w.toLong() * h < screenWidthPx.toLong() * screenHeightPx * MIN_FULLSCREEN_AREA_FRACTION) return false
+        // Bounds must intersect the visible screen — off-screen preloads have
+        // full-size bounds positioned outside it.
+        return right > 0 && bottom > 0 && left < screenWidthPx && top < screenHeightPx
+    }
 
     /**
      * The L2a token scan runs with its OWN budget, larger than L1's 200/12:
@@ -258,10 +288,17 @@ object SocialBlockingGate {
         return rule.tokenHints.any { it in lower }
     }
 
-    /** True when the click landed in the bottom 20% of the screen (nav-bar region). */
-    fun isBottomNavClick(clickedCenterY: Int?, screenHeightPx: Int): Boolean =
-        clickedCenterY != null && screenHeightPx > 0 &&
-            clickedCenterY >= screenHeightPx * 4 / 5
+    /**
+     * True when the click landed in the bottom 20% of the screen (nav-bar
+     * region) AND the clicked node is nav-item sized (<= 20% of screen height).
+     * The height cap keeps bottom-of-feed video/shelf cards (>= 25% screen
+     * height) from impersonating a nav tap — in either direction (gating OR
+     * dismissing a cover).
+     */
+    fun isBottomNavClick(clickedCenterY: Int?, clickedHeightPx: Int?, screenHeightPx: Int): Boolean =
+        clickedCenterY != null && clickedHeightPx != null && screenHeightPx > 0 &&
+            clickedCenterY >= screenHeightPx * 4 / 5 &&
+            clickedHeightPx in 1..(screenHeightPx / 5)
 
     /** True when [clickedTexts] match the vertical's tab caption regex. */
     fun labelMatchesVertical(clickedTexts: List<String>, vertical: SocialVertical): Boolean {
@@ -279,10 +316,12 @@ object SocialBlockingGate {
     fun isNavClickFor(
         clickedTexts: List<String>,
         clickedCenterY: Int?,
+        clickedHeightPx: Int?,
         screenHeightPx: Int,
         vertical: SocialVertical,
     ): Boolean =
-        isBottomNavClick(clickedCenterY, screenHeightPx) && labelMatchesVertical(clickedTexts, vertical)
+        isBottomNavClick(clickedCenterY, clickedHeightPx, screenHeightPx) &&
+            labelMatchesVertical(clickedTexts, vertical)
 
     private fun findFirstSelectedTab(
         root: AccessibilityNodeInfo,

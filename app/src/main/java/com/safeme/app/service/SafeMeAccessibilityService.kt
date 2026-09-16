@@ -754,7 +754,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
                                     val hit = SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx())
                                     if (hit != null) {
                                         socialTabCooldown[key] = now
-                                        launchSocialTabGate(pkg, vertical, hit.coverAboveY)
+                                        launchSocialTabGate(pkg, vertical, hit.coverAboveY, via = hit.matchedVia)
                                         return
                                     }
                                 } finally {
@@ -2207,6 +2207,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         vertical: SocialBlockingGate.SocialVertical,
         coverAboveY: Int?,
         confirmed: Boolean = true,
+        via: String? = null,
     ) {
         val label = when (vertical) {
             SocialBlockingGate.SocialVertical.SHORTS -> "YouTube Shorts"
@@ -2215,7 +2216,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         }
         socialTabCoverConfirmed = confirmed
         socialTabCoverRaisedAtMs = SystemClock.elapsedRealtime()
-        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical coverAboveY=$coverAboveY confirmed=$confirmed)")
+        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical coverAboveY=$coverAboveY confirmed=$confirmed via=$via)")
         // Scoped cover: spans 0..coverAboveY so the bottom nav stays visible
         // and tappable; null (fullscreen feed, no nav identified) → full cover.
         BlockOverlayController.show(this, pkg, label, "socialTab", coverAboveY)
@@ -2256,7 +2257,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             } catch (_: Throwable) { null }
             if (hit != null) {
                 socialTabCooldown[key] = now
-                launchSocialTabGate(pkg, vertical, hit.coverAboveY)
+                launchSocialTabGate(pkg, vertical, hit.coverAboveY, via = hit.matchedVia)
                 return
             }
             // L2a-cls: the fullscreen player's window class carries the token
@@ -2265,7 +2266,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             if (SocialBlockingGate.matchesToken(snapshot.cls, vertical)) {
                 Log.d(TAG, "social tab gate: cls token fired (vertical=$vertical cls=${snapshot.cls})")
                 socialTabCooldown[key] = now
-                launchSocialTabGate(pkg, vertical, null)
+                launchSocialTabGate(pkg, vertical, null, via = "cls")
                 return
             }
             // L2b: bottom-nav-region click whose label matches the vertical —
@@ -2273,12 +2274,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // state. Cover anchored above the tapped nav item (stays tappable).
             if (isClick &&
                 SocialBlockingGate.isNavClickFor(
-                    snapshot.clickedTexts, snapshot.clickedBounds?.centerY(), screenHeightPx(), vertical,
+                    snapshot.clickedTexts, snapshot.clickedBounds?.centerY(), snapshot.clickedBounds?.height(),
+                    screenHeightPx(), vertical,
                 )
             ) {
                 Log.d(TAG, "social tab gate: nav click fired (vertical=$vertical)")
                 socialTabCooldown[key] = now
-                launchSocialTabGate(pkg, vertical, snapshot.clickedBounds?.top, confirmed = false)
+                launchSocialTabGate(pkg, vertical, snapshot.clickedBounds?.top, confirmed = false, via = "navClick")
                 return
             }
             logSocialProbeMiss(pkg, vertical)
@@ -2380,7 +2382,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // of waiting out the grace window. Confirmed covers keep their probe-
         // based dismissal (bit-identical to shipped behavior).
         if (!socialTabCoverConfirmed && isClick &&
-            SocialBlockingGate.isBottomNavClick(snapshot.clickedBounds?.centerY(), screenHeightPx()) &&
+            SocialBlockingGate.isBottomNavClick(
+                snapshot.clickedBounds?.centerY(), snapshot.clickedBounds?.height(), screenHeightPx(),
+            ) &&
             !SocialBlockingGate.labelMatchesVertical(snapshot.clickedTexts, vertical)
         ) {
             Log.d(TAG, "social tab watch: nav click away from $vertical — dismissing unconfirmed cover")

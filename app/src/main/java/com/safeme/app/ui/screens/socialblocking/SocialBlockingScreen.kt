@@ -74,6 +74,11 @@ private data class LaunchItem(
     val iconPackages: List<String> = listOf(pkg),
 )
 
+/** Host packages per tab vertical — row visibility + pill truth (Issue 4). */
+private val YOUTUBE_HOSTS = setOf("com.google.android.youtube")
+private val FACEBOOK_HOSTS = setOf("com.facebook.katana", "com.facebook.lite")
+private val SNAPCHAT_HOSTS = setOf("com.snapchat.android", "com.snapchat.android.lite")
+
 private val DEFAULT_LAUNCH: List<LaunchItem> = listOf(
     LaunchItem("TikTok", "com.zhiliaoapp.musically", "Blocked entirely before opening", Color(0xFFFDEEE2), Color(0xFFF97316), SocialBlockingPrefs.TIKTOK_PACKAGES.toList()),
     LaunchItem("Instagram", "com.instagram.android", "Blocked entirely before opening", Color(0xFFFDEAF4), Color(0xFFE1306C), SocialBlockingPrefs.INSTAGRAM_PACKAGES.toList()),
@@ -92,6 +97,12 @@ fun SocialBlockingScreen(
     val allApps by viewModel.allApps.collectAsState()
     val isLoading by viewModel.isLoadingApps.collectAsState()
     var showPicker by remember { mutableStateOf(false) }
+    // [Issue 4] Pills and cards reflect only apps actually installed on this
+    // device. While the app catalog is still loading, fall back to the
+    // prefs-truthful counts so nothing flashes blank.
+    val installedPkgs = remember(allApps) { allApps.mapTo(HashSet()) { it.packageName } }
+    val visibleLaunch = if (isLoading) state.displayLaunchCount else visibleLaunchCount(state.wholeBlocked, installedPkgs)
+    val visibleTabs = if (isLoading) state.activeTabs else visibleTabCount(state, installedPkgs)
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         Column(
@@ -105,8 +116,8 @@ fun SocialBlockingScreen(
             Spacer(Modifier.height(12.dp))
             MasterCard(
                 enabled = state.enabled,
-                displayLaunch = state.displayLaunchCount,
-                activeTabs = state.activeTabs,
+                displayLaunch = visibleLaunch,
+                activeTabs = visibleTabs,
                 onToggle = viewModel::toggleMaster,
             )
             Spacer(Modifier.height(18.dp))
@@ -128,7 +139,8 @@ fun SocialBlockingScreen(
                 youtube = state.youtube,
                 facebook = state.facebook,
                 snapchat = state.snapchat,
-                activeTabs = state.activeTabs,
+                activeTabs = visibleTabs,
+                installedPkgs = installedPkgs,
                 onYoutube = viewModel::toggleYoutube,
                 onFacebook = viewModel::toggleFacebook,
                 onSnapchat = viewModel::toggleSnapchat,
@@ -345,14 +357,23 @@ private fun LaunchBlockSection(
         }
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val installedPkgs = allApps.mapTo(HashSet()) { it.packageName }
             DEFAULT_LAUNCH.forEach { item ->
-                val checked = enabled && item.pkg in wholeBlocked
+                // [Issue 4] Hide the card when no variant of the app is installed.
+                if (item.iconPackages.none { it in installedPkgs }) return@forEach
+                // Family-aware checked: the row shows the true enforced state
+                // even when a sibling variant (Lite/Go) is what's stored.
+                val checked = enabled && SocialBlockingPrefs.isFamilyBlocked(item.pkg, wholeBlocked)
                 LaunchRow(item = item, checked = checked, enabled = enabled, onToggle = { onToggleLaunch(item.pkg) })
             }
-            // Extra apps beyond defaults
-            val defaultPkgs = DEFAULT_LAUNCH.map { it.pkg }.toSet()
-            val extras = wholeBlocked.filterNot { it in defaultPkgs }
-            extras.sorted().forEach { pkg ->
+            // Extra apps beyond defaults. Family siblings of a default row are
+            // collapsed INTO that row (the toggle stores the whole family), so
+            // TikTok Lite/Go never renders as a separate "extra" card.
+            val defaultFamilyPkgs = DEFAULT_LAUNCH
+                .flatMap { (SocialBlockingPrefs.familyOf(it.pkg) ?: setOf(it.pkg)).toList() }
+                .toSet()
+            val extras = wholeBlocked.filterNot { it in defaultFamilyPkgs }
+            extras.sorted().filter { it in installedPkgs }.forEach { pkg ->
                 val label = allApps.firstOrNull { it.packageName == pkg }?.label ?: pkg.substringAfterLast(".")
                 val pkgLabel = allApps.firstOrNull { it.packageName == pkg }?.packageName ?: pkg
                 val extraItem = LaunchItem(label, pkg, pkgLabel, Color(0xFFEFEFEF), Color(0xFF6B625A))
@@ -396,8 +417,9 @@ private fun LaunchRow(item: LaunchItem, checked: Boolean, enabled: Boolean, onTo
             Text(text = item.subtitle, fontSize = 11.5.sp, color = colors.ink2, modifier = Modifier.padding(top = 2.dp), lineHeight = 14.sp)
         }
         Spacer(Modifier.width(12.dp))
-        // Dim pointer when master off handled by alpha; still semantically disabled via role
-        SocialSwitch(checked = checked, onToggle = { if (enabled) onToggle() })
+        // [D2] Taps always reach the VM: when master is off it answers with the
+        // explanatory toast instead of the tap silently doing nothing.
+        SocialSwitch(checked = checked, onToggle = onToggle)
     }
 }
 
@@ -408,6 +430,7 @@ private fun TabBlockSection(
     facebook: Boolean,
     snapchat: Boolean,
     activeTabs: Int,
+    installedPkgs: Set<String>,
     onYoutube: () -> Unit,
     onFacebook: () -> Unit,
     onSnapchat: () -> Unit,
@@ -425,32 +448,35 @@ private fun TabBlockSection(
         Text(text = "Keep useful functions, block endless feeds & reels.", fontSize = 11.5.sp, color = colors.ink2, lineHeight = 15.sp, modifier = Modifier.padding(horizontal = 2.dp))
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TabRow(
-                title = "YouTube Shorts",
-                subtitle = "Main video search & subscriptions stay active",
-                bg = Color(0xFFFDE7E7),
-                fg = Color(0xFFFF0000),
-                packages = listOf("com.google.android.youtube"),
-                checked = enabled && youtube,
-                enabled = enabled,
-                onToggle = onYoutube,
-            )
-            TabRow(
+            // [Issue 4] A tab row is only rendered when its host app is installed.
+            if (YOUTUBE_HOSTS.any { it in installedPkgs }) {
+                TabRow(
+                    title = "YouTube Shorts",
+                    subtitle = "Main video search & subscriptions stay active",
+                    bg = Color(0xFFFDE7E7),
+                    fg = Color(0xFFFF0000),
+                    packages = YOUTUBE_HOSTS.toList(),
+                    checked = enabled && youtube,
+                    enabled = enabled,
+                    onToggle = onYoutube,
+                )
+            }
+            if (FACEBOOK_HOSTS.any { it in installedPkgs }) TabRow(
                 title = "Facebook Reels",
                 subtitle = "Events, groups & Messenger stay active",
                 bg = Color(0xFFE7F0FD),
                 fg = Color(0xFF1877F2),
-                packages = listOf("com.facebook.katana", "com.facebook.lite"),
+                packages = FACEBOOK_HOSTS.toList(),
                 checked = enabled && facebook,
                 enabled = enabled,
                 onToggle = onFacebook,
             )
-            TabRow(
+            if (SNAPCHAT_HOSTS.any { it in installedPkgs }) TabRow(
                 title = "Snapchat Spotlight",
                 subtitle = "Direct messaging & camera stay active",
                 bg = Color(0xFFFDF3E3),
                 fg = Color(0xFFB78A00),
-                packages = listOf("com.snapchat.android"),
+                packages = SNAPCHAT_HOSTS.toList(),
                 checked = enabled && snapchat,
                 enabled = enabled,
                 onToggle = onSnapchat,
@@ -492,7 +518,8 @@ private fun TabRow(title: String, subtitle: String, bg: Color, fg: Color, packag
             Text(text = subtitle, fontSize = 11.5.sp, color = colors.ink2, modifier = Modifier.padding(top = 2.dp), lineHeight = 14.sp)
         }
         Spacer(Modifier.width(12.dp))
-        SocialSwitch(checked = checked, onToggle = { if (enabled) onToggle() })
+        // [D2] Taps always reach the VM; master-off answers with its toast.
+        SocialSwitch(checked = checked, onToggle = onToggle)
     }
 }
 
@@ -644,4 +671,36 @@ private fun SocialPickerSheet(
             ) { Text(text = "Done", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White) }
         }
     }
+}
+
+/**
+ * [Issue 4] Launch pill = blocked apps whose row is actually VISIBLE:
+ * defaults shown when any family variant is installed, extras when the exact
+ * package is installed. Blocked entries are expanded to family closure first,
+ * so legacy single-variant stores still count under the visible family row.
+ * Dedup via displayCount keeps TikTok/Instagram counted once each.
+ */
+private fun visibleLaunchCount(wholeBlocked: Set<String>, installed: Set<String>): Int {
+    val visibleDefaults = DEFAULT_LAUNCH
+        .filter { item -> item.iconPackages.any { it in installed } }
+        .map { it.pkg }
+        .toSet()
+    val defaultFamily = DEFAULT_LAUNCH
+        .flatMap { (SocialBlockingPrefs.familyOf(it.pkg) ?: setOf(it.pkg)).toList() }
+        .toSet()
+    val visibleExtras = wholeBlocked.filterNot { it in defaultFamily }.filter { it in installed }.toSet()
+    val expanded = wholeBlocked
+        .flatMap { (SocialBlockingPrefs.familyOf(it) ?: setOf(it)).toList() }
+        .toSet()
+    return SocialBlockingPrefs.displayCount(expanded.intersect(visibleDefaults + visibleExtras))
+}
+
+/** [Issue 4] Tab pill counts only verticals whose host app is installed. */
+private fun visibleTabCount(state: SocialBlockingUiState, installed: Set<String>): Int {
+    if (!state.enabled) return 0
+    return listOf(
+        state.youtube to YOUTUBE_HOSTS,
+        state.facebook to FACEBOOK_HOSTS,
+        state.snapchat to SNAPCHAT_HOSTS,
+    ).count { (on, hosts) -> on && hosts.any { it in installed } }
 }

@@ -3,6 +3,7 @@ package com.safeme.app.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.Build
@@ -157,8 +158,16 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val cls: String?,
         val texts: List<String>,
         val clickedTexts: List<String>,
+        /** Screen bounds of the clicked node (click events only) — lets the
+         *  social L2b gate bound the click to the bottom-nav region. */
+        val clickedBounds: Rect?,
         val windowId: Int,
     )
+
+    /** Clicked-node payload: subtree texts + screen bounds, one source fetch. */
+    private data class ClickSourceInfo(val texts: List<String>, val bounds: Rect?) {
+        companion object { val EMPTY = ClickSourceInfo(emptyList(), null) }
+    }
 
     @Volatile
     private var cachedState: BlockingPrefsState? = null
@@ -367,14 +376,14 @@ class SafeMeAccessibilityService : AccessibilityService() {
             event.text?.map { it.toString() } ?: emptyList()
         }.getOrDefault(emptyList())
         val windowId = runCatching { event.windowId }.getOrDefault(-1)
-        val clickedTexts = if (type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+        val clickInfo = if (type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
             type == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
         ) {
-            runCatching { readClickedSourceTexts(event) }.getOrDefault(emptyList())
+            runCatching { readClickedSource(event) }.getOrDefault(ClickSourceInfo.EMPTY)
         } else {
-            emptyList()
+            ClickSourceInfo.EMPTY
         }
-        val snapshot = EventSnapshot(type, pkg, cls, texts, clickedTexts, windowId)
+        val snapshot = EventSnapshot(type, pkg, cls, texts, clickInfo.texts, clickInfo.bounds, windowId)
         // [Social fast lane] Whole-app launch blocks must present while the
         // blocked app is still starting: O(1) membership check on the event's
         // own package, evaluated BEFORE the serial event queue so an
@@ -402,10 +411,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
      * (the event's source node is recycled with the event). Used by the
      * App Info click pre-empt.
      */
-    private fun readClickedSourceTexts(event: AccessibilityEvent): List<String> {
-        val source = runCatching { event.source }.getOrNull() ?: return emptyList()
+    private fun readClickedSource(event: AccessibilityEvent): ClickSourceInfo {
+        val source = runCatching { event.source }.getOrNull() ?: return ClickSourceInfo.EMPTY
         try {
-            return collectTextsFrom(source)
+            val texts = collectTextsFrom(source)
+            val rect = Rect()
+            val bounds = runCatching { source.getBoundsInScreen(rect) }.getOrNull()?.let { Rect(rect) }
+            return ClickSourceInfo(texts, bounds)
         } finally {
             recycle(source)
         }
@@ -995,7 +1007,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // the tamper surface (App Info) is about to happen. Raise the gate
             // NOW, before the page renders, so the Uninstall / Force-stop /
             // Clear-data buttons are never tappable. The clicked row's subtree
-            // (snapshot by [readClickedSourceTexts]) must carry the APP NAME
+            // (snapshot by [readClickedSource]) must carry the APP NAME
             // and NOT the service label (a11y rows go through the normal
             // detail-page path below — this pre-empt deliberately never
             // touches a11y-management content).
@@ -2180,13 +2192,30 @@ class SafeMeAccessibilityService : AccessibilityService() {
         BlockOverlayController.show(this, pkg, label, "socialWhole")
     }
 
-    private fun launchSocialTabGate(pkg: String, vertical: SocialBlockingGate.SocialVertical, coverAboveY: Int?) {
+    /** True once the active tab cover was confirmed by tree evidence (L1/L1b/L2). */
+    private var socialTabCoverConfirmed = true
+    private var socialTabCoverRaisedAtMs = 0L
+
+    /**
+     * [confirmed] — false ONLY for covers raised by the L2b nav-click signal on
+     * trees that expose no selection state; the tab watch gives those a grace
+     * window instead of probe-dismissing them immediately, and a nav click on
+     * any other tab dismisses them instantly.
+     */
+    private fun launchSocialTabGate(
+        pkg: String,
+        vertical: SocialBlockingGate.SocialVertical,
+        coverAboveY: Int?,
+        confirmed: Boolean = true,
+    ) {
         val label = when (vertical) {
             SocialBlockingGate.SocialVertical.SHORTS -> "YouTube Shorts"
             SocialBlockingGate.SocialVertical.REELS -> "Facebook Reels"
             SocialBlockingGate.SocialVertical.SPOTLIGHT -> "Snapchat Spotlight"
         }
-        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical coverAboveY=$coverAboveY)")
+        socialTabCoverConfirmed = confirmed
+        socialTabCoverRaisedAtMs = SystemClock.elapsedRealtime()
+        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical coverAboveY=$coverAboveY confirmed=$confirmed)")
         // Scoped cover: spans 0..coverAboveY so the bottom nav stays visible
         // and tappable; null (fullscreen feed, no nav identified) → full cover.
         BlockOverlayController.show(this, pkg, label, "socialTab", coverAboveY)
@@ -2224,9 +2253,77 @@ class SafeMeAccessibilityService : AccessibilityService() {
             if (rootPkg != null && rootPkg != pkg) return
             val hit = try {
                 SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx())
-            } catch (_: Throwable) { null } ?: return
-            socialTabCooldown[key] = now
-            launchSocialTabGate(pkg, vertical, hit.coverAboveY)
+            } catch (_: Throwable) { null }
+            if (hit != null) {
+                socialTabCooldown[key] = now
+                launchSocialTabGate(pkg, vertical, hit.coverAboveY)
+                return
+            }
+            // L2a-cls: the fullscreen player's window class carries the token
+            // (e.g. Spotlight/Reel fragment names) even when the tree exposes
+            // neither a selected nav item nor a token view-id yet.
+            if (SocialBlockingGate.matchesToken(snapshot.cls, vertical)) {
+                Log.d(TAG, "social tab gate: cls token fired (vertical=$vertical cls=${snapshot.cls})")
+                socialTabCooldown[key] = now
+                launchSocialTabGate(pkg, vertical, null)
+                return
+            }
+            // L2b: bottom-nav-region click whose label matches the vertical —
+            // deterministic user-intent signal for navs exposing no selection
+            // state. Cover anchored above the tapped nav item (stays tappable).
+            if (isClick &&
+                SocialBlockingGate.isNavClickFor(
+                    snapshot.clickedTexts, snapshot.clickedBounds?.centerY(), screenHeightPx(), vertical,
+                )
+            ) {
+                Log.d(TAG, "social tab gate: nav click fired (vertical=$vertical)")
+                socialTabCooldown[key] = now
+                launchSocialTabGate(pkg, vertical, snapshot.clickedBounds?.top, confirmed = false)
+                return
+            }
+            logSocialProbeMiss(pkg, vertical)
+        } finally {
+            recycle(root)
+        }
+    }
+
+    private var lastSocialProbeLogMs = 0L
+
+    /**
+     * Throttled (2 s) one-line tree summary on a probe miss inside a gated app:
+     * one `adb logcat` capture then fully characterises any residual detection
+     * miss, so token tuning stays a data edit instead of a guess-rebuild cycle.
+     */
+    private fun logSocialProbeMiss(pkg: String, vertical: SocialBlockingGate.SocialVertical) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastSocialProbeLogMs < 2_000L) return
+        lastSocialProbeLogMs = now
+        val root = try { rootInActiveWindow } catch (_: Throwable) { null } ?: return
+        try {
+            val sb = StringBuilder()
+            val deque = ArrayDeque<AccessibilityNodeInfo>()
+            deque.add(root)
+            var count = 0
+            while (deque.isNotEmpty() && count < 14) {
+                val n = deque.removeFirst()
+                count++
+                val cls = runCatching { n.className?.toString()?.substringAfterLast('.') }.getOrNull().orEmpty()
+                val vid = runCatching { n.viewIdResourceName?.substringAfterLast('/') }.getOrNull()
+                val txt = runCatching { (n.text ?: n.contentDescription)?.toString()?.take(14)?.replace('\n', ' ') }.getOrNull()
+                val sel = runCatching { n.isSelected || n.isChecked }.getOrDefault(false)
+                sb.append(cls).append('#').append(vid ?: '-')
+                if (!txt.isNullOrEmpty()) sb.append('[').append(txt).append(']')
+                if (sel) sb.append('*')
+                sb.append("; ")
+                val cc = runCatching { n.childCount }.getOrDefault(0)
+                for (i in 0 until cc) {
+                    val c = runCatching { n.getChild(i) }.getOrNull() ?: continue
+                    deque.add(c)
+                }
+            }
+            Log.d(TAG, "social tab probe miss pkg=$pkg vertical=$vertical nodes($count): $sb")
+        } catch (t: Throwable) {
+            Log.d(TAG, "social probe-miss log failed — fail open")
         } finally {
             recycle(root)
         }
@@ -2277,6 +2374,19 @@ class SafeMeAccessibilityService : AccessibilityService() {
         }
         val now = SystemClock.elapsedRealtime()
         val isClick = snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED
+        // [L2b covers] An unconfirmed cover cannot be probe-confirmed on trees
+        // that expose no selection state — a bottom-nav click on ANY other tab
+        // is the deterministic "user left" signal and dismisses at once instead
+        // of waiting out the grace window. Confirmed covers keep their probe-
+        // based dismissal (bit-identical to shipped behavior).
+        if (!socialTabCoverConfirmed && isClick &&
+            SocialBlockingGate.isBottomNavClick(snapshot.clickedBounds?.centerY(), screenHeightPx()) &&
+            !SocialBlockingGate.labelMatchesVertical(snapshot.clickedTexts, vertical)
+        ) {
+            Log.d(TAG, "social tab watch: nav click away from $vertical — dismissing unconfirmed cover")
+            dismissSocialTabCover()
+            return
+        }
         if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isClick)) return
         lastSocialTabProbeMs = now
 
@@ -2291,6 +2401,15 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx())
             } catch (_: Throwable) { null }
             if (hit == null) {
+                // Grace: an L2b-raised cover on a tree that exposes no
+                // confirming evidence gets a short window before probe-miss
+                // dismissal — without it the cover would drop ~250 ms after
+                // appearing, defeating the nav-click gate entirely.
+                if (!socialTabCoverConfirmed &&
+                    now - socialTabCoverRaisedAtMs < SocialBlockingGate.UNCONFIRMED_COVER_GRACE_MS
+                ) {
+                    return
+                }
                 // Blocked tab no longer selected (or tree unreadable) → free
                 // the app. Direction of failure is under-block, never a
                 // whole-app cover.
@@ -2298,6 +2417,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 dismissSocialTabCover()
                 return
             }
+            // Tree evidence arrived — the cover is confirmed from here on and
+            // keeps the snappy probe-based dismissal.
+            socialTabCoverConfirmed = true
             // Still on the blocked tab — keep the cover fitted to the nav bar.
             BlockOverlayController.refitTabCover(hit.coverAboveY)
         } finally {

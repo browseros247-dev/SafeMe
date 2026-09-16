@@ -1,5 +1,7 @@
 package com.safeme.app.protect
 
+import com.safeme.app.data.SocialBlockingPrefs
+import com.safeme.app.protect.SocialBlockingGate.SocialVertical
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -84,13 +86,25 @@ class SocialBlockingGateTest {
     }
 
     @Test
-    fun tabRules_tokenHintsReservedEmptyForFullscreenEscalation() {
-        for ((pkg, pair) in SocialBlockingGate.TAB_RULES) {
-            assertTrue(
-                "tokenHints must ship empty until L2 detection is adopted: $pkg",
-                pair.second.tokenHints.isEmpty()
-            )
-        }
+    fun tabRules_tokenHintsPopulatedForFullscreenDetection() {
+        // L2 adopted: Shorts infra ids are "reel_*"/"shorts_*", FB Reels views
+        // contain "reel", Spotlight surfaces contain "spotlight".
+        assertEquals(
+            listOf("shorts", "reel"),
+            SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second.tokenHints,
+        )
+        assertEquals(
+            listOf("reel"),
+            SocialBlockingGate.TAB_RULES.getValue("com.facebook.katana").second.tokenHints,
+        )
+        assertEquals(
+            listOf("reel"),
+            SocialBlockingGate.TAB_RULES.getValue("com.facebook.lite").second.tokenHints,
+        )
+        assertEquals(
+            listOf("spotlight"),
+            SocialBlockingGate.TAB_RULES.getValue("com.snapchat.android").second.tokenHints,
+        )
     }
 
     @Test
@@ -161,5 +175,135 @@ class SocialBlockingGateTest {
     fun gateConstants_matchDocumentedCadence() {
         assertEquals(250L, SocialBlockingGate.APP_CONTENT_RECHECK_THROTTLE_MS)
         assertEquals(4_000L, SocialBlockingGate.GATE_COOLDOWN_MS)
+        assertEquals(2_000L, SocialBlockingGate.UNCONFIRMED_COVER_GRACE_MS)
+    }
+
+    // ---------- family-aware whole-app decision (Issue 1 / Fix A) ----------
+
+    @Test
+    fun wholeGate_blockedPrimaryCoversInstalledLiteVariant() {
+        // Device runs TikTok Lite; the stored set holds the primary package.
+        assertTrue(
+            SocialBlockingGate.isWholeAppBlocked(
+                "com.ss.android.ugc.aweme.lite",
+                setOf("com.zhiliaoapp.musically"),
+            )
+        )
+        // And the reverse: stored Go variant gates the primary.
+        assertTrue(
+            SocialBlockingGate.isWholeAppBlocked(
+                "com.zhiliaoapp.musically",
+                setOf("com.zhiliaoapp.musically.go"),
+            )
+        )
+    }
+
+    @Test
+    fun wholeGate_familyWorksForFacebookInstagramSnapchat() {
+        assertTrue(SocialBlockingGate.isWholeAppBlocked("com.facebook.lite", setOf("com.facebook.katana")))
+        assertTrue(SocialBlockingGate.isWholeAppBlocked("com.facebook.katana", setOf("com.facebook.lite")))
+        assertTrue(SocialBlockingGate.isWholeAppBlocked("com.instagram.lite", setOf("com.instagram.android")))
+        assertTrue(SocialBlockingGate.isWholeAppBlocked("com.snapchat.android.lite", setOf("com.snapchat.android")))
+        assertTrue(SocialBlockingGate.isWholeAppBlocked("com.snapchat.android", setOf("com.snapchat.android.lite")))
+    }
+
+    @Test
+    fun wholeGate_familyNeverLeaksAcrossProducts() {
+        assertFalse(SocialBlockingGate.isWholeAppBlocked("com.twitter.android", setOf("com.zhiliaoapp.musically")))
+        assertFalse(SocialBlockingGate.isWholeAppBlocked("com.zhiliaoapp.musically", setOf("com.instagram.android")))
+        assertFalse(SocialBlockingGate.isWholeAppBlocked("com.facebook.katana", setOf("com.instagram.lite")))
+        // Unrelated package sharing a prefix is NOT family.
+        assertFalse(SocialBlockingGate.isWholeAppBlocked("com.facebook.orca", setOf("com.facebook.katana")))
+    }
+
+    // ---------- prefs family helpers (pure core of Fix A / Fix D3) ----------
+
+    @Test
+    fun familyOf_mapsEveryVariantToItsFullFamily() {
+        val tiktok = SocialBlockingPrefs.TIKTOK_PACKAGES
+        for (pkg in tiktok) {
+            assertEquals(tiktok, SocialBlockingPrefs.familyOf(pkg))
+        }
+        assertEquals(SocialBlockingPrefs.INSTAGRAM_PACKAGES, SocialBlockingPrefs.familyOf("com.instagram.lite"))
+        assertEquals(SocialBlockingPrefs.FACEBOOK_PACKAGES, SocialBlockingPrefs.familyOf("com.facebook.lite"))
+        assertEquals(SocialBlockingPrefs.SNAPCHAT_PACKAGES, SocialBlockingPrefs.familyOf("com.snapchat.android"))
+        // Unknown snapchat variant still maps via prefix.
+        assertEquals(SocialBlockingPrefs.SNAPCHAT_PACKAGES, SocialBlockingPrefs.familyOf("com.snapchat.future.variant"))
+        // No family for everything else.
+        assertNull(SocialBlockingPrefs.familyOf("com.twitter.android"))
+        assertNull(SocialBlockingPrefs.familyOf("com.reddit.frontpage"))
+    }
+
+    @Test
+    fun toggleFamilyInSet_addsWholeFamilyThenRemovesWholeFamily() {
+        val family = SocialBlockingPrefs.TIKTOK_PACKAGES
+        val start = setOf("com.twitter.android")
+        val added = SocialBlockingPrefs.toggleFamilyInSet(start, family)
+        assertTrue(added.containsAll(family))
+        assertTrue(added.contains("com.twitter.android"))
+        // Removing triggers when ANY member is present — even a legacy single-variant store.
+        val legacy = setOf("com.zhiliaoapp.musically.go", "com.reddit.frontpage")
+        val removed = SocialBlockingPrefs.toggleFamilyInSet(legacy, family)
+        assertEquals(setOf("com.reddit.frontpage"), removed)
+        assertEquals(start, SocialBlockingPrefs.toggleFamilyInSet(added, family) - "com.twitter.android" + "com.twitter.android")
+    }
+
+    @Test
+    fun toggleFamilyInSet_emptyFamilyIsNoOp() {
+        val cur = setOf("a")
+        assertEquals(cur, SocialBlockingPrefs.toggleFamilyInSet(cur, emptySet()))
+    }
+
+    @Test
+    fun isFamilyBlocked_directCore() {
+        assertTrue(SocialBlockingPrefs.isFamilyBlocked("com.zhiliaoapp.musically", setOf("com.zhiliaoapp.musically")))
+        assertTrue(SocialBlockingPrefs.isFamilyBlocked("com.ss.android.ugc.trill", setOf("com.zhiliaoapp.musically.go")))
+        assertFalse(SocialBlockingPrefs.isFamilyBlocked("com.twitter.android", setOf("com.zhiliaoapp.musically")))
+        assertFalse(SocialBlockingPrefs.isFamilyBlocked("com.twitter.android", emptySet()))
+    }
+
+    // ---------- L2b nav-click helpers (pure) ----------
+
+    @Test
+    fun matchesToken_isCaseInsensitiveAndVerticalScoped() {
+        assertTrue(SocialBlockingGate.matchesToken("com.snapchat.android.feature.spotlight.SpotlightFragment", SocialBlockingGate.SocialVertical.SPOTLIGHT))
+        assertTrue(SocialBlockingGate.matchesToken("com.facebook.video.ReelPlayerView", SocialBlockingGate.SocialVertical.REELS))
+        assertTrue(SocialBlockingGate.matchesToken("ReelPlaybackController", SocialBlockingGate.SocialVertical.SHORTS)) // "reel" is a Shorts-infra token too
+        assertFalse(SocialBlockingGate.matchesToken("com.google.android.youtube.HomeActivity", SocialBlockingGate.SocialVertical.SHORTS))
+        assertFalse(SocialBlockingGate.matchesToken(null, SocialVertical.SHORTS))
+        assertFalse(SocialBlockingGate.matchesToken("", SocialVertical.SPOTLIGHT))
+    }
+
+    @Test
+    fun bottomNavClick_onlyBottomFifthOfScreen() {
+        val h = 2400
+        assertTrue(SocialBlockingGate.isBottomNavClick(1920, h))  // exactly 80%
+        assertTrue(SocialBlockingGate.isBottomNavClick(2300, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(1919, h)) // just above the region
+        assertFalse(SocialBlockingGate.isBottomNavClick(1200, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(null, h))
+        assertFalse(SocialBlockingGate.isBottomNavClick(2300, 0)) // unknown screen height → fail closed
+    }
+
+    @Test
+    fun labelMatchesVertical_wordBoundedAndNonEmpty() {
+        assertTrue(SocialBlockingGate.labelMatchesVertical(listOf("Spotlight"), SocialVertical.SPOTLIGHT))
+        assertTrue(SocialBlockingGate.labelMatchesVertical(listOf("nav", "Spotlight", "3"), SocialVertical.SPOTLIGHT))
+        assertFalse(SocialBlockingGate.labelMatchesVertical(listOf("Home"), SocialVertical.SPOTLIGHT))
+        assertFalse(SocialBlockingGate.labelMatchesVertical(listOf("Short"), SocialVertical.SHORTS))
+        assertFalse(SocialBlockingGate.labelMatchesVertical(emptyList(), SocialVertical.SHORTS))
+    }
+
+    @Test
+    fun navClickFor_needsBothNavRegionAndLabel() {
+        val h = 2400
+        // Nav-region click on the blocked caption → gate.
+        assertTrue(SocialBlockingGate.isNavClickFor(listOf("Spotlight"), 2280, h, SocialVertical.SPOTLIGHT))
+        // Mid-screen click on a video TITLED "Shorts…" → must NOT gate (G2).
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Epic shorts compilation"), 1100, h, SocialVertical.SHORTS))
+        // Nav-region click on a DIFFERENT tab → must NOT gate.
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Home"), 2280, h, SocialVertical.SHORTS))
+        // No bounds (stale source node) → fail closed.
+        assertFalse(SocialBlockingGate.isNavClickFor(listOf("Spotlight"), null, h, SocialVertical.SPOTLIGHT))
     }
 }

@@ -2,6 +2,7 @@ package com.safeme.app.protect
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
+import com.safeme.app.data.SocialBlockingPrefs
 
 /**
  * Social Media Blocking — two gates, fail-open, throttle-aware.
@@ -40,10 +41,15 @@ object SocialBlockingGate {
      * Adding a new tab-blocked app = one entry here + one prefs flag + one UI row.
      */
     val TAB_RULES: Map<String, Pair<SocialVertical, TabRule>> = mapOf(
-        "com.google.android.youtube" to (SocialVertical.SHORTS to TabRule(Regex("""\bshorts\b""", RegexOption.IGNORE_CASE))),
-        "com.facebook.katana" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE))),
-        "com.facebook.lite" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE))),
-        "com.snapchat.android" to (SocialVertical.SPOTLIGHT to TabRule(Regex("""\bspotlight\b""", RegexOption.IGNORE_CASE))),
+        // tokenHints: lowercase fragments matched against viewIdResourceName /
+        // className of FULLSCREEN player nodes (Shorts infra ids are "reel_*"/
+        // "shorts_*", FB Reel views contain "reel", Spotlight contains "spotlight").
+        // The >=65%-screen-area bound in findFullscreenTokenNode is what keeps
+        // Home-feed shelf cards and thumbnails from ever firing them.
+        "com.google.android.youtube" to (SocialVertical.SHORTS to TabRule(Regex("""\bshorts\b""", RegexOption.IGNORE_CASE), listOf("shorts", "reel"))),
+        "com.facebook.katana" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
+        "com.facebook.lite" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
+        "com.snapchat.android" to (SocialVertical.SPOTLIGHT to TabRule(Regex("""\bspotlight\b""", RegexOption.IGNORE_CASE), listOf("spotlight"))),
     )
 
     /** Packages never whole-blocked even if user somehow adds them (would brick device). */
@@ -56,10 +62,16 @@ object SocialBlockingGate {
         "com.android.packageinstaller",
     )
 
-    /** Pure whole-app decision — throttle is applied outside (persistent launch block). */
+    /**
+     * Pure whole-app decision — throttle is applied outside (persistent launch block).
+     * Family-aware: blocking "TikTok" covers every installed TikTok variant
+     * (musically / aweme / trill / go / lite) and vice versa, so a toggled row
+     * always enforces on the package the device actually runs. Exempt precedence
+     * is unchanged.
+     */
     fun isWholeAppBlocked(pkg: String, wholeBlocked: Set<String>): Boolean {
         if (pkg in SYSTEM_EXEMPT) return false
-        return pkg in wholeBlocked
+        return SocialBlockingPrefs.isFamilyBlocked(pkg, wholeBlocked)
     }
 
     /** Returns the vertical if pkg is in allow-list else null (TikTok/Instagram → null even if text matches). */
@@ -110,8 +122,99 @@ object SocialBlockingGate {
         screenHeightPx: Int,
     ): TabHit? {
         val rule = TAB_RULES.values.firstOrNull { it.first == vertical }?.second ?: return null
-        return findFirstSelectedTab(root, rule.label, screenWidthPx, screenHeightPx)
+        // L1/L1b first — every path that fires today fires identically.
+        findFirstSelectedTab(root, rule.label, screenWidthPx, screenHeightPx)?.let { return it }
+        // L2: fullscreen player token (Shorts opened from Home, Reel, Spotlight)
+        // — only consulted where L1 found nothing.
+        return findFullscreenTokenNode(root, rule.tokenHints, screenWidthPx, screenHeightPx)
     }
+
+    /**
+     * L2: BFS for a node whose viewIdResourceName or className contains one of
+     * [tokenHints] AND whose bounds cover at least [MIN_FULLSCREEN_AREA_FRACTION]
+     * of the screen — i.e. the vertical's fullscreen player. Returns a full-cover
+     * TabHit (top of the player, null when it starts at the screen top). Bounded
+     * like every other probe, fail-open, and a no-op while tokenHints is empty.
+     */
+    private fun findFullscreenTokenNode(
+        root: AccessibilityNodeInfo,
+        tokenHints: List<String>,
+        screenWidthPx: Int,
+        screenHeightPx: Int,
+    ): TabHit? {
+        if (tokenHints.isEmpty() || screenWidthPx <= 0 || screenHeightPx <= 0) return null
+        val screenArea = screenWidthPx.toLong() * screenHeightPx
+        val deque: ArrayDeque<Pair<AccessibilityNodeInfo, Int>> = ArrayDeque()
+        deque.add(root to 0)
+        var scanned = 0
+        val visited = mutableSetOf<Int>()
+        val rect = Rect()
+        while (deque.isNotEmpty() && scanned < MAX_STRINGS) {
+            val (node, depth) = deque.removeFirst()
+            if (depth > MAX_DEPTH) continue
+            val id = System.identityHashCode(node)
+            if (!visited.add(id)) continue
+            scanned++
+
+            val viewId = runCatching { node.viewIdResourceName }.getOrNull()?.lowercase()
+            val cls = runCatching { node.className?.toString() }.getOrNull()?.lowercase()
+            val tokenHit = (viewId != null && tokenHints.any { it in viewId }) ||
+                (cls != null && tokenHints.any { it in cls })
+            if (tokenHit) {
+                val big = runCatching {
+                    node.getBoundsInScreen(rect)
+                    rect.width() > 0 && rect.height() > 0 &&
+                        rect.width().toLong() * rect.height() >= screenArea * MIN_FULLSCREEN_AREA_FRACTION
+                }.getOrDefault(false)
+                if (big) return TabHit(if (rect.top > 0) rect.top else null)
+            }
+            for (i in 0 until node.childCount) {
+                val child = try { node.getChild(i) } catch (_: Throwable) { null } ?: continue
+                deque.add(child to depth + 1)
+            }
+        }
+        return null
+    }
+
+    /** Fraction of screen area a token node must cover to count as the fullscreen player. */
+    private const val MIN_FULLSCREEN_AREA_FRACTION = 0.65
+
+    /** L2b helpers — pure so they are unit-testable without a11y trees. */
+
+    /** True when [cls] (window class) contains any tokenHint of [vertical]. */
+    fun matchesToken(cls: String?, vertical: SocialVertical): Boolean {
+        cls ?: return false
+        val rule = TAB_RULES.values.firstOrNull { it.first == vertical }?.second ?: return false
+        if (rule.tokenHints.isEmpty()) return false
+        val lower = cls.lowercase()
+        return rule.tokenHints.any { it in lower }
+    }
+
+    /** True when the click landed in the bottom 20% of the screen (nav-bar region). */
+    fun isBottomNavClick(clickedCenterY: Int?, screenHeightPx: Int): Boolean =
+        clickedCenterY != null && screenHeightPx > 0 &&
+            clickedCenterY >= screenHeightPx * 4 / 5
+
+    /** True when [clickedTexts] match the vertical's tab caption regex. */
+    fun labelMatchesVertical(clickedTexts: List<String>, vertical: SocialVertical): Boolean {
+        if (clickedTexts.isEmpty()) return false
+        val rule = TAB_RULES.values.firstOrNull { it.first == vertical }?.second ?: return false
+        return rule.label.containsMatchIn(clickedTexts.joinToString(" "))
+    }
+
+    /**
+     * L2b: deterministic user-intent signal for navs that expose NO selection
+     * state — a click inside the bottom-nav region whose collected texts match
+     * the vertical's caption. The region bound keeps video-title taps (a video
+     * named "Shorts…") from ever gating.
+     */
+    fun isNavClickFor(
+        clickedTexts: List<String>,
+        clickedCenterY: Int?,
+        screenHeightPx: Int,
+        vertical: SocialVertical,
+    ): Boolean =
+        isBottomNavClick(clickedCenterY, screenHeightPx) && labelMatchesVertical(clickedTexts, vertical)
 
     private fun findFirstSelectedTab(
         root: AccessibilityNodeInfo,
@@ -132,7 +235,9 @@ object SocialBlockingGate {
             scanned++
 
             val text = (node.text?.toString().orEmpty() + " " + node.contentDescription?.toString().orEmpty()).trim()
-            if (text.isNotEmpty() && pattern.containsMatchIn(text) && isSelfOrAncestorSelected(node)) {
+            if (text.isNotEmpty() && pattern.containsMatchIn(text) &&
+                (isSelfOrAncestorSelected(node) || hasSelectedChild(node))
+            ) {
                 return TabHit(navBarTopAbove(node, screenWidthPx, screenHeightPx))
             }
             for (i in 0 until node.childCount) {
@@ -160,6 +265,24 @@ object SocialBlockingGate {
             hops++
         }
         runCatching { parent?.recycle() }
+        return false
+    }
+
+    /**
+     * L1b: some nav implementations (notably Snapchat's) mark a CHILD of the
+     * labeled container selected instead of the labeled node or its ancestors —
+     * the upward walk cannot see that. One level down, bounded to small child
+     * counts so feed containers can never satisfy it.
+     */
+    private fun hasSelectedChild(node: AccessibilityNodeInfo): Boolean {
+        val count = runCatching { node.childCount }.getOrDefault(0)
+        if (count <= 0 || count > 6) return false
+        for (i in 0 until count) {
+            val child = runCatching { node.getChild(i) }.getOrNull() ?: continue
+            val sel = runCatching { child.isSelected || child.isChecked }.getOrDefault(false)
+            runCatching { child.recycle() }
+            if (sel) return true
+        }
         return false
     }
 
@@ -198,6 +321,13 @@ object SocialBlockingGate {
 
     const val APP_CONTENT_RECHECK_THROTTLE_MS = 250L
     const val GATE_COOLDOWN_MS = 4_000L
+
+    /**
+     * Grace window for covers raised by the L2b nav-click signal on trees that
+     * expose no selection state: the tab watch must not probe-dismiss them
+     * before the tree has had a chance to expose confirming evidence.
+     */
+    const val UNCONFIRMED_COVER_GRACE_MS = 2_000L
 
     /**
      * Key for tab cooldown — pkg|vertical so YouTube Shorts and Snapchat Spotlight don't share cooldown.

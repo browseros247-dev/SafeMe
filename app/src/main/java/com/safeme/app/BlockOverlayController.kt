@@ -231,9 +231,8 @@ object BlockOverlayController {
         lastType = type
         val appContext = context.applicationContext
         scope.launch {
-            // Load persisted Block Screen settings off-thread; defaults are
-            // used if the read fails (the gate must never block on DataStore).
-            val prefs = runCatching { appContext.blockScreenPrefs().first() }
+            // [V13] Cache prefs — first gate loads, rest instant (fixes launch delay). Fail-open with defaults.
+            val prefs = lastPrefs ?: runCatching { appContext.blockScreenPrefs().first() }
                 .getOrDefault(BlockScreenPrefsState())
             mainHandler.post {
                 // [H1 race] A tab-cover dismissal posted between show() and
@@ -507,6 +506,9 @@ object BlockOverlayController {
         mainHandler.post {
             if (!showing) return@post
             launchHome()
+            // [V13] Early clear of showing flag — fixes 5s launch delay dead zone where fast lane was blocked by showing=true during 250ms dismiss animation. Window stays attached for visual continuity (removeOverlay delayed), only flag cleared so next launch can re-gate immediately.
+            showing = false
+            showingType = ""
             mainHandler.postDelayed(
                 {
                     removeOverlay()

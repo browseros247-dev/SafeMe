@@ -1,5 +1,6 @@
 package com.safeme.app.protect
 
+import android.view.accessibility.AccessibilityEvent
 import com.safeme.app.data.SocialBlockingPrefs
 import com.safeme.app.protect.SocialBlockingGate.SocialVertical
 import org.junit.Assert.assertEquals
@@ -176,52 +177,28 @@ class SocialBlockingGateTest {
         assertEquals(250L, SocialBlockingGate.APP_CONTENT_RECHECK_THROTTLE_MS)
         assertEquals(4_000L, SocialBlockingGate.GATE_COOLDOWN_MS)
         assertEquals(2_000L, SocialBlockingGate.UNCONFIRMED_COVER_GRACE_MS)
-        // L2a token scan has its own larger budget; the fast-path makes the
-        // documented YouTube ids budget-independent entirely.
-        assertEquals(400, SocialBlockingGate.TOKEN_SCAN_MAX_NODES)
-        assertEquals(14, SocialBlockingGate.TOKEN_SCAN_MAX_DEPTH)
+        // [V11] Navigation-context probe window (BlockerX mechanism port):
+        // outside nav context the tab gate never touches the tree.
+        assertEquals(1_500L, SocialBlockingGate.TRANSITION_GRACE_MS)
     }
 
     // ---------- knownIds fast-path registry (V7 fix A) ----------
 
     @Test
-    fun knownIds_documentedForYoutubeOnly() {
-        // [V10] Only the canonical fullscreen surface; reel_recycler (generic
-        // reel-list id: shelf scrollers, channel grids) is intentionally absent.
+    fun knownIds_registryEmptyReservedSlot() {
+        // [V11] The tree-scan fast-path was deleted (z-order-blind: YouTube's
+        // retained Shorts fragment behind Home is VISIBLE-flagged with
+        // fullscreen bounds — isVisibleToUser cannot see occlusion). knownIds
+        // is a reserved data slot: every vertical ships empty; fullscreen
+        // detection is event-source evidence only.
+        for ((_, pair) in SocialBlockingGate.TAB_RULES) {
+            assertTrue(pair.second.knownIds.isEmpty())
+        }
+        // tokenHints remain the token registry for source-evidence matching.
         assertEquals(
-            listOf("com.google.android.youtube:id/reel_watch_fragment_root"),
-            SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second.knownIds,
+            listOf("shorts", "reel"),
+            SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second.tokenHints,
         )
-        // Other verticals keep empty lists → the fast-path is a literal no-op
-        // for them (zero behavior change until an id is documented).
-        assertTrue(SocialBlockingGate.TAB_RULES.getValue("com.facebook.katana").second.knownIds.isEmpty())
-        assertTrue(SocialBlockingGate.TAB_RULES.getValue("com.facebook.lite").second.knownIds.isEmpty())
-        assertTrue(SocialBlockingGate.TAB_RULES.getValue("com.snapchat.android").second.knownIds.isEmpty())
-    }
-
-    @Test
-    fun knownIds_areFullyQualifiedResourceIds() {
-        for ((pkg, pair) in SocialBlockingGate.TAB_RULES) {
-            for (id in pair.second.knownIds) {
-                assertTrue(
-                    "knownId must be a fully-qualified resource id ($pkg): $id",
-                    id.startsWith("com.google.android.youtube:id/") && id.length > "com.google.android.youtube:id/".length
-                )
-            }
-        }
-    }
-
-    @Test
-    fun knownIds_tokenHintsStayConsistentForYoutube() {
-        // The documented ids' stable fragments are also covered by the BFS
-        // token scan — two independent paths to the same surfaces.
-        val rule = SocialBlockingGate.TAB_RULES.getValue("com.google.android.youtube").second
-        for (id in rule.knownIds) {
-            assertTrue(
-                "knownId $id must contain a tokenHint",
-                rule.tokenHints.any { it in id }
-            )
-        }
     }
 
     // ---------- family-aware whole-app decision (Issue 1 / Fix A) ----------
@@ -405,5 +382,55 @@ class SocialBlockingGateTest {
         // Unknown screen dimensions → fail closed.
         assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, h, 0, h))
         assertFalse(SocialBlockingGate.isPlausibleFullscreenSurface(true, 0, 0, w, h, w, 0))
+    }
+
+    // ---------- [V11] navigation context + source-evidence acceptance ----------
+
+    @Test
+    fun navigationEventTypes_areExactlyTheProbeTriggers() {
+        assertTrue(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED))
+        assertTrue(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_VIEW_CLICKED))
+        assertTrue(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_VIEW_LONG_CLICKED))
+        assertTrue(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_VIEW_FOCUSED))
+        // Scroll/content churn and everything else never opens a probe window.
+        assertFalse(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED))
+        assertFalse(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_VIEW_SCROLLED))
+        assertFalse(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_VIEW_SELECTED))
+        assertFalse(SocialBlockingGate.isNavigationEventType(AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED))
+        assertFalse(SocialBlockingGate.isNavigationEventType(0))
+    }
+
+    @Test
+    fun sourceEvidence_acceptsOnlyVisibleTokenFullscreenSources() {
+        val w = 1080
+        val h = 2400
+        fun ev(token: Boolean, vis: Boolean, l: Int, t: Int, r: Int, b: Int) =
+            SocialBlockingGate.SourceEvidence(token, vis, l, t, r, b, "com.google.android.youtube:id/reel_watch_fragment_root")
+        // Visible fullscreen token source = the vertical's player screen.
+        assertTrue(SocialBlockingGate.isFullscreenSourceEvidence(ev(true, true, 0, 0, w, h), w, h))
+        // No token (Home feed sources, regular player) → never gates.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(false, true, 0, 0, w, h), w, h))
+        // Invisible source (dying window / alpha-0 preload) → never gates.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(true, false, 0, 0, w, h), w, h))
+        // Shelf / inline-player sized sources fail the >=0.80 area bound.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(true, true, 0, 1200, w, 1800), w, h))
+        // Off-screen positioned sources (preload bounds) → never gate.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(true, true, 0, h, w, 2 * h), w, h))
+        // Null evidence (window-state probe, non-social events) → never gates.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(null, w, h))
+        // Degenerate screen metrics → fail-closed.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(true, true, 0, 0, w, h), 0, h))
+    }
+
+    @Test
+    fun sourceEvidence_boundaryReusesFullscreenFraction() {
+        val w = 1000
+        val h = 1000
+        fun ev(bottom: Int) = SocialBlockingGate.SourceEvidence(true, true, 0, 0, w, bottom, "id")
+        // Same unit-tested 0.80 boundary as isPlausibleFullscreenSurface.
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(790), w, h))
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(650), w, h))
+        assertFalse(SocialBlockingGate.isFullscreenSourceEvidence(ev(750), w, h))
+        assertTrue(SocialBlockingGate.isFullscreenSourceEvidence(ev(810), w, h))
     }
 }

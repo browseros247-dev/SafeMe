@@ -1,6 +1,7 @@
 package com.safeme.app.protect
 
 import android.graphics.Rect
+import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.safeme.app.data.SocialBlockingPrefs
 
@@ -37,10 +38,12 @@ object SocialBlockingGate {
         val label: Regex,
         val tokenHints: List<String> = emptyList(),
         /**
-         * Fully-qualified view ids of the vertical's KNOWN fullscreen surfaces
-         * (e.g. YouTube's documented Shorts player ids). Probed via the
-         * framework's deep single-IPC search — any depth, no BFS budget — and
-         * still gated by the >=65%-screen area verification. Empty = no-op.
+         * RESERVED data slot (kept for growth; unused by the engine since
+         * [V11]). Formerly: fully-qualified ids of known fullscreen surfaces
+         * for a tree-scan fast-path. Tree scans are z-order-blind — a
+         * retained Shorts fragment behind Home is VISIBLE-flagged with
+         * fullscreen bounds — so fullscreen detection is event-source
+         * evidence only (see [findActiveTab]). Empty = no-op.
          */
         val knownIds: List<String> = emptyList(),
     )
@@ -51,20 +54,22 @@ object SocialBlockingGate {
      * Adding a new tab-blocked app = one entry here + one prefs flag + one UI row.
      */
     val TAB_RULES: Map<String, Pair<SocialVertical, TabRule>> = mapOf(
-        // tokenHints: lowercase fragments matched against viewIdResourceName /
-        // className of FULLSCREEN player nodes (Shorts infra ids are "reel_*"/
-        // "shorts_*", FB Reel views contain "reel", Spotlight contains "spotlight").
-        // The >=65%-screen-area bound in findFullscreenTokenNode is what keeps
-        // Home-feed shelf cards and thumbnails from ever firing them.
+        // tokenHints: lowercase fragments matched against an event SOURCE's
+        // viewIdResourceName / className ([V11] source-evidence semantics;
+        // Shorts infra ids are "reel_*"/"shorts_*", FB Reel views contain
+        // "reel", Spotlight contains "spotlight"). The >=80%-screen-area +
+        // visibility bound in isFullscreenSourceEvidence is what keeps Home
+        // shelf cards, headers and inline players from ever firing them.
         "com.google.android.youtube" to (SocialVertical.SHORTS to TabRule(
             Regex("""\bshorts\b""", RegexOption.IGNORE_CASE),
             listOf("shorts", "reel"),
-            // [V10] Only the canonical FULLSCREEN surface. reel_recycler was
-            // dropped: it is the generic reel-LIST id (Home shelf scrollers,
-            // channel grids) and fast-pathing it caused area-borderline false
-            // positives. The BFS token scan still catches a genuinely
-            // fullscreen reel_recycler (>=0.80), so recall is preserved.
-            listOf("com.google.android.youtube:id/reel_watch_fragment_root"),
+            // [V11] knownIds emptied — the tree-scan fast-path was deleted:
+            // YouTube retains the Shorts fragment (reel_watch_fragment_root)
+            // behind Home, VISIBLE-flagged with fullscreen bounds, and
+            // isVisibleToUser cannot see z-order occlusion, so ANY tree-scan
+            // id lookup gates Home. Fullscreen detection = event-source
+            // evidence only (an occluded surface emits no events).
+            emptyList(),
         )),
         "com.facebook.katana" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
         "com.facebook.lite" to (SocialVertical.REELS to TabRule(Regex("""\breels\b""", RegexOption.IGNORE_CASE), listOf("reel"))),
@@ -128,6 +133,43 @@ object SocialBlockingGate {
     class TabHit(val coverAboveY: Int?, val matchedVia: String? = null)
 
     /**
+     * [V11] Fullscreen-surface evidence captured by the service from the
+     * triggering event's OWN source node (scoped to tab-gate packages,
+     * rate-limited; null for every other event). [tokenMatched] = source
+     * viewId/className contains a vertical token ([matchesToken]); the int
+     * bounds + [isVisible] feed the unchanged [isPlausibleFullscreenSurface]
+     * decision table; [idOrCls] is fire-time attribution only.
+     */
+    data class SourceEvidence(
+        val tokenMatched: Boolean,
+        val isVisible: Boolean,
+        val left: Int,
+        val top: Int,
+        val right: Int,
+        val bottom: Int,
+        val idOrCls: String,
+    )
+
+    /**
+     * [V11] Pure fullscreen decision on the event's own source — the SINGLE
+     * fullscreen rule (no tree scans: they are z-order-blind). An occluded
+     * surface (e.g. the retained Shorts fragment behind Home) emits no
+     * accessibility events, so it can never be a source; Home shelf/inline
+     * sources fail the >=0.80 area bound geometrically.
+     */
+    fun isFullscreenSourceEvidence(
+        evidence: SourceEvidence?,
+        screenWidthPx: Int,
+        screenHeightPx: Int,
+    ): Boolean =
+        evidence != null && evidence.tokenMatched &&
+            isPlausibleFullscreenSurface(
+                evidence.isVisible,
+                evidence.left, evidence.top, evidence.right, evidence.bottom,
+                screenWidthPx, screenHeightPx,
+            )
+
+    /**
      * Finds the vertical's tab node and accepts it ONLY when the node itself or
      * an ancestor ≤[SELECTED_ANCESTOR_HOPS] up is selected/checked — i.e. the
      * user is actually ON that tab. Bottom-nav captions are present on every
@@ -141,101 +183,25 @@ object SocialBlockingGate {
         vertical: SocialVertical,
         screenWidthPx: Int,
         screenHeightPx: Int,
+        evidence: SourceEvidence? = null,
     ): TabHit? {
         val rule = TAB_RULES.values.firstOrNull { it.first == vertical }?.second ?: return null
         // L1/L1b first — every path that fires today fires identically.
         findFirstSelectedTab(root, rule.label, screenWidthPx, screenHeightPx)?.let { return it }
-        // knownIds fast-path: framework deep search — immune to the BFS budget
-        // that Home-feed debris can exhaust mid-transition.
-        findKnownIdFullscreenNode(root, rule.knownIds, screenWidthPx, screenHeightPx)?.let { return it }
-        // L2: fullscreen player token (Shorts opened from Home, Reel, Spotlight)
-        // — only consulted where L1 found nothing.
-        return findFullscreenTokenNode(root, rule.tokenHints, screenWidthPx, screenHeightPx)
-    }
-
-    /**
-     * knownIds fast-path: for each documented fullscreen-surface id, one
-     * framework search ([AccessibilityNodeInfo.findAccessibilityNodeInfosByViewId]
-     * — single IPC, any depth, no probe budget), then the SAME >=65%-screen
-     * area verification as the BFS token scan, so this path can never fire on
-     * shelf cards or thumbnails. Empty list = no-op; fail-open on dying
-     * windows; every returned node recycled.
-     */
-    private fun findKnownIdFullscreenNode(
-        root: AccessibilityNodeInfo,
-        knownIds: List<String>,
-        screenWidthPx: Int,
-        screenHeightPx: Int,
-    ): TabHit? {
-        if (knownIds.isEmpty() || screenWidthPx <= 0 || screenHeightPx <= 0) return null
-        val rect = Rect()
-        for (id in knownIds) {
-            val found = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull() ?: continue
-            for (node in found) {
-                node ?: continue
-                // Preloaded (invisible) Shorts surfaces carry fullscreen bounds —
-                // only a VISIBLE, on-screen surface may gate. Fail closed here.
-                val visible = runCatching { node.isVisibleToUser }.getOrDefault(false)
-                val accept = runCatching {
-                    node.getBoundsInScreen(rect)
-                    isPlausibleFullscreenSurface(visible, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)
-                }.getOrDefault(false)
-                if (accept) {
-                    runCatching { node.recycle() }
-                    // [V9] Fullscreen player ⇒ fullscreen cover (null).
-                    return TabHit(null, matchedVia = id)
-                }
-                runCatching { node.recycle() }
-            }
+        // [V11] Fullscreen detection = evidence from the triggering event's
+        // OWN source node — never a tree scan. The former knownIds fast-path
+        // and BFS token scan were both z-order-blind: YouTube's retained
+        // Shorts fragment behind Home passes isVisibleToUser with fullscreen
+        // bounds and gated Home on every probe. An occluded surface emits no
+        // events, so it can never be an event source.
+        if (isFullscreenSourceEvidence(evidence, screenWidthPx, screenHeightPx)) {
+            return TabHit(null, matchedVia = "srcToken(${evidence?.idOrCls})")
         }
-        return null
-    }
-
-    /**
-     * L2: BFS for a node whose viewIdResourceName or className contains one of
-     * [tokenHints] AND whose bounds cover at least [MIN_FULLSCREEN_AREA_FRACTION]
-     * of the screen — i.e. the vertical's fullscreen player. Returns a full-cover
-     * TabHit (top of the player, null when it starts at the screen top). Bounded
-     * like every other probe, fail-open, and a no-op while tokenHints is empty.
-     */
-    private fun findFullscreenTokenNode(
-        root: AccessibilityNodeInfo,
-        tokenHints: List<String>,
-        screenWidthPx: Int,
-        screenHeightPx: Int,
-    ): TabHit? {
-        if (tokenHints.isEmpty() || screenWidthPx <= 0 || screenHeightPx <= 0) return null
-        val deque: ArrayDeque<Pair<AccessibilityNodeInfo, Int>> = ArrayDeque()
-        deque.add(root to 0)
-        var scanned = 0
-        val visited = mutableSetOf<Int>()
-        val rect = Rect()
-        while (deque.isNotEmpty() && scanned < TOKEN_SCAN_MAX_NODES) {
-            val (node, depth) = deque.removeFirst()
-            if (depth > TOKEN_SCAN_MAX_DEPTH) continue
-            val id = System.identityHashCode(node)
-            if (!visited.add(id)) continue
-            scanned++
-
-            val viewId = runCatching { node.viewIdResourceName }.getOrNull()?.lowercase()
-            val cls = runCatching { node.className?.toString() }.getOrNull()?.lowercase()
-            val tokenHit = (viewId != null && tokenHints.any { it in viewId }) ||
-                (cls != null && tokenHints.any { it in cls })
-            if (tokenHit) {
-                // Same visibility-verified acceptance as the knownIds path —
-                // invisible preloads / off-screen surfaces never gate.
-                val visible = runCatching { node.isVisibleToUser }.getOrDefault(false)
-                val accept = runCatching {
-                    node.getBoundsInScreen(rect)
-                    isPlausibleFullscreenSurface(visible, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)
-                }.getOrDefault(false)
-                // [V9] Fullscreen player ⇒ fullscreen cover (null).
-                if (accept) return TabHit(null, matchedVia = viewId ?: cls)
-            }
-            for (i in 0 until node.childCount) {
-                val child = try { node.getChild(i) } catch (_: Throwable) { null } ?: continue
-                deque.add(child to depth + 1)
-            }
+        // [V13] L2b persistent Shorts player — BlockerX proven reel_recycler id, visible + fullscreen.
+        // Fixes: Shorts via Home tab (selected=Home, not Shorts) + continuation after Close (no token events).
+        // Scoped to SHORTS vertical only, area check rejects Home shelf cards.
+        if (vertical == SocialVertical.SHORTS) {
+            findShortsPlayerNode(root, screenWidthPx, screenHeightPx)?.let { return it }
         }
         return null
     }
@@ -251,14 +217,18 @@ object SocialBlockingGate {
     private const val MIN_FULLSCREEN_AREA_FRACTION = 0.80
 
     /**
-     * Visibility-verified fullscreen acceptance — the SINGLE rule both L2 paths
-     * (knownIds fast-path, BFS token scan) must pass. A node qualifies only when
-     * it is VISIBLE to the user (isVisibleToUser: attached + VISIBLE + alpha>0),
-     * covers >=65% of the screen, and its bounds intersect the visible screen.
+     * Visibility-verified fullscreen acceptance — the SINGLE fullscreen rule.
+     * [V11] Applied to the triggering event's OWN source node (see
+     * [isFullscreenSourceEvidence]), never to a tree scan. A surface qualifies
+     * only when it is VISIBLE to the user (isVisibleToUser: attached + VISIBLE
+     * + alpha>0), covers >=80% of the screen, and its bounds intersect the
+     * visible screen.
      *
-     * This is what keeps YouTube's PRELOADED Shorts fragments (pre-warmed for
-     * instant open; hidden via alpha-0 or off-screen layout but still carrying
-     * fullscreen bounds in the a11y tree) from ever gating the Home screen.
+     * Source-evidence semantics also defeat the case isVisibleToUser CANNOT
+     * see (a retained Shorts fragment behind Home stays VISIBLE-flagged with
+     * fullscreen bounds): an occluded surface emits no accessibility events,
+     * so it can never be an event source. Invisible preloads (alpha-0 /
+     * off-screen layout) are rejected by the visibility + bounds legs.
      * Fail-closed for this check: unknown visibility/bounds -> no gate. Pure —
      * unit-tested decision table.
      */
@@ -278,19 +248,50 @@ object SocialBlockingGate {
         return right > 0 && bottom > 0 && left < screenWidthPx && top < screenHeightPx
     }
 
+    /** [V13] YouTube Shorts player ids — BlockerX proven, safe vs Home FP. reel_recycler is the RecyclerView inside Shorts player, not retained behind Home (unlike reel_watch_fragment_root which caused V10/V11 Home FP). */
+    private val YOUTUBE_SHORTS_PLAYER_IDS = listOf("reel_recycler")
+
     /**
-     * The L2a token scan runs with its OWN budget, larger than L1's 200/12:
-     * it only executes after L1 + knownIds missed, behind the 250 ms probe
-     * throttle and the 4 s gate cooldown, and a Home→Shorts transition tree
-     * can carry substantial feed debris before the player subtree. L1 keeps
-     * its original tighter limits — tab detection behavior is untouched.
+     * [V13] Persistent Shorts player detection — finds reel_recycler id that is visible + fullscreen.
+     * Uses framework's indexed findAccessibilityNodeInfosByViewId (O(1) hash, not BFS). Fail-open, recycles.
+     * Only for YouTube SHORTS vertical, called from findActiveTab L2b.
+     * Area check rejects Home shelf cards (5-35% area). isVisibleToUser rejects invisible preloads.
+     * BlockerX uses same id with no Home FP reports.
      */
-    const val TOKEN_SCAN_MAX_NODES = 400
-    const val TOKEN_SCAN_MAX_DEPTH = 14
+    fun findShortsPlayerNode(root: AccessibilityNodeInfo, screenWidthPx: Int, screenHeightPx: Int): TabHit? {
+        for (id in YOUTUBE_SHORTS_PLAYER_IDS) {
+            val nodes = try {
+                root.findAccessibilityNodeInfosByViewId("com.google.android.youtube:id/$id")
+            } catch (_: Throwable) {
+                null
+            } ?: continue
+            for (n in nodes) {
+                try {
+                    if (!runCatching { n.isVisibleToUser }.getOrDefault(false)) continue
+                    val rect = Rect()
+                    val ok = runCatching { n.getBoundsInScreen(rect) }.isSuccess
+                    if (!ok) continue
+                    if (isPlausibleFullscreenSurface(true, rect.left, rect.top, rect.right, rect.bottom, screenWidthPx, screenHeightPx)) {
+                        return TabHit(null, matchedVia = "reel_recycler")
+                    }
+                } finally {
+                    try {
+                        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) n.recycle()
+                    } catch (_: Throwable) {}
+                }
+            }
+        }
+        return null
+    }
 
     /** L2b helpers — pure so they are unit-testable without a11y trees. */
 
-    /** True when [cls] (window class) contains any tokenHint of [vertical]. */
+    /**
+     * True when [cls] contains any tokenHint of [vertical]. [V11] semantics:
+     * [cls] is an event SOURCE's viewId or className — content/click events
+     * carry the source view's identity, never the window class. This is the
+     * live token matcher for source evidence (see [isFullscreenSourceEvidence]).
+     */
     fun matchesToken(cls: String?, vertical: SocialVertical): Boolean {
         cls ?: return false
         val rule = TAB_RULES.values.firstOrNull { it.first == vertical }?.second ?: return false
@@ -455,6 +456,15 @@ object SocialBlockingGate {
     const val UNCONFIRMED_COVER_GRACE_MS = 2_000L
 
     /**
+     * [V11] Probe window after a navigation event — covers Home→Shorts
+     * player inflation after a tap without polling the tree during scroll.
+     * Outside navigation context (and without a token-bearing event source)
+     * the tab gate never touches the tree: sustained feed scrolling cannot
+     * gate, whatever the app keeps in its tree.
+     */
+    const val TRANSITION_GRACE_MS = 1_500L
+
+    /**
      * Key for tab cooldown — pkg|vertical so YouTube Shorts and Snapchat Spotlight don't share cooldown.
      * Whole gate uses plain pkg key (pkg alone) and is persistent after first block (service keeps lastBlockKey).
      */
@@ -462,4 +472,19 @@ object SocialBlockingGate {
 
     fun shouldThrottleAppContentRecheck(lastMs: Long, nowMs: Long, isClick: Boolean): Boolean =
         !isClick && nowMs - lastMs < APP_CONTENT_RECHECK_THROTTLE_MS
+
+    /**
+     * [V11] Navigation-class events — the ONLY contexts in which the tab
+     * gate probes the tree (plus [TRANSITION_GRACE_MS] after one, plus
+     * token-bearing sources). BlockerX-proven mechanism: their detector
+     * accepts exactly {WINDOW_STATE_CHANGED, VIEW_CLICKED,
+     * VIEW_LONG_CLICKED, VIEW_FOCUSED} and never evaluates on scroll.
+     * VIEW_SELECTED is intentionally absent (not subscribed in our
+     * accessibility config; touch nav taps always emit VIEW_CLICKED).
+     */
+    fun isNavigationEventType(type: Int): Boolean =
+        type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+            type == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED ||
+            type == AccessibilityEvent.TYPE_VIEW_FOCUSED
 }

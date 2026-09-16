@@ -162,6 +162,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
          *  social L2b gate bound the click to the bottom-nav region. */
         val clickedBounds: Rect?,
         val windowId: Int,
+        /** [V11] Social-tab source evidence — scoped capture; null for every
+         *  other package/event. Feeds the tab gate's fullscreen rule. */
+        val evidence: SocialBlockingGate.SourceEvidence? = null,
     )
 
     /** Clicked-node payload: subtree texts + screen bounds, one source fetch. */
@@ -189,6 +192,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     @Volatile
     private var lastSocialTabProbeMs: Long = 0L
+
+    /** [V11] Last navigation-class event inside a tab-gate package — probes
+     *  run only in navigation context (event, grace window, or token source). */
+    private var lastSocialNavEventMs: Long = 0L
 
     private val socialTabCooldown = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
@@ -383,18 +390,29 @@ class SafeMeAccessibilityService : AccessibilityService() {
         } else {
             ClickSourceInfo.EMPTY
         }
-        val snapshot = EventSnapshot(type, pkg, cls, texts, clickInfo.texts, clickInfo.bounds, windowId)
+        // [V11] Social-tab source evidence: scoped to tab-gate allow-listed
+        // packages while social blocking is enabled; content events are
+        // rate-limited to the probe cadence. Every other package/event keeps
+        // the identical pipeline — zero added binder calls.
+        val evidence = runCatching { readSocialSourceEvidence(event, type, pkg) }.getOrNull()
+        val snapshot = EventSnapshot(type, pkg, cls, texts, clickInfo.texts, clickInfo.bounds, windowId, evidence)
         // [Social fast lane] Whole-app launch blocks must present while the
         // blocked app is still starting: O(1) membership check on the event's
         // own package, evaluated BEFORE the serial event queue so an
         // event-storm backlog can never delay the cover. Window-state events
         // only; the queued handleEvent, the content backstop and the watchdog
         // remain as deeper delivery layers.
+        // [V13] Schedule fast lane — same rationale: schedule launch blocks were queue-delayed 5s+ because they only lived in handleEvent.
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             try {
                 maybeSocialWholeFastLane(pkg)
             } catch (_: Throwable) {
                 // Fail open — the queued handleEvent still evaluates the gate.
+            }
+            try {
+                maybeScheduleFastLane(pkg)
+            } catch (_: Throwable) {
+                // Fail open — queued handleEvent still evaluates.
             }
         }
         eventScope.launch {
@@ -418,6 +436,54 @@ class SafeMeAccessibilityService : AccessibilityService() {
             val rect = Rect()
             val bounds = runCatching { source.getBoundsInScreen(rect) }.getOrNull()?.let { Rect(rect) }
             return ClickSourceInfo(texts, bounds)
+        } finally {
+            recycle(source)
+        }
+    }
+
+    @Volatile
+    private var lastSocialEvidenceMs = 0L
+
+    /**
+     * [V11] Source-evidence capture for the social tab gate (see
+     * [SocialBlockingGate.SourceEvidence]). Main-thread, bounded, fail-open;
+     * the fetched source node is always recycled. Clicks/long-clicks and
+     * content events of TAB_RULES packages only — the latter rate-limited to
+     * the 250 ms probe cadence. Every other event returns null without a
+     * single binder call, so no other feature's pipeline is touched.
+     */
+    private fun readSocialSourceEvidence(
+        event: AccessibilityEvent,
+        type: Int,
+        pkg: String?,
+    ): SocialBlockingGate.SourceEvidence? {
+        if (cachedSocialState?.enabled != true) return null
+        val vertical = SocialBlockingGate.verticalFor(pkg ?: return null) ?: return null
+        val isClick = type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+            type == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
+        val isContent = type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        if (!isClick && !isContent) return null
+        if (isContent) {
+            val nowMs = SystemClock.elapsedRealtime()
+            if (nowMs - lastSocialEvidenceMs < SocialBlockingGate.APP_CONTENT_RECHECK_THROTTLE_MS) return null
+            lastSocialEvidenceMs = nowMs
+        }
+        val source = runCatching { event.source }.getOrNull() ?: return null
+        return try {
+            val viewId = runCatching { source.viewIdResourceName }.getOrNull()
+            val srcCls = runCatching { source.className?.toString() }.getOrNull()
+            val rect = Rect()
+            val boundsOk = runCatching { source.getBoundsInScreen(rect) }.isSuccess
+            SocialBlockingGate.SourceEvidence(
+                tokenMatched = SocialBlockingGate.matchesToken(viewId, vertical) ||
+                    SocialBlockingGate.matchesToken(srcCls, vertical),
+                isVisible = runCatching { source.isVisibleToUser }.getOrDefault(false),
+                left = if (boundsOk) rect.left else 0,
+                top = if (boundsOk) rect.top else 0,
+                right = if (boundsOk) rect.right else 0,
+                bottom = if (boundsOk) rect.bottom else 0,
+                idOrCls = viewId ?: srcCls ?: "?",
+            )
         } finally {
             recycle(source)
         }
@@ -2242,8 +2308,23 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (!SocialBlockingGate.isVerticalEnabled(vertical, social.youtube, social.facebook, social.snapchat)) return
 
         val now = SystemClock.elapsedRealtime()
-        val isClick = snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED
-        if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isClick)) return
+        val isNav = SocialBlockingGate.isNavigationEventType(snapshot.type)
+        if (isNav) lastSocialNavEventMs = now
+        val isYoutubeShorts = pkg == "com.google.android.youtube" && vertical == SocialBlockingGate.SocialVertical.SHORTS
+        // [V11] Probe ONLY in navigation context (BlockerX-proven mechanism):
+        // on navigation events, within the short transition grace after one,
+        // or when the event's own source carries a vertical token (deep-link/
+        // auto-swipe entry). Sustained feed scrolling never touches the tree —
+        // no tree anomaly can gate Home, whatever the app keeps in it.
+        // [V13] Exception: YouTube SHORTS L2b persistent player (reel_recycler) must run even outside nav context
+        // to fix continuation leak after Close and Shorts via Home tab. Scoped to youtube+SHORTS only, still throttled 250ms.
+        if (!isYoutubeShorts) {
+            if (!isNav &&
+                snapshot.evidence?.tokenMatched != true &&
+                now - lastSocialNavEventMs > SocialBlockingGate.TRANSITION_GRACE_MS
+            ) return
+        }
+        if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isNav)) return
         lastSocialTabProbeMs = now
 
         val key = SocialBlockingGate.throttleKey(pkg, vertical)
@@ -2255,7 +2336,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             val rootPkg = runCatching { root.packageName?.toString() }.getOrNull()
             if (rootPkg != null && rootPkg != pkg) return
             val hit = try {
-                SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx())
+                SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx(), snapshot.evidence)
             } catch (_: Throwable) { null }
             if (hit != null) {
                 socialTabCooldown[key] = now
@@ -2272,7 +2353,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // L2b: bottom-nav-region click whose label matches the vertical —
             // deterministic user-intent signal for navs exposing no selection
             // state. Cover anchored above the tapped nav item (stays tappable).
-            if (isClick &&
+            if (snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED &&
                 SocialBlockingGate.isNavClickFor(
                     snapshot.clickedTexts, snapshot.clickedBounds?.centerY(), snapshot.clickedBounds?.height(),
                     screenHeightPx(), vertical,
@@ -2402,7 +2483,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 return
             }
             val hit = try {
-                SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx())
+                SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx(), snapshot.evidence)
             } catch (_: Throwable) { null }
             if (hit == null) {
                 // Grace: an L2b-raised cover on a tree that exposes no
@@ -2485,6 +2566,29 @@ class SafeMeAccessibilityService : AccessibilityService() {
         lastSocialWholeBlockAt = now
         Log.d(TAG, "social fast lane: gating $pkg")
         launchSocialWholeGate(pkg)
+    }
+
+    /**
+     * [V13] Schedule fast lane — mirrors social whole fast lane.
+     * Fixes launch block >5s delay for schedule-based blocking which previously only lived in handleEvent (serial queue, 5s+ backlog under event storms).
+     * O(1) set lookup, no binder, no tree walk, main-thread, bypasses queue. Shares cooldown with window path.
+     * No post-dismissal guard: window-state means genuine focus gain, should gate immediately.
+     * Scoped: only schedule launch, not internet block.
+     */
+    private fun maybeScheduleFastLane(pkg: String?) {
+        if (pkg == null) return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage) return
+        if (!isScheduleBlocked(pkg)) return
+        // Allow preempting tab cover (full over tab), but not full over full (deduped by cooldown)
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
+        val now = SystemClock.elapsedRealtime()
+        val key = pkg
+        if (lastScheduleBlockKey == key && now - lastScheduleBlockAt < SCHEDULE_COOLDOWN_MS) return
+        lastScheduleBlockKey = key
+        lastScheduleBlockAt = now
+        Log.d(TAG, "schedule fast lane: gating $pkg")
+        launchScheduleGate(pkg)
     }
 
     /**

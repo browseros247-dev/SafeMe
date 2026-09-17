@@ -192,6 +192,10 @@ class SafeMeAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastSocialWholeBlockAt: Long = 0L
 
+    /** [V20] Last pkg gated by socialWhole/schedule — suppresses same-pkg re-gate during HOME transition (black overlay after close) */
+    @Volatile
+    private var lastGatedPkg: String? = null
+
     @Volatile
     private var lastSocialTabProbeMs: Long = 0L
 
@@ -543,15 +547,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
      */
     private fun rearmCooldownsIfGateDismissed() {
         if (Companion.consumeGateDismissedPending()) {
+            val now = SystemClock.elapsedRealtime()
             lastPuBlockAt = 0L
             lastBlockAt = 0L
-            lastSocialWholeBlockAt = 0L
-            lastSocialWholeBlockKey = null
-            socialTabCooldown.clear()
+            // [V20] Don't clear social/schedule to 0 — that caused black overlay after close: poller saw blocked pkg still fg during HOME lag (100-300ms) and re-gated same pkg → second black overlay over HOME. Set to now to enforce 500ms cooldown, preventing same-pkg re-gate during HOME transition. Different pkg still gates instantly (different key).
+            lastSocialWholeBlockAt = now
+            // keep key to enforce dedup for same pkg
             lastSocialTabProbeMs = 0L
-            lastScheduleBlockAt = 0L
-            lastScheduleBlockKey = null
-            Log.d(TAG, "PU: gate dismissed — cooldowns re-armed (incl social+schedule) [V15]")
+            socialTabCooldown.clear()
+            lastScheduleBlockAt = now
+            // keep schedule key (same pkg suppressed 500ms)
+            Log.d(TAG, "PU: gate dismissed — cooldowns re-armed (social+schedule set to now to prevent black overlay) [V20]")
             schedulePostDismissalReprobes()
         }
     }
@@ -1471,6 +1477,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     /** [V15] Direct pkg launch poller — instant blocking independent of event delivery, fixes 3-5s delay */
     /** [V17] Dedicated IO dispatcher + adaptive 50ms for 2s after detection */
+    /** [V20] 25ms fast / 50ms normal — 2x faster, fixes 1-2s delay, still 1 IPC/tick */
     private fun startLaunchBlockPoller() {
         if (launchBlockPollerJob?.isActive == true) return
         launchBlockPollerJob = serviceScope.launch(launchPollerDispatcher) {
@@ -1480,7 +1487,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 } catch (_: Throwable) {
                 }
                 val now = SystemClock.elapsedRealtime()
-                val interval = if (now < fastModeUntilMs) 50L else 100L
+                val interval = if (now < fastModeUntilMs) 25L else 50L
                 delay(interval)
             }
         }
@@ -1494,7 +1501,6 @@ class SafeMeAccessibilityService : AccessibilityService() {
      * [V17] Multi-source fg detection + dedicated dispatcher + 500L dedup + cooldown AFTER HOME + adaptive fast mode
      */
     private fun directPkgLaunchBlockProbe() {
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
         var fgPkg: String? = null
         val root = try { rootInActiveWindow } catch (_: Throwable) { null }
         if (root != null) {
@@ -1507,14 +1513,21 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (fgPkg == null) return
         val own = applicationContext.packageName ?: return
         if (fgPkg == own) return
+        // [V20] Suppress same-pkg re-gate during HOME transition after Close — fixes black overlay after close. Allow different pkg to preempt during dismiss animation (fixes dead zone).
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && fgPkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (fgPkg == lastGatedPkg) return
+            // else different pkg → allow preempt (don't return)
+        }
         val social = cachedSocialState
         if (social != null && social.enabled && SocialBlockingGate.isWholeAppBlocked(fgPkg, social.wholeBlocked)) {
-            Log.d(TAG, "direct pkg poller: gating social whole $fgPkg [V19]")
+            Log.d(TAG, "direct pkg poller: gating social whole $fgPkg [V20]")
             launchSocialWholeGate(fgPkg)
             return
         }
         if (isScheduleBlocked(fgPkg)) {
-            Log.d(TAG, "direct pkg poller: gating schedule $fgPkg [V19]")
+            Log.d(TAG, "direct pkg poller: gating schedule $fgPkg [V20]")
             launchScheduleGate(fgPkg)
             return
         }
@@ -2354,24 +2367,30 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     private fun launchScheduleGate(pkg: String) {
         val now = SystemClock.elapsedRealtime()
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
         if (lastScheduleBlockKey == pkg && now - lastScheduleBlockAt < 500L) return
         try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
         lastScheduleBlockKey = pkg
         lastScheduleBlockAt = now
+        lastGatedPkg = pkg
         fastModeUntilMs = now + 2000L
-        Log.d(TAG, "schedule gate: $pkg [V19]")
+        Log.d(TAG, "schedule gate: $pkg [V20]")
         BlockOverlayController.showInstantLaunchBlock(this, pkg, "", "schedule")
     }
 
     private fun launchSocialWholeGate(pkg: String) {
         val now = SystemClock.elapsedRealtime()
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
         val key = "socialWhole|$pkg"
         if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
         val label = pkg
-        Log.d(TAG, "social whole gate: $pkg [V19]")
+        Log.d(TAG, "social whole gate: $pkg [V20]")
         try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
         lastSocialWholeBlockKey = key
         lastSocialWholeBlockAt = now
+        lastGatedPkg = pkg
         fastModeUntilMs = now + 2000L
         BlockOverlayController.showInstantLaunchBlock(this, pkg, label, "socialWhole")
         serviceScope.launch {
@@ -2655,8 +2674,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (!social.enabled || social.wholeBlocked.isEmpty()) return
         val pkg = snapshot.pkg ?: return
         if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
-        Log.d(TAG, "social content backstop: gating $pkg [V19]")
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "social content backstop: gating $pkg [V20]")
         launchSocialWholeGate(pkg)
     }
 
@@ -2676,8 +2700,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
         if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
-        Log.d(TAG, "social fast lane: gating $pkg [V19]")
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close, allow different pkg preempt
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "social fast lane: gating $pkg [V20]")
         launchSocialWholeGate(pkg)
     }
 
@@ -2693,8 +2722,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
         if (!isScheduleBlocked(pkg)) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
-        Log.d(TAG, "schedule fast lane: gating $pkg [V19]")
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "schedule fast lane: gating $pkg [V20]")
         launchScheduleGate(pkg)
     }
 
@@ -2710,7 +2744,6 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private fun socialWatchdogProbe() {
         val social = cachedSocialState ?: return
         if (!social.enabled || social.wholeBlocked.isEmpty()) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
         var pkg: String? = null
         val identityRoot = try { rootInActiveWindow } catch (t: Throwable) { null }
         if (identityRoot != null) {
@@ -2724,7 +2757,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
         if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
-        Log.d(TAG, "social watchdog: gating $pkg [V19]")
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "social watchdog: gating $pkg [V20]")
         launchSocialWholeGate(pkg)
     }
 

@@ -251,7 +251,8 @@ object BlockOverlayController {
                 launchFallbackActivity(context, pkg, matched, type)
             }
         }
-        if (isMain) task.run() else mainHandler.post(task)
+        // [V20] Front-of-queue for instant blank — fixes 1-2s delay from main queue backlog
+        if (isMain) task.run() else mainHandler.postAtFrontOfQueue(task)
     }
 
     private fun attachInstantBlank(context: Context) {
@@ -286,13 +287,9 @@ object BlockOverlayController {
         prefs: BlockScreenPrefsState,
     ) {
         try {
-            instantBlankView?.let { v ->
-                try {
-                    if (v.isAttachedToWindow) wm?.removeView(v)
-                } catch (_: Throwable) {
-                }
-            }
-            instantBlankView = null
+            // [V20] Guard — if gate dismissed or replaced, don't re-attach (fixes black overlay after close from pending upgrade task)
+            if (!showing || showingType != type || lastPkg != pkg) return
+            // [V20] Attach full first, then remove blank — keeps black cover during Compose init, no flash / 1-2s perceived delay
             // If a full overlay already attached (race), remove it first
             overlayView?.let { v ->
                 try {
@@ -304,6 +301,13 @@ object BlockOverlayController {
             lifecycleOwner?.destroy()
             lifecycleOwner = null
             attachOverlay(context, pkg, matched, type, prefs, null)
+            instantBlankView?.let { v ->
+                try {
+                    if (v.isAttachedToWindow) wm?.removeView(v)
+                } catch (_: Throwable) {
+                }
+            }
+            instantBlankView = null
         } catch (t: Throwable) {
             throw t
         }

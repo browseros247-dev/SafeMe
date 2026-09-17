@@ -6,13 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.safeme.app.data.InstalledApp
 import com.safeme.app.data.SocialBlockingPrefs
 import com.safeme.app.data.SocialBlockingState
+import com.safeme.app.data.KEY_SOCIAL_FACEBOOK
+import com.safeme.app.data.KEY_SOCIAL_SNAPCHAT
+import com.safeme.app.data.KEY_SOCIAL_YOUTUBE
 import com.safeme.app.data.applySocialPreset
-import com.safeme.app.data.setSocialBlockingEnabled
-import com.safeme.app.data.setSocialFacebook
-import com.safeme.app.data.setSocialSnapchat
 import com.safeme.app.data.setSocialWholeBlocked
-import com.safeme.app.data.setSocialYoutube
 import com.safeme.app.data.socialBlockingPrefs
+import com.safeme.app.data.toggleSocialEnabled
+import com.safeme.app.data.toggleSocialVertical
+import com.safeme.app.data.toggleSocialWholeBlocked
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -108,9 +110,9 @@ class SocialBlockingViewModel(application: Application) : AndroidViewModel(appli
 
     fun toggleMaster() {
         viewModelScope.launch {
-            val cur = _uiState.value
-            val next = !cur.enabled
-            app.setSocialBlockingEnabled(next)
+            // Atomic flip inside the DataStore transaction — rapid taps can
+            // never be swallowed by a stale in-memory read.
+            val next = app.toggleSocialEnabled()
             _toasts.emit(if (next) "Social Media Blocking — on" else "Social Media Blocking — off")
         }
     }
@@ -135,10 +137,13 @@ class SocialBlockingViewModel(application: Application) : AndroidViewModel(appli
             return
         }
         viewModelScope.launch {
-            val next = if (pkg in cur.wholeBlocked) cur.wholeBlocked - pkg else cur.wholeBlocked + pkg
-            app.setSocialWholeBlocked(next)
+            // Toggle the WHOLE FAMILY atomically: blocking "TikTok" stores every
+            // TikTok variant, so the gate enforces on whichever one is installed
+            // and the row can never disagree with enforcement.
+            val family = SocialBlockingPrefs.familyOf(pkg) ?: setOf(pkg)
+            val blocked = app.toggleSocialWholeBlocked(family)
             val name = pkg.substringAfterLast(".").takeIf { it.isNotEmpty() } ?: pkg
-            _toasts.emit(if (pkg in next) "$name blocked" else "$name allowed")
+            _toasts.emit(if (blocked) "$name blocked" else "$name allowed")
         }
     }
 
@@ -159,8 +164,8 @@ class SocialBlockingViewModel(application: Application) : AndroidViewModel(appli
             return
         }
         viewModelScope.launch {
-            app.setSocialYoutube(!cur.youtube)
-            _toasts.emit(if (!cur.youtube) "YouTube Shorts blocked" else "YouTube Shorts allowed")
+            val on = app.toggleSocialVertical(KEY_SOCIAL_YOUTUBE)
+            _toasts.emit(if (on) "YouTube Shorts blocked" else "YouTube Shorts allowed")
         }
     }
 
@@ -171,8 +176,8 @@ class SocialBlockingViewModel(application: Application) : AndroidViewModel(appli
             return
         }
         viewModelScope.launch {
-            app.setSocialFacebook(!cur.facebook)
-            _toasts.emit(if (!cur.facebook) "Facebook Reels blocked" else "Facebook Reels allowed")
+            val on = app.toggleSocialVertical(KEY_SOCIAL_FACEBOOK)
+            _toasts.emit(if (on) "Facebook Reels blocked" else "Facebook Reels allowed")
         }
     }
 
@@ -183,8 +188,8 @@ class SocialBlockingViewModel(application: Application) : AndroidViewModel(appli
             return
         }
         viewModelScope.launch {
-            app.setSocialSnapchat(!cur.snapchat)
-            _toasts.emit(if (!cur.snapchat) "Snapchat Spotlight blocked" else "Snapchat Spotlight allowed")
+            val on = app.toggleSocialVertical(KEY_SOCIAL_SNAPCHAT)
+            _toasts.emit(if (on) "Snapchat Spotlight blocked" else "Snapchat Spotlight allowed")
         }
     }
 

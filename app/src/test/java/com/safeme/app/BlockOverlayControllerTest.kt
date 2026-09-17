@@ -127,4 +127,48 @@ class BlockOverlayControllerTest {
             blockGateWhyReason("", "", "pu", "sched")
         )
     }
+
+    // ---------- Social Media Blocking gate copy ----------
+
+    @Test
+    fun socialWholeGateTitle() {
+        assertEquals("App blocked", blockActivityTitle("socialWhole", "TikTok", "TikTok"))
+    }
+
+    @Test
+    fun socialTabGateTitle() {
+        assertEquals("Tab blocked", blockActivityTitle("socialTab", "YouTube", "YouTube Shorts"))
+    }
+
+    @Test
+    fun socialWholeSubNamesTheMechanism() {
+        assertEquals(
+            "Blocked by Social Media Blocking — whole-app (TikTok)",
+            blockActivitySub("socialWhole", "TikTok"),
+        )
+    }
+
+    @Test
+    fun socialTabSubNamesTheVertical() {
+        assertEquals(
+            "Blocked by Social Media Blocking — tab (YouTube Shorts)",
+            blockActivitySub("socialTab", "YouTube Shorts"),
+        )
+    }
+
+    @Test
+    fun socialWholeWhyWithMatch() {
+        assertEquals(
+            "Why: app blocked by Social Media Blocking (TikTok)",
+            blockGateWhyReason("socialWhole", "TikTok", "pu", "sched"),
+        )
+    }
+
+    @Test
+    fun socialTabWhyWithMatch() {
+        assertEquals(
+            "Why: tab blocked by Social Media Blocking (YouTube Shorts)",
+            blockGateWhyReason("socialTab", "YouTube Shorts", "pu", "sched"),
+        )
+    }
 }

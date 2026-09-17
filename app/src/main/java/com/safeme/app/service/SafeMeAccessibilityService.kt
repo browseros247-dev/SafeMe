@@ -1,8 +1,10 @@
 package com.safeme.app.service
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.Build
@@ -31,6 +33,7 @@ import com.safeme.app.protect.DeviceAdminUtils
 import com.safeme.app.protect.ImageVideoSearchGate
 import com.safeme.app.protect.PrivateDnsBlockers
 import com.safeme.app.protect.ProtectedSystemPages
+import com.safeme.app.data.schedulePrefs
 import com.safeme.app.protect.ScheduleEngine
 import com.safeme.app.protect.SocialBlockingGate
 import com.safeme.app.protect.UninstallBlockers
@@ -157,8 +160,19 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val cls: String?,
         val texts: List<String>,
         val clickedTexts: List<String>,
+        /** Screen bounds of the clicked node (click events only) — lets the
+         *  social L2b gate bound the click to the bottom-nav region. */
+        val clickedBounds: Rect?,
         val windowId: Int,
+        /** [V11] Social-tab source evidence — scoped capture; null for every
+         *  other package/event. Feeds the tab gate's fullscreen rule. */
+        val evidence: SocialBlockingGate.SourceEvidence? = null,
     )
+
+    /** Clicked-node payload: subtree texts + screen bounds, one source fetch. */
+    private data class ClickSourceInfo(val texts: List<String>, val bounds: Rect?) {
+        companion object { val EMPTY = ClickSourceInfo(emptyList(), null) }
+    }
 
     @Volatile
     private var cachedState: BlockingPrefsState? = null
@@ -178,8 +192,16 @@ class SafeMeAccessibilityService : AccessibilityService() {
     @Volatile
     private var lastSocialWholeBlockAt: Long = 0L
 
+    /** [V20] Last pkg gated by socialWhole/schedule — suppresses same-pkg re-gate during HOME transition (black overlay after close) */
+    @Volatile
+    private var lastGatedPkg: String? = null
+
     @Volatile
     private var lastSocialTabProbeMs: Long = 0L
+
+    /** [V11] Last navigation-class event inside a tab-gate package — probes
+     *  run only in navigation context (event, grace window, or token source). */
+    private var lastSocialNavEventMs: Long = 0L
 
     private val socialTabCooldown = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
@@ -222,6 +244,16 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     /** PU watchdog job — periodically re-probes the active window so our a11y detail page is evicted on every activation. */
     private var puWatchdogJob: Job? = null
+
+    /** [V15] Direct pkg launch poller — instant blocking independent of event delivery, fixes 3-5s delay */
+    private var launchBlockPollerJob: Job? = null
+
+    /** [V17] Dedicated dispatcher to avoid Default contention with eventScope */
+    private val launchPollerDispatcher = Dispatchers.IO
+
+    /** [V17] Fast mode until — adaptive 50ms for 2s after detection */
+    @Volatile
+    private var fastModeUntilMs = 0L
 
     /** Separate cooldown tracker for PU blocks — [M1 fix] prevents PU cooldown from suppressing keyword blocks. */
     @Volatile
@@ -340,9 +372,41 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 Log.w(TAG, "socialBlockingPrefs collect failed — using last cached", t)
             }
         }
+        // [V15] Sync load schedule prefs — fixes async init 100-500ms delay where launchBlockedPackages empty at first window event
+        runCatching {
+            runBlocking {
+                val initialSchedule = this@SafeMeAccessibilityService.schedulePrefs().first()
+                ScheduleEngine.apply(this@SafeMeAccessibilityService, initialSchedule.schedules, initialSchedule.excludedApps)
+                Log.d(TAG, "schedule: initial sync load applied launch=${initialSchedule.schedules.size}")
+            }
+        }.onFailure { t ->
+            Log.w(TAG, "schedule: initial sync load failed — using empty", t)
+        }
+        // [V17] Pre-cache block screen prefs for instant launch path — no DataStore IO on critical path
+        runCatching {
+            runBlocking {
+                BlockOverlayController.preCachePrefs(this@SafeMeAccessibilityService)
+                Log.d(TAG, "overlay: pre-cached prefs")
+            }
+        }.onFailure { t ->
+            Log.w(TAG, "overlay: pre-cache failed", t)
+        }
+        // [V17] Pre-warm ComposeView dummy on main to warm runtime (best effort)
+        runCatching {
+            Handler(Looper.getMainLooper()).post {
+                try {
+                    // Dummy warm — create ComposeView, set empty content, then dispose
+                    val dummy = androidx.compose.ui.platform.ComposeView(this@SafeMeAccessibilityService)
+                    dummy.setContent { }
+                } catch (_: Throwable) {
+                }
+            }
+        }
         // PU watchdog: enforces eviction of our own a11y detail page on every
         // activation (not just window-state-changed events).
         startPuWatchdog()
+        // [V15] Direct pkg launch poller — instant blocking independent of event delivery (OEMs drop events)
+        startLaunchBlockPoller()
         // [Overlay gate] a11y overlay windows belong to the service connection;
         // if the system reset it (OEM rebind), the window is silently removed
         // while the controller still thinks it is showing — re-assert it now.
@@ -367,14 +431,38 @@ class SafeMeAccessibilityService : AccessibilityService() {
             event.text?.map { it.toString() } ?: emptyList()
         }.getOrDefault(emptyList())
         val windowId = runCatching { event.windowId }.getOrDefault(-1)
-        val clickedTexts = if (type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+        val clickInfo = if (type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
             type == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
         ) {
-            runCatching { readClickedSourceTexts(event) }.getOrDefault(emptyList())
+            runCatching { readClickedSource(event) }.getOrDefault(ClickSourceInfo.EMPTY)
         } else {
-            emptyList()
+            ClickSourceInfo.EMPTY
         }
-        val snapshot = EventSnapshot(type, pkg, cls, texts, clickedTexts, windowId)
+        // [V11] Social-tab source evidence: scoped to tab-gate allow-listed
+        // packages while social blocking is enabled; content events are
+        // rate-limited to the probe cadence. Every other package/event keeps
+        // the identical pipeline — zero added binder calls.
+        val evidence = runCatching { readSocialSourceEvidence(event, type, pkg) }.getOrNull()
+        val snapshot = EventSnapshot(type, pkg, cls, texts, clickInfo.texts, clickInfo.bounds, windowId, evidence)
+        // [Social fast lane] Whole-app launch blocks must present while the
+        // blocked app is still starting: O(1) membership check on the event's
+        // own package, evaluated BEFORE the serial event queue so an
+        // event-storm backlog can never delay the cover. Window-state events
+        // only; the queued handleEvent, the content backstop and the watchdog
+        // remain as deeper delivery layers.
+        // [V13] Schedule fast lane — same rationale: schedule launch blocks were queue-delayed 5s+ because they only lived in handleEvent.
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            try {
+                maybeSocialWholeFastLane(pkg)
+            } catch (_: Throwable) {
+                // Fail open — the queued handleEvent still evaluates the gate.
+            }
+            try {
+                maybeScheduleFastLane(pkg)
+            } catch (_: Throwable) {
+                // Fail open — queued handleEvent still evaluates.
+            }
+        }
         eventScope.launch {
             try {
                 handleEvent(snapshot)
@@ -389,10 +477,61 @@ class SafeMeAccessibilityService : AccessibilityService() {
      * (the event's source node is recycled with the event). Used by the
      * App Info click pre-empt.
      */
-    private fun readClickedSourceTexts(event: AccessibilityEvent): List<String> {
-        val source = runCatching { event.source }.getOrNull() ?: return emptyList()
+    private fun readClickedSource(event: AccessibilityEvent): ClickSourceInfo {
+        val source = runCatching { event.source }.getOrNull() ?: return ClickSourceInfo.EMPTY
         try {
-            return collectTextsFrom(source)
+            val texts = collectTextsFrom(source)
+            val rect = Rect()
+            val bounds = runCatching { source.getBoundsInScreen(rect) }.getOrNull()?.let { Rect(rect) }
+            return ClickSourceInfo(texts, bounds)
+        } finally {
+            recycle(source)
+        }
+    }
+
+    @Volatile
+    private var lastSocialEvidenceMs = 0L
+
+    /**
+     * [V11] Source-evidence capture for the social tab gate (see
+     * [SocialBlockingGate.SourceEvidence]). Main-thread, bounded, fail-open;
+     * the fetched source node is always recycled. Clicks/long-clicks and
+     * content events of TAB_RULES packages only — the latter rate-limited to
+     * the 250 ms probe cadence. Every other event returns null without a
+     * single binder call, so no other feature's pipeline is touched.
+     */
+    private fun readSocialSourceEvidence(
+        event: AccessibilityEvent,
+        type: Int,
+        pkg: String?,
+    ): SocialBlockingGate.SourceEvidence? {
+        if (cachedSocialState?.enabled != true) return null
+        val vertical = SocialBlockingGate.verticalFor(pkg ?: return null) ?: return null
+        val isClick = type == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+            type == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
+        val isContent = type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        if (!isClick && !isContent) return null
+        if (isContent) {
+            val nowMs = SystemClock.elapsedRealtime()
+            if (nowMs - lastSocialEvidenceMs < SocialBlockingGate.APP_CONTENT_RECHECK_THROTTLE_MS) return null
+            lastSocialEvidenceMs = nowMs
+        }
+        val source = runCatching { event.source }.getOrNull() ?: return null
+        return try {
+            val viewId = runCatching { source.viewIdResourceName }.getOrNull()
+            val srcCls = runCatching { source.className?.toString() }.getOrNull()
+            val rect = Rect()
+            val boundsOk = runCatching { source.getBoundsInScreen(rect) }.isSuccess
+            SocialBlockingGate.SourceEvidence(
+                tokenMatched = SocialBlockingGate.matchesToken(viewId, vertical) ||
+                    SocialBlockingGate.matchesToken(srcCls, vertical),
+                isVisible = runCatching { source.isVisibleToUser }.getOrDefault(false),
+                left = if (boundsOk) rect.left else 0,
+                top = if (boundsOk) rect.top else 0,
+                right = if (boundsOk) rect.right else 0,
+                bottom = if (boundsOk) rect.bottom else 0,
+                idOrCls = viewId ?: srcCls ?: "?",
+            )
         } finally {
             recycle(source)
         }
@@ -408,13 +547,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
      */
     private fun rearmCooldownsIfGateDismissed() {
         if (Companion.consumeGateDismissedPending()) {
+            val now = SystemClock.elapsedRealtime()
             lastPuBlockAt = 0L
             lastBlockAt = 0L
-            lastSocialWholeBlockAt = 0L
-            lastSocialWholeBlockKey = null
-            socialTabCooldown.clear()
+            // [V20] Don't clear social/schedule to 0 — that caused black overlay after close: poller saw blocked pkg still fg during HOME lag (100-300ms) and re-gated same pkg → second black overlay over HOME. Set to now to enforce 500ms cooldown, preventing same-pkg re-gate during HOME transition. Different pkg still gates instantly (different key).
+            lastSocialWholeBlockAt = now
+            // keep key to enforce dedup for same pkg
             lastSocialTabProbeMs = 0L
-            Log.d(TAG, "PU: gate dismissed — cooldowns re-armed (incl social)")
+            socialTabCooldown.clear()
+            lastScheduleBlockAt = now
+            // keep schedule key (same pkg suppressed 500ms)
+            Log.d(TAG, "PU: gate dismissed — cooldowns re-armed (social+schedule set to now to prevent black overlay) [V20]")
             schedulePostDismissalReprobes()
         }
     }
@@ -552,8 +695,33 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // every tick (deduped by cooldowns, but wasteful). Dismissal re-arms
         // the cooldowns via [BlockOverlayController.dismiss] →
         // [onGateDismissed], which pokes this service directly.
-        if (BlockOverlayController.isShowing()) return
+        // [Social tab cover] A scoped TAB cover is supervised instead of
+        // skipped: the events flowing while it is up are exactly the signal
+        // that the user left the blocked tab, and the cover must vanish the
+        // moment they do. Full gates keep the original skip-everything
+        // behavior.
+        if (BlockOverlayController.isShowing()) {
+            if (BlockOverlayController.isShowingTabCover()) {
+                try {
+                    handleSocialTabCoverWatch(snapshot)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "social tab cover watch failed — fail open", t)
+                }
+            }
+            return
+        }
         if (snapshot.type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            // [Social whole backstop] OEMs (Vivo/FuntouchOS) drop or delay
+            // window-state events; any app that paints anything emits content
+            // events. Pure set-membership check — no tree walk — so a
+            // whole-blocked app is gated on its first rendered frame even
+            // when its window-state event never arrives.
+            try {
+                maybeSocialWholeContentGate(snapshot)
+            } catch (t: Throwable) {
+                Log.w(TAG, "social whole content backstop failed — fail open", t)
+            }
+            if (BlockOverlayController.isShowing()) return
             // [PU content events] In-page Settings navigation — most
             // importantly OUR OWN a11y detail page hosted in a generic
             // SubSettings container — opens without a window-state change, so
@@ -673,18 +841,17 @@ class SafeMeAccessibilityService : AccessibilityService() {
         try {
             val social = cachedSocialState
             if (social != null && social.enabled) {
-                // Whole-app: block on launch (TYPE_WINDOW_STATE_CHANGED)
+                // Whole-app: block on launch (TYPE_WINDOW_STATE_CHANGED) [V19] centralized in launchSocialWholeGate
                 if (SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) {
-                    val key = "socialWhole|$pkg"
-                    val now = SystemClock.elapsedRealtime()
-                    if (!(lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < COOLDOWN_MS)) {
-                        lastSocialWholeBlockKey = key
-                        lastSocialWholeBlockAt = now
-                        launchSocialWholeGate(pkg)
-                    }
+                    launchSocialWholeGate(pkg)
                     return
                 }
-                // Tab gate: only for allow-list pkgs, throttled 250ms + 4s cooldown per pkg|vertical
+                // Tab gate: only for allow-list pkgs, throttled 250ms + 4s cooldown per pkg|vertical.
+                // Fires ONLY while the vertical's tab is the SELECTED bottom-nav tab —
+                // the caption merely being present in the tree (bottom-nav labels always
+                // are) must never gate; that false positive covered the whole app
+                // seconds after launch. The cover spans the area ABOVE the nav bar
+                // (coverAboveY), so the rest of the app stays usable.
                 val vertical = SocialBlockingGate.verticalFor(pkg)
                 if (vertical != null && SocialBlockingGate.isVerticalEnabled(vertical, social.youtube, social.facebook, social.snapchat)) {
                     val now = SystemClock.elapsedRealtime()
@@ -696,15 +863,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
                             val root = try { rootInActiveWindow } catch (_: Throwable) { null }
                             if (root != null) {
                                 try {
-                                    val tabNode = SocialBlockingGate.findTabNode(root, vertical)
-                                    if (tabNode != null) {
-                                        try {
-                                            socialTabCooldown[key] = now
-                                            launchSocialTabGate(pkg, vertical)
-                                            return
-                                        } finally {
-                                            try { tabNode.recycle() } catch (_: Throwable) {}
-                                        }
+                                    val hit = SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx())
+                                    if (hit != null) {
+                                        socialTabCooldown[key] = now
+                                        launchSocialTabGate(pkg, vertical, hit.coverAboveY, via = hit.matchedVia)
+                                        return
                                     }
                                 } finally {
                                     recycle(root)
@@ -956,7 +1119,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
             // the tamper surface (App Info) is about to happen. Raise the gate
             // NOW, before the page renders, so the Uninstall / Force-stop /
             // Clear-data buttons are never tappable. The clicked row's subtree
-            // (snapshot by [readClickedSourceTexts]) must carry the APP NAME
+            // (snapshot by [readClickedSource]) must carry the APP NAME
             // and NOT the service label (a11y rows go through the normal
             // detail-page path below — this pre-empt deliberately never
             // touches a11y-management content).
@@ -1312,6 +1475,82 @@ class SafeMeAccessibilityService : AccessibilityService() {
         }
     }
 
+    /** [V15] Direct pkg launch poller — instant blocking independent of event delivery, fixes 3-5s delay */
+    /** [V17] Dedicated IO dispatcher + adaptive 50ms for 2s after detection */
+    /** [V20] 25ms fast / 50ms normal — 2x faster, fixes 1-2s delay, still 1 IPC/tick */
+    private fun startLaunchBlockPoller() {
+        if (launchBlockPollerJob?.isActive == true) return
+        launchBlockPollerJob = serviceScope.launch(launchPollerDispatcher) {
+            while (true) {
+                try {
+                    directPkgLaunchBlockProbe()
+                } catch (_: Throwable) {
+                }
+                val now = SystemClock.elapsedRealtime()
+                val interval = if (now < fastModeUntilMs) 25L else 50L
+                delay(interval)
+            }
+        }
+    }
+
+    /**
+     * [V15] Direct pkg launch probe — O(1) pkg check, bypasses eventScope queue and post-dismissal dead zone.
+     * Uses rootInActiveWindow (1 IPC) + lastForegroundPkg fallback. Immediate HOME kick + overlay.
+     * Cooldown 1s dedup (not 4s) for instant re-block. No isWithinPostDismissalWindow check — launch should gate even right after dismissal.
+     * Scoped to whole-app social + schedule launch only, no tree walk, no text collection.
+     * [V17] Multi-source fg detection + dedicated dispatcher + 500L dedup + cooldown AFTER HOME + adaptive fast mode
+     */
+    private fun directPkgLaunchBlockProbe() {
+        var fgPkg: String? = null
+        val root = try { rootInActiveWindow } catch (_: Throwable) { null }
+        if (root != null) {
+            fgPkg = try { root.packageName?.toString() } catch (_: Throwable) { null }
+            recycle(root)
+        }
+        if (fgPkg == null) fgPkg = lastForegroundPkg
+        if (fgPkg == null) fgPkg = try { getForegroundViaUsageStats() } catch (_: Throwable) { null }
+        if (fgPkg == null) fgPkg = try { getForegroundViaActivityManager() } catch (_: Throwable) { null }
+        if (fgPkg == null) return
+        val own = applicationContext.packageName ?: return
+        if (fgPkg == own) return
+        // [V20] Suppress same-pkg re-gate during HOME transition after Close — fixes black overlay after close. Allow different pkg to preempt during dismiss animation (fixes dead zone).
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && fgPkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (fgPkg == lastGatedPkg) return
+            // else different pkg → allow preempt (don't return)
+        }
+        val social = cachedSocialState
+        if (social != null && social.enabled && SocialBlockingGate.isWholeAppBlocked(fgPkg, social.wholeBlocked)) {
+            Log.d(TAG, "direct pkg poller: gating social whole $fgPkg [V20]")
+            launchSocialWholeGate(fgPkg)
+            return
+        }
+        if (isScheduleBlocked(fgPkg)) {
+            Log.d(TAG, "direct pkg poller: gating schedule $fgPkg [V20]")
+            launchScheduleGate(fgPkg)
+            return
+        }
+    }
+
+    private fun getForegroundViaUsageStats(): String? {
+        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager ?: return null
+        val now = System.currentTimeMillis()
+        val events = usm.queryEvents(now - 1000L, now)
+        var fg: String? = null
+        val e = android.app.usage.UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(e)
+            if (e.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) fg = e.packageName
+        }
+        return fg
+    }
+
+    private fun getForegroundViaActivityManager(): String? {
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return null
+        return am.runningAppProcesses?.firstOrNull { it.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND }?.processName
+    }
+
     /**
      * One watchdog tick: if PU is on and the foreground is a PU-surface
      * package (Settings-family or the package-installer), probe the active
@@ -1331,6 +1570,16 @@ class SafeMeAccessibilityService : AccessibilityService() {
      */
     private fun puWatchdogTick() {
         rearmCooldownsIfGateDismissed()
+        // [Social watchdog] Whole-app launch-block backstop riding the
+        // already-running 250 ms cadence (the loop is started unconditionally
+        // in onServiceConnected; only this body is feature-gated). No-ops
+        // when social blocking is off/empty. Fully isolated: a failure here
+        // can never disturb the PU tick below.
+        try {
+            socialWatchdogProbe()
+        } catch (t: Throwable) {
+            Log.w(TAG, "social watchdog probe failed — fail open", t)
+        }
         if (!cachedPuEnabled) return
         // [Re-gate latency] Resolve the foreground identity from the ACTIVE
         // window on every tick — never trust the event-derived cache alone.
@@ -2118,34 +2367,78 @@ class SafeMeAccessibilityService : AccessibilityService() {
 
     private fun launchScheduleGate(pkg: String) {
         val now = SystemClock.elapsedRealtime()
-        if (lastScheduleBlockKey == pkg && now - lastScheduleBlockAt < SCHEDULE_COOLDOWN_MS) return
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (lastScheduleBlockKey == pkg && now - lastScheduleBlockAt < 500L) return
+        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
         lastScheduleBlockKey = pkg
         lastScheduleBlockAt = now
-        // [Overlay gate] Same universal overlay host as every other gate type.
-        BlockOverlayController.show(this, pkg, "", "schedule")
+        lastGatedPkg = pkg
+        fastModeUntilMs = now + 2000L
+        Log.d(TAG, "schedule gate: $pkg [V20]")
+        BlockOverlayController.showInstantLaunchBlock(this, pkg, "", "schedule")
     }
 
     private fun launchSocialWholeGate(pkg: String) {
-        val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
-        Log.d(TAG, "social whole gate launched (pkg=$pkg label=$label)")
-        BlockOverlayController.show(this, pkg, label, "socialWhole")
+        val now = SystemClock.elapsedRealtime()
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        val key = "socialWhole|$pkg"
+        if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
+        val label = pkg
+        Log.d(TAG, "social whole gate: $pkg [V20]")
+        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
+        lastSocialWholeBlockKey = key
+        lastSocialWholeBlockAt = now
+        lastGatedPkg = pkg
+        fastModeUntilMs = now + 2000L
+        BlockOverlayController.showInstantLaunchBlock(this, pkg, label, "socialWhole")
+        serviceScope.launch {
+            runCatching {
+                val realLabel = packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+                Log.d(TAG, "social whole gate real label: $realLabel")
+            }
+        }
     }
 
-    private fun launchSocialTabGate(pkg: String, vertical: SocialBlockingGate.SocialVertical) {
+    /** True once the active tab cover was confirmed by tree evidence (L1/L1b/L2). */
+    private var socialTabCoverConfirmed = true
+    private var socialTabCoverRaisedAtMs = 0L
+
+    /**
+     * [confirmed] — false ONLY for covers raised by the L2b nav-click signal on
+     * trees that expose no selection state; the tab watch gives those a grace
+     * window instead of probe-dismissing them immediately, and a nav click on
+     * any other tab dismisses them instantly.
+     */
+    private fun launchSocialTabGate(
+        pkg: String,
+        vertical: SocialBlockingGate.SocialVertical,
+        coverAboveY: Int?,
+        confirmed: Boolean = true,
+        via: String? = null,
+    ) {
         val label = when (vertical) {
             SocialBlockingGate.SocialVertical.SHORTS -> "YouTube Shorts"
             SocialBlockingGate.SocialVertical.REELS -> "Facebook Reels"
             SocialBlockingGate.SocialVertical.SPOTLIGHT -> "Snapchat Spotlight"
         }
-        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical)")
+        socialTabCoverConfirmed = confirmed
+        socialTabCoverRaisedAtMs = SystemClock.elapsedRealtime()
+        Log.d(TAG, "social tab gate launched (pkg=$pkg vertical=$vertical coverAboveY=$coverAboveY confirmed=$confirmed via=$via)")
+        // [V9] Always a FULL-screen cover: the identical block screen every
+        // other gate shows (owner decision — overrides the old nav-usable
+        // scoping). coverAboveY stays in the log for diagnostics; the
+        // controller's scoped-window machinery remains intact and dormant.
         BlockOverlayController.show(this, pkg, label, "socialTab")
     }
 
     /**
      * Social tab re-check on content-changed / click / focus inside FEATURE_PACKAGES.
      * Throttled 250ms (non-click) + 4s cooldown per pkg|vertical. Only runs when
-     * social.enabled && vertical enabled. Finds tab label node (Shorts/Reels/Spotlight)
-     * and overlay the tab node; keeps Feed/Messages/Profile scrollable.
+     * social.enabled && vertical enabled. Fires ONLY while the vertical's tab is
+     * the SELECTED bottom-nav tab (see [SocialBlockingGate.findActiveTab]) and
+     * covers just the area above the nav bar; Feed/Messages/Profile stay usable.
      */
     private fun handleSocialTabContentEvent(snapshot: EventSnapshot) {
         rearmCooldownsIfGateDismissed()
@@ -2158,8 +2451,23 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (!SocialBlockingGate.isVerticalEnabled(vertical, social.youtube, social.facebook, social.snapchat)) return
 
         val now = SystemClock.elapsedRealtime()
-        val isClick = snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED
-        if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isClick)) return
+        val isNav = SocialBlockingGate.isNavigationEventType(snapshot.type)
+        if (isNav) lastSocialNavEventMs = now
+        val isYoutubeShorts = pkg == "com.google.android.youtube" && vertical == SocialBlockingGate.SocialVertical.SHORTS
+        // [V11] Probe ONLY in navigation context (BlockerX-proven mechanism):
+        // on navigation events, within the short transition grace after one,
+        // or when the event's own source carries a vertical token (deep-link/
+        // auto-swipe entry). Sustained feed scrolling never touches the tree —
+        // no tree anomaly can gate Home, whatever the app keeps in it.
+        // [V13] Exception: YouTube SHORTS L2b persistent player (reel_recycler) must run even outside nav context
+        // to fix continuation leak after Close and Shorts via Home tab. Scoped to youtube+SHORTS only, still throttled 250ms.
+        if (!isYoutubeShorts) {
+            if (!isNav &&
+                snapshot.evidence?.tokenMatched != true &&
+                now - lastSocialNavEventMs > SocialBlockingGate.TRANSITION_GRACE_MS
+            ) return
+        }
+        if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isNav)) return
         lastSocialTabProbeMs = now
 
         val key = SocialBlockingGate.throttleKey(pkg, vertical)
@@ -2170,17 +2478,298 @@ class SafeMeAccessibilityService : AccessibilityService() {
         try {
             val rootPkg = runCatching { root.packageName?.toString() }.getOrNull()
             if (rootPkg != null && rootPkg != pkg) return
-            val tabNode = try { SocialBlockingGate.findTabNode(root, vertical) } catch (_: Throwable) { null } ?: return
-            try {
+            val hit = try {
+                SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx(), snapshot.evidence)
+            } catch (_: Throwable) { null }
+            if (hit != null) {
                 socialTabCooldown[key] = now
-                launchSocialTabGate(pkg, vertical)
-            } finally {
-                try { tabNode.recycle() } catch (_: Throwable) {}
+                launchSocialTabGate(pkg, vertical, hit.coverAboveY, via = hit.matchedVia)
+                return
             }
+            // [V10] The former L2a-cls branch was REMOVED here: this handler
+            // only receives content/click/focus events, whose className is the
+            // SOURCE VIEW's class (shelves, scrollers) — never the window class
+            // the branch assumed it saw. It could therefore only fire on
+            // arbitrary scrolled views with a reel/shorts class name: the
+            // Home-scroll false positive. Window-class gating, if ever needed,
+            // belongs in the window path with the actual window class.
+            // L2b: bottom-nav-region click whose label matches the vertical —
+            // deterministic user-intent signal for navs exposing no selection
+            // state. Cover anchored above the tapped nav item (stays tappable).
+            if (snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED &&
+                SocialBlockingGate.isNavClickFor(
+                    snapshot.clickedTexts, snapshot.clickedBounds?.centerY(), snapshot.clickedBounds?.height(),
+                    screenHeightPx(), vertical,
+                )
+            ) {
+                Log.d(TAG, "social tab gate: nav click fired (vertical=$vertical)")
+                socialTabCooldown[key] = now
+                launchSocialTabGate(pkg, vertical, snapshot.clickedBounds?.top, confirmed = false, via = "navClick")
+                return
+            }
+            logSocialProbeMiss(pkg, vertical)
         } finally {
             recycle(root)
         }
     }
+
+    private var lastSocialProbeLogMs = 0L
+
+    /**
+     * Throttled (2 s) one-line tree summary on a probe miss inside a gated app:
+     * one `adb logcat` capture then fully characterises any residual detection
+     * miss, so token tuning stays a data edit instead of a guess-rebuild cycle.
+     */
+    private fun logSocialProbeMiss(pkg: String, vertical: SocialBlockingGate.SocialVertical) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastSocialProbeLogMs < 2_000L) return
+        lastSocialProbeLogMs = now
+        val root = try { rootInActiveWindow } catch (_: Throwable) { null } ?: return
+        try {
+            val sb = StringBuilder()
+            val deque = ArrayDeque<AccessibilityNodeInfo>()
+            deque.add(root)
+            var count = 0
+            while (deque.isNotEmpty() && count < 14) {
+                val n = deque.removeFirst()
+                count++
+                val cls = runCatching { n.className?.toString()?.substringAfterLast('.') }.getOrNull().orEmpty()
+                val vid = runCatching { n.viewIdResourceName?.substringAfterLast('/') }.getOrNull()
+                val txt = runCatching { (n.text ?: n.contentDescription)?.toString()?.take(14)?.replace('\n', ' ') }.getOrNull()
+                val sel = runCatching { n.isSelected || n.isChecked }.getOrDefault(false)
+                sb.append(cls).append('#').append(vid ?: '-')
+                if (!txt.isNullOrEmpty()) sb.append('[').append(txt).append(']')
+                if (sel) sb.append('*')
+                sb.append("; ")
+                val cc = runCatching { n.childCount }.getOrDefault(0)
+                for (i in 0 until cc) {
+                    val c = runCatching { n.getChild(i) }.getOrNull() ?: continue
+                    deque.add(c)
+                }
+            }
+            Log.d(TAG, "social tab probe miss pkg=$pkg vertical=$vertical nodes($count): $sb")
+        } catch (t: Throwable) {
+            Log.d(TAG, "social probe-miss log failed — fail open")
+        } finally {
+            recycle(root)
+        }
+    }
+
+    /**
+     * [Social tab cover] Supervision for the scoped TAB cover, driven by the
+     * events that flow continuously while it is up (Shorts playback, nav
+     * taps, BACK). Dismisses the moment the user is no longer on the blocked
+     * tab — clearing the gate cooldowns via the standard dismissal signal so
+     * re-entering the tab re-blocks instantly — refits the cover when the nav
+     * bar moved (rotation/font scale), and hands off to the whole-app gate
+     * when the covered package became whole-blocked in the meantime.
+     */
+    private fun handleSocialTabCoverWatch(snapshot: EventSnapshot) {
+        val coveredPkg = BlockOverlayController.coveredPackage() ?: return
+        val social = cachedSocialState
+        if (social == null || !social.enabled) {
+            dismissSocialTabCover()
+            return
+        }
+        if (SocialBlockingGate.isWholeAppBlocked(coveredPkg, social.wholeBlocked)) {
+            // Became whole-blocked → drop the scoped cover; the whole-app
+            // gate fires on the next event or watchdog tick.
+            Log.d(TAG, "social tab watch: $coveredPkg now whole-blocked — handing off")
+            dismissSocialTabCover()
+            return
+        }
+        val pkg = snapshot.pkg
+        val ownPackage = applicationContext.packageName
+        if (pkg != null && pkg != coveredPkg) {
+            // Foreign-package events are only a dismissal signal when the
+            // WINDOW actually changed focus — content/click events also
+            // arrive from toasts, IMEs and background apps while the user is
+            // still on the blocked tab, and our own UI events (the cover's
+            // Close button) must never race the Close snooze semantics.
+            val isWindowChange = snapshot.type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            if (isWindowChange && pkg != "com.android.systemui" && pkg != ownPackage) {
+                Log.d(TAG, "social tab watch: fg=$pkg != covered=$coveredPkg — dismissing")
+                dismissSocialTabCover()
+            }
+            return
+        }
+        val vertical = SocialBlockingGate.verticalFor(coveredPkg) ?: return
+        if (!SocialBlockingGate.isVerticalEnabled(vertical, social.youtube, social.facebook, social.snapchat)) {
+            dismissSocialTabCover()
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        val isClick = snapshot.type == AccessibilityEvent.TYPE_VIEW_CLICKED
+        // [L2b covers] An unconfirmed cover cannot be probe-confirmed on trees
+        // that expose no selection state — a bottom-nav click on ANY other tab
+        // is the deterministic "user left" signal and dismisses at once instead
+        // of waiting out the grace window. Confirmed covers keep their probe-
+        // based dismissal (bit-identical to shipped behavior).
+        if (!socialTabCoverConfirmed && isClick &&
+            SocialBlockingGate.isBottomNavClick(
+                snapshot.clickedBounds?.centerY(), snapshot.clickedBounds?.height(), screenHeightPx(),
+            ) &&
+            !SocialBlockingGate.labelMatchesVertical(snapshot.clickedTexts, vertical)
+        ) {
+            Log.d(TAG, "social tab watch: nav click away from $vertical — dismissing unconfirmed cover")
+            dismissSocialTabCover()
+            return
+        }
+        if (shouldThrottleSocialTabRecheck(lastSocialTabProbeMs, now, isClick)) return
+        lastSocialTabProbeMs = now
+
+        val root = try { rootInActiveWindow } catch (_: Throwable) { null } ?: return
+        try {
+            val rootPkg = runCatching { root.packageName?.toString() }.getOrNull()
+            if (rootPkg != null && rootPkg != coveredPkg && rootPkg != "com.android.systemui") {
+                dismissSocialTabCover()
+                return
+            }
+            val hit = try {
+                SocialBlockingGate.findActiveTab(root, vertical, screenWidthPx(), screenHeightPx(), snapshot.evidence)
+            } catch (_: Throwable) { null }
+            if (hit == null) {
+                // Grace: an L2b-raised cover on a tree that exposes no
+                // confirming evidence gets a short window before probe-miss
+                // dismissal — without it the cover would drop ~250 ms after
+                // appearing, defeating the nav-click gate entirely.
+                if (!socialTabCoverConfirmed &&
+                    now - socialTabCoverRaisedAtMs < SocialBlockingGate.UNCONFIRMED_COVER_GRACE_MS
+                ) {
+                    return
+                }
+                // Blocked tab no longer selected (or tree unreadable) → free
+                // the app. Direction of failure is under-block, never a
+                // whole-app cover.
+                Log.d(TAG, "social tab watch: $coveredPkg|$vertical no longer active — dismissing")
+                dismissSocialTabCover()
+                return
+            }
+            // Tree evidence arrived — the cover is confirmed from here on and
+            // keeps the snappy probe-based dismissal.
+            socialTabCoverConfirmed = true
+            // Still on the blocked tab. [V9] Covers are always full-screen
+            // now — refit(null) is a provable no-op (early-return on equal
+            // height) kept as an OEM-quirk safety net.
+            BlockOverlayController.refitTabCover(null)
+        } finally {
+            recycle(root)
+        }
+    }
+
+    private fun dismissSocialTabCover() {
+        BlockOverlayController.dismissTabCover(clearCooldown = true)
+    }
+
+    /**
+     * [Social whole backstop] Gate a whole-blocked package on ANY event type —
+     * the content-event safety net for dropped/delayed window-state events.
+     * Pure set lookup; shares the whole-gate cooldown key so the fast lane,
+     * window-state path, watchdog and this backstop can never double-gate.
+     * Skipped inside the post-dismissal window so trailing events from the
+     * app being covered away can't re-raise the gate over the HOME transition.
+     */
+    private fun maybeSocialWholeContentGate(snapshot: EventSnapshot) {
+        val social = cachedSocialState ?: return
+        if (!social.enabled || social.wholeBlocked.isEmpty()) return
+        val pkg = snapshot.pkg ?: return
+        if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "social content backstop: gating $pkg [V20]")
+        launchSocialWholeGate(pkg)
+    }
+
+    /**
+     * [Social fast lane] Main-thread O(1) pre-check for whole-app launch
+     * blocks — fires the gate without waiting for the serial event queue, so
+     * an event-storm backlog can never delay the cover. No binder calls, no
+     * tree walks. Shares the whole-gate cooldown key with every other
+     * delivery layer. No post-dismissal guard: a window-state event means a
+     * window genuinely gained focus (the user re-opened the app), which
+     * SHOULD gate immediately.
+     */
+    private fun maybeSocialWholeFastLane(pkg: String?) {
+        if (pkg == null) return
+        val social = cachedSocialState ?: return
+        if (!social.enabled || social.wholeBlocked.isEmpty()) return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage) return
+        if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close, allow different pkg preempt
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "social fast lane: gating $pkg [V20]")
+        launchSocialWholeGate(pkg)
+    }
+
+    /**
+     * [V13] Schedule fast lane — mirrors social whole fast lane.
+     * Fixes launch block >5s delay for schedule-based blocking which previously only lived in handleEvent (serial queue, 5s+ backlog under event storms).
+     * O(1) set lookup, no binder, no tree walk, main-thread, bypasses queue. Shares cooldown with window path.
+     * No post-dismissal guard: window-state means genuine focus gain, should gate immediately.
+     * Scoped: only schedule launch, not internet block.
+     */
+    private fun maybeScheduleFastLane(pkg: String?) {
+        if (pkg == null) return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage) return
+        if (!isScheduleBlocked(pkg)) return
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "schedule fast lane: gating $pkg [V20]")
+        launchScheduleGate(pkg)
+    }
+
+    /**
+     * [Social watchdog] Whole-app gate backstop on the (already running)
+     * 250 ms watchdog cadence: resolves the foreground package with one
+     * cheap identity read and gates when it is whole-blocked and no cover is
+     * up. Covers the OEM case where the window-state event AND the content
+     * flood are both missing (hot task-resume with a static screen). Skips
+     * the post-dismissal window so the HOME transition after Close finishes
+     * without a re-raise.
+     */
+    private fun socialWatchdogProbe() {
+        val social = cachedSocialState ?: return
+        if (!social.enabled || social.wholeBlocked.isEmpty()) return
+        var pkg: String? = null
+        val identityRoot = try { rootInActiveWindow } catch (t: Throwable) { null }
+        if (identityRoot != null) {
+            pkg = try { identityRoot.packageName?.toString() } catch (t: Throwable) { null }
+            recycle(identityRoot)
+        }
+        if (pkg == null) pkg = lastForegroundPkg
+        if (pkg == null) pkg = try { getForegroundViaUsageStats() } catch (_: Throwable) { null }
+        if (pkg == null) pkg = try { getForegroundViaActivityManager() } catch (_: Throwable) { null }
+        if (pkg == null) return
+        val ownPackage = applicationContext.packageName ?: return
+        if (pkg == ownPackage) return
+        if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
+        // [V20] Suppress same-pkg re-gate during HOME transition — fixes black overlay after close
+        val now = SystemClock.elapsedRealtime()
+        if (isWithinPostDismissalWindow() && pkg == lastGatedPkg && now - lastGateDismissalMs < 1000L) return
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) {
+            if (pkg == lastGatedPkg) return
+        }
+        Log.d(TAG, "social watchdog: gating $pkg [V20]")
+        launchSocialWholeGate(pkg)
+    }
+
+    private fun screenWidthPx(): Int = runCatching { resources.displayMetrics.widthPixels }.getOrDefault(0)
+
+    private fun screenHeightPx(): Int = runCatching { resources.displayMetrics.heightPixels }.getOrDefault(0)
 
     /**
      * Re-checks the current foreground window against the schedule sets.
@@ -2342,7 +2931,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         // vector). Longer than the gate-finish animation + one watchdog tick,
         // short enough that a genuine re-activation gates immediately after.
         const val POST_DISMISSAL_EVICT_WINDOW_MS = 1_500L
-        const val SCHEDULE_COOLDOWN_MS = 4_000L
+        const val SCHEDULE_COOLDOWN_MS = 500L
         @Volatile
         private var instance: SafeMeAccessibilityService? = null
 
@@ -2385,6 +2974,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
                 instance?.onGateDismissedImmediate()
             } catch (_: Throwable) {
             }
+        }
+
+        /** [V22B] Set dismissal timestamp immediately at Close start — closes 0-250ms window where same-pkg re-gate caused black overlay after close */
+        fun setLastDismissNow() {
+            lastGateDismissalMs = SystemClock.elapsedRealtime()
         }
 
         /** Returns true once per gate dismissal; consumed by the service instance. */

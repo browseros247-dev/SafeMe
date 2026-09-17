@@ -1,6 +1,7 @@
 package com.safeme.app.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -69,6 +70,45 @@ object SocialBlockingPrefs {
         "com.instagram.lite",
     )
 
+    /** Facebook family (main + Lite) — same product, different install footprint. */
+    val FACEBOOK_PACKAGES: Set<String> = setOf(
+        "com.facebook.katana",
+        "com.facebook.lite",
+    )
+
+    /** Snapchat family (main + Lite). */
+    val SNAPCHAT_PACKAGES: Set<String> = setOf(
+        "com.snapchat.android",
+        "com.snapchat.android.lite",
+    )
+
+    /**
+     * All installable variants of the same product family for [pkg] (e.g. TikTok,
+     * TikTok Lite, TikTok Go), or null when the package has no family. Enforcement
+     * and UI both key off this so a row toggled on covers the variant actually
+     * installed on the device.
+     */
+    fun familyOf(pkg: String): Set<String>? = when {
+        pkg in TIKTOK_PACKAGES -> TIKTOK_PACKAGES
+        pkg in INSTAGRAM_PACKAGES -> INSTAGRAM_PACKAGES
+        pkg in FACEBOOK_PACKAGES -> FACEBOOK_PACKAGES
+        pkg in SNAPCHAT_PACKAGES || pkg.startsWith("com.snapchat") -> SNAPCHAT_PACKAGES
+        else -> null
+    }
+
+    /** True when [pkg] or any sibling of its family is present in [blocked]. */
+    fun isFamilyBlocked(pkg: String, blocked: Set<String>): Boolean =
+        blocked.contains(pkg) || familyOf(pkg)?.any { it in blocked } == true
+
+    /**
+     * Pure toggle core: any family member present -> remove the whole family;
+     * none present -> add the whole family. Keeps the stored set family-consistent
+     * so gate/UI never disagree about a row's state.
+     */
+    fun toggleFamilyInSet(current: Set<String>, family: Set<String>): Set<String> =
+        if (family.isNotEmpty() && family.any { it in current }) current - family
+        else current + family
+
     private fun displayKeyFor(pkg: String): String = when (pkg) {
         in TIKTOK_PACKAGES -> "TikTok"
         in INSTAGRAM_PACKAGES -> "Instagram"
@@ -105,6 +145,40 @@ suspend fun Context.setSocialBlockingEnabled(enabled: Boolean) {
 suspend fun Context.setSocialWholeBlocked(pkgs: Set<String>) {
     val cleaned = pkgs.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     socialBlockingDataStore.edit { it[KEY_SOCIAL_WHOLE_BLOCKED] = cleaned }
+}
+
+/**
+ * Atomic toggles: the read-modify-write happens inside DataStore's serialized
+ * transaction, so rapid consecutive taps can never be swallowed by a stale
+ * in-memory state read. Each returns the resulting value for UI feedback.
+ */
+suspend fun Context.toggleSocialEnabled(): Boolean {
+    var result = false
+    socialBlockingDataStore.edit { prefs ->
+        result = !(prefs[KEY_SOCIAL_ENABLED] ?: true)
+        prefs[KEY_SOCIAL_ENABLED] = result
+    }
+    return result
+}
+
+suspend fun Context.toggleSocialWholeBlocked(family: Set<String>): Boolean {
+    var blocked = false
+    socialBlockingDataStore.edit { prefs ->
+        val current = prefs[KEY_SOCIAL_WHOLE_BLOCKED] ?: SocialBlockingState.DEFAULT_WHOLE_BLOCKED
+        val next = SocialBlockingPrefs.toggleFamilyInSet(current, family)
+        prefs[KEY_SOCIAL_WHOLE_BLOCKED] = next
+        blocked = next.containsAll(family)
+    }
+    return blocked
+}
+
+suspend fun Context.toggleSocialVertical(key: Preferences.Key<Boolean>): Boolean {
+    var on = false
+    socialBlockingDataStore.edit { prefs ->
+        on = !(prefs[key] ?: false)
+        prefs[key] = on
+    }
+    return on
 }
 
 suspend fun Context.setSocialYoutube(enabled: Boolean) {

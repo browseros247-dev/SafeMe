@@ -2976,6 +2976,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
             }
         }
 
+        /** [V22B] Set dismissal timestamp immediately at Close start — closes 0-250ms window where same-pkg re-gate caused black overlay after close */
+        fun setLastDismissNow() {
+            lastGateDismissalMs = SystemClock.elapsedRealtime()
+        }
+
         /** Returns true once per gate dismissal; consumed by the service instance. */
         fun consumeGateDismissedPending(): Boolean {
             if (gateDismissedPending) {

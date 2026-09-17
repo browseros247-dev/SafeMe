@@ -154,9 +154,6 @@ object BlockOverlayController {
     @Volatile
     private var cachedPrefs: BlockScreenPrefsState? = null
 
-    // [V17] Instant blank view for two-stage overlay — 10-30ms perceived block
-    private var instantBlankView: View? = null
-
     private var screenWakeReceiverRegistered = false
     private val screenWakeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -196,9 +193,10 @@ object BlockOverlayController {
     fun getCachedPrefsOrDefault(): BlockScreenPrefsState = cachedPrefs ?: lastPrefs ?: BlockScreenPrefsState()
 
     /**
-     * [V17] Instant launch block — two-stage: blank black view 10-30ms + async upgrade to full BlockOverlay
-     * Perceived block ≤50ms even if Compose init 200-400ms. Used for socialWhole + schedule launch only.
-     * No PackageManager label fetch, no DataStore read on critical path.
+     * [V22B] Instant launch block — Option B: no black screen ever, direct full BlockOverlay only (single-stage).
+     * Previously two-stage black 10-30ms + full 200-400ms caused black overlay after close bug and user complaint about black.
+     * Now direct full with cached prefs (no IO) + postAtFrontOfQueue + preempt = full ≤250ms, zero black ever, single path, -50 lines, no pending upgrade race.
+     * Used for socialWhole + schedule launch only. No PackageManager label fetch, no DataStore read on critical path.
      */
     fun showInstantLaunchBlock(context: Context, pkg: String, matched: String, type: String) {
         val isMain = Looper.myLooper() == Looper.getMainLooper()
@@ -215,102 +213,33 @@ object BlockOverlayController {
                 lastType = type
                 lastMatched = matched
                 lastContext = context
-                attachInstantBlank(context)
-                // Stage 2: upgrade to full overlay async with cached prefs (no IO)
                 val prefs = getCachedPrefsOrDefault()
-                scope.launch {
-                    mainHandler.post {
-                        try {
-                            upgradeToFullOverlay(context, pkg, matched, type, prefs)
-                            registerScreenWakeReceiver(context.applicationContext)
-                            // Activity feed + counter (not on critical path)
-                            if (type != TYPE_SOCIAL_TAB) {
-                                scope.launch {
-                                    runCatching { context.applicationContext.incrementBlockedToday() }
-                                    runCatching {
-                                        val label = pkg // instant, no PM IPC
-                                        context.applicationContext.addActivity(
-                                            ACTIVITY_BLOCK,
-                                            blockActivityTitle(type, label, matched),
-                                            blockActivitySub(type, matched),
-                                        )
-                                    }
-                                }
-                            }
-                        } catch (t: Throwable) {
-                            Log.e(TAG, "instant upgrade failed — keeping blank as fallback", t)
-                            // Keep blank as fallback — still blocked (fail-closed for launch)
+                attachOverlay(context, pkg, matched, type, prefs, null)
+                registerScreenWakeReceiver(context.applicationContext)
+                // Activity feed + counter (not on critical path)
+                if (type != TYPE_SOCIAL_TAB) {
+                    scope.launch {
+                        runCatching { context.applicationContext.incrementBlockedToday() }
+                        runCatching {
+                            val label = pkg // instant, no PM IPC
+                            context.applicationContext.addActivity(
+                                ACTIVITY_BLOCK,
+                                blockActivityTitle(type, label, matched),
+                                blockActivitySub(type, matched),
+                            )
                         }
                     }
                 }
             } catch (t: Throwable) {
-                Log.e(TAG, "instant blank addView failed — activity fallback", t)
+                Log.e(TAG, "instant full addView failed — activity fallback", t)
                 showing = false
                 showingType = ""
                 lastContext = null
                 launchFallbackActivity(context, pkg, matched, type)
             }
         }
-        // [V20] Front-of-queue for instant blank — fixes 1-2s delay from main queue backlog
+        // [V20] Front-of-queue for instant full — fixes 1-2s delay from main queue backlog
         if (isMain) task.run() else mainHandler.postAtFrontOfQueue(task)
-    }
-
-    private fun attachInstantBlank(context: Context) {
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val blank = FrameLayout(context).apply {
-            setBackgroundColor(0xFF000000.toInt())
-            isClickable = true
-            setOnClickListener {}
-        }
-        val lp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT,
-        )
-        lp.gravity = Gravity.TOP
-        windowManager.addView(blank, lp)
-        instantBlankView = blank
-        wm = windowManager
-        overlayLp = lp
-        lastCoverAboveY = null
-    }
-
-    private fun upgradeToFullOverlay(
-        context: Context,
-        pkg: String,
-        matched: String,
-        type: String,
-        prefs: BlockScreenPrefsState,
-    ) {
-        try {
-            // [V20] Guard — if gate dismissed or replaced, don't re-attach (fixes black overlay after close from pending upgrade task)
-            if (!showing || showingType != type || lastPkg != pkg) return
-            // [V20] Attach full first, then remove blank — keeps black cover during Compose init, no flash / 1-2s perceived delay
-            // If a full overlay already attached (race), remove it first
-            overlayView?.let { v ->
-                try {
-                    if (v.isAttachedToWindow) wm?.removeView(v)
-                } catch (_: Throwable) {
-                }
-            }
-            overlayView = null
-            lifecycleOwner?.destroy()
-            lifecycleOwner = null
-            attachOverlay(context, pkg, matched, type, prefs, null)
-            instantBlankView?.let { v ->
-                try {
-                    if (v.isAttachedToWindow) wm?.removeView(v)
-                } catch (_: Throwable) {
-                }
-            }
-            instantBlankView = null
-        } catch (t: Throwable) {
-            throw t
-        }
     }
 
     /** [V17] Immediate removal, no delay — for launch preempt path */
@@ -323,12 +252,7 @@ object BlockOverlayController {
             overlayView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
         } catch (_: Throwable) {
         }
-        try {
-            instantBlankView?.let { v -> if (v.isAttachedToWindow) wm?.removeView(v) }
-        } catch (_: Throwable) {
-        }
         overlayView = null
-        instantBlankView = null
         wm = null
         overlayLp = null
         lifecycleOwner?.destroy()
@@ -670,6 +594,8 @@ object BlockOverlayController {
      */
     fun dismiss() {
         mainHandler.post {
+            // [V22B] Set dismissal timestamp immediately at Close start — closes 0-250ms window where poller re-gated same pkg during HOME lag causing black overlay after close
+            try { SafeMeAccessibilityService.setLastDismissNow() } catch (_: Throwable) {}
             if (!showing) return@post
             launchHome()
             // [V13] Early clear of showing flag — fixes 5s launch delay dead zone where fast lane was blocked by showing=true during 250ms dismiss animation. Window stays attached for visual continuity (removeOverlay delayed), only flag cleared so next launch can re-gate immediately.
@@ -696,14 +622,7 @@ object BlockOverlayController {
             }
         } catch (_: Throwable) {
         }
-        try {
-            instantBlankView?.let { v ->
-                if (v.isAttachedToWindow) wm?.removeView(v)
-            }
-        } catch (_: Throwable) {
-        }
         overlayView = null
-        instantBlankView = null
         wm = null
         overlayLp = null
         lifecycleOwner?.destroy()

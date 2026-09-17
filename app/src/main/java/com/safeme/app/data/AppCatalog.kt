@@ -42,12 +42,26 @@ object AppCatalog {
     /** Fixed display order — the prototype's categories, [OTHER] last. */
     val CATEGORY_ORDER: List<AppCategory> = AppCategory.entries
 
+    @Volatile
+    private var cached: List<InstalledApp>? = null
+    @Volatile
+    private var cachedAt: Long = 0L
+    private const val CACHE_MS = 60_000L
+
+    /** Invalidate cache — call after install/uninstall broadcast if needed */
+    fun invalidate() {
+        cached = null
+        cachedAt = 0L
+    }
+
     /**
      * Discovers launchable apps (ACTION_MAIN + CATEGORY_LAUNCHER), dedupes,
      * excludes SafeMe itself and classifies each app. Slow PackageManager
-     * work — call off the main thread.
+     * work — call off the main thread. [V19] 60s memory cache fixes slow card.
      */
     fun load(context: Context): List<InstalledApp> {
+        val now = android.os.SystemClock.elapsedRealtime()
+        cached?.let { if (now - cachedAt < CACHE_MS) return it }
         val pm = context.packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val resolved = runCatching { pm.queryIntentActivities(intent, 0) }.getOrDefault(emptyList())
@@ -63,6 +77,8 @@ object AppCatalog {
             val category = categorize(pkg, label, ai?.category ?: ApplicationInfo.CATEGORY_UNDEFINED)
             result.add(InstalledApp(pkg, label, category))
         }
+        cached = result
+        cachedAt = now
         return result
     }
 

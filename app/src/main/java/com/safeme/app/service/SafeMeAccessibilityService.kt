@@ -835,17 +835,9 @@ class SafeMeAccessibilityService : AccessibilityService() {
         try {
             val social = cachedSocialState
             if (social != null && social.enabled) {
-                // Whole-app: block on launch (TYPE_WINDOW_STATE_CHANGED) [V15] 1s dedup not 4s for instant re-block [V17] 500L + HOME kick
+                // Whole-app: block on launch (TYPE_WINDOW_STATE_CHANGED) [V19] centralized in launchSocialWholeGate
                 if (SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) {
-                    val key = "socialWhole|$pkg"
-                    val now = SystemClock.elapsedRealtime()
-                    if (!(lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L)) {
-                        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-                        lastSocialWholeBlockKey = key
-                        lastSocialWholeBlockAt = now
-                        fastModeUntilMs = now + 2000L
-                        launchSocialWholeGate(pkg)
-                    }
+                    launchSocialWholeGate(pkg)
                     return
                 }
                 // Tab gate: only for allow-list pkgs, throttled 250ms + 4s cooldown per pkg|vertical.
@@ -1504,42 +1496,25 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private fun directPkgLaunchBlockProbe() {
         if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
         var fgPkg: String? = null
-        // 1. rootInActiveWindow (fast, 1 IPC)
         val root = try { rootInActiveWindow } catch (_: Throwable) { null }
         if (root != null) {
             fgPkg = try { root.packageName?.toString() } catch (_: Throwable) { null }
             recycle(root)
         }
-        // 2. fallback lastForegroundPkg (updated on window events)
         if (fgPkg == null) fgPkg = lastForegroundPkg
-        // 3. fallback UsageStats optional (no crash if permission not granted)
         if (fgPkg == null) fgPkg = try { getForegroundViaUsageStats() } catch (_: Throwable) { null }
-        // 4. fallback ActivityManager
         if (fgPkg == null) fgPkg = try { getForegroundViaActivityManager() } catch (_: Throwable) { null }
         if (fgPkg == null) return
         val own = applicationContext.packageName ?: return
         if (fgPkg == own) return
-        val now = SystemClock.elapsedRealtime()
         val social = cachedSocialState
         if (social != null && social.enabled && SocialBlockingGate.isWholeAppBlocked(fgPkg, social.wholeBlocked)) {
-            val key = "socialWhole|$fgPkg"
-            if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
-            try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-            lastSocialWholeBlockKey = key
-            lastSocialWholeBlockAt = now
-            fastModeUntilMs = now + 2000L
-            Log.d(TAG, "direct pkg poller: gating social whole $fgPkg [V17]")
+            Log.d(TAG, "direct pkg poller: gating social whole $fgPkg [V19]")
             launchSocialWholeGate(fgPkg)
             return
         }
         if (isScheduleBlocked(fgPkg)) {
-            val key = fgPkg
-            if (lastScheduleBlockKey == key && now - lastScheduleBlockAt < 500L) return
-            try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-            lastScheduleBlockKey = key
-            lastScheduleBlockAt = now
-            fastModeUntilMs = now + 2000L
-            Log.d(TAG, "direct pkg poller: gating schedule $fgPkg [V17]")
+            Log.d(TAG, "direct pkg poller: gating schedule $fgPkg [V19]")
             launchScheduleGate(fgPkg)
             return
         }
@@ -2380,11 +2355,11 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private fun launchScheduleGate(pkg: String) {
         val now = SystemClock.elapsedRealtime()
         if (lastScheduleBlockKey == pkg && now - lastScheduleBlockAt < 500L) return
-        // [V15] Instant HOME kick before overlay — makes launch block ≤150ms even if overlay delayed by animation queue
-        // [V17] Cooldown AFTER HOME success, instant blank overlay, no IO on critical path
         try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
         lastScheduleBlockKey = pkg
         lastScheduleBlockAt = now
+        fastModeUntilMs = now + 2000L
+        Log.d(TAG, "schedule gate: $pkg [V19]")
         BlockOverlayController.showInstantLaunchBlock(this, pkg, "", "schedule")
     }
 
@@ -2392,14 +2367,13 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val now = SystemClock.elapsedRealtime()
         val key = "socialWhole|$pkg"
         if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
-        // [V17] No getApplicationLabel on critical path — use pkg as label instantly, fetch real label async for feed
         val label = pkg
-        Log.d(TAG, "social whole gate launched (pkg=$pkg label=$label) [V17]")
+        Log.d(TAG, "social whole gate: $pkg [V19]")
         try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
         lastSocialWholeBlockKey = key
         lastSocialWholeBlockAt = now
+        fastModeUntilMs = now + 2000L
         BlockOverlayController.showInstantLaunchBlock(this, pkg, label, "socialWhole")
-        // Async real label fetch for activity feed (not blocking)
         serviceScope.launch {
             runCatching {
                 val realLabel = packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
@@ -2681,16 +2655,8 @@ class SafeMeAccessibilityService : AccessibilityService() {
         if (!social.enabled || social.wholeBlocked.isEmpty()) return
         val pkg = snapshot.pkg ?: return
         if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return // V17 allow tab preempt
-        // [V15] No post-dismissal skip for launch blocks — direct poller + fast lane already handle HOME transition, and launch should gate even right after dismissal if user reopens app
-        val now = SystemClock.elapsedRealtime()
-        val key = "socialWhole|$pkg"
-        if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
-        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-        lastSocialWholeBlockKey = key
-        lastSocialWholeBlockAt = now
-        fastModeUntilMs = now + 2000L
-        Log.d(TAG, "social content backstop: gating $pkg [V17]")
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
+        Log.d(TAG, "social content backstop: gating $pkg [V19]")
         launchSocialWholeGate(pkg)
     }
 
@@ -2710,15 +2676,8 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
         if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return // V17 fix: allow preempt tab cover
-        val now = SystemClock.elapsedRealtime()
-        val key = "socialWhole|$pkg"
-        if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
-        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-        lastSocialWholeBlockKey = key
-        lastSocialWholeBlockAt = now
-        fastModeUntilMs = now + 2000L
-        Log.d(TAG, "social fast lane: gating $pkg [V17]")
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
+        Log.d(TAG, "social fast lane: gating $pkg [V19]")
         launchSocialWholeGate(pkg)
     }
 
@@ -2734,16 +2693,8 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
         if (!isScheduleBlocked(pkg)) return
-        // Allow preempting tab cover (full over tab), but not full over full (deduped by cooldown)
         if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
-        val now = SystemClock.elapsedRealtime()
-        val key = pkg
-        if (lastScheduleBlockKey == key && now - lastScheduleBlockAt < 500L) return
-        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-        lastScheduleBlockKey = key
-        lastScheduleBlockAt = now
-        fastModeUntilMs = now + 2000L
-        Log.d(TAG, "schedule fast lane: gating $pkg [V17]")
+        Log.d(TAG, "schedule fast lane: gating $pkg [V19]")
         launchScheduleGate(pkg)
     }
 
@@ -2759,8 +2710,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
     private fun socialWatchdogProbe() {
         val social = cachedSocialState ?: return
         if (!social.enabled || social.wholeBlocked.isEmpty()) return
-        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return // V17 allow tab preempt
-        // [V15] No post-dismissal skip for launch blocks — same rationale as content backstop
+        if (BlockOverlayController.isShowing() && !BlockOverlayController.isShowingTabCover()) return
         var pkg: String? = null
         val identityRoot = try { rootInActiveWindow } catch (t: Throwable) { null }
         if (identityRoot != null) {
@@ -2774,14 +2724,7 @@ class SafeMeAccessibilityService : AccessibilityService() {
         val ownPackage = applicationContext.packageName ?: return
         if (pkg == ownPackage) return
         if (!SocialBlockingGate.isWholeAppBlocked(pkg, social.wholeBlocked)) return
-        val now = SystemClock.elapsedRealtime()
-        val key = "socialWhole|$pkg"
-        if (lastSocialWholeBlockKey == key && now - lastSocialWholeBlockAt < 500L) return
-        try { performGlobalAction(GLOBAL_ACTION_HOME) } catch (_: Throwable) {}
-        lastSocialWholeBlockKey = key
-        lastSocialWholeBlockAt = now
-        fastModeUntilMs = now + 2000L
-        Log.d(TAG, "social watchdog: gating $pkg [V17]")
+        Log.d(TAG, "social watchdog: gating $pkg [V19]")
         launchSocialWholeGate(pkg)
     }
 

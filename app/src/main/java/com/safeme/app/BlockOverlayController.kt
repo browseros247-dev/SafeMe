@@ -462,6 +462,9 @@ object BlockOverlayController {
         prefs: BlockScreenPrefsState,
         coverAboveY: Int? = null,
     ) {
+        // [V19] Social tab = immediate close (dwell 0) + stay in app + allow other tabs after close (user report: "can close without timeout & can tab others")
+        // Whole-app social / schedule / PU / keyword = same as other gates (dwell = prefs.dwell + HOME)
+        val effectiveDwell = if (type == TYPE_SOCIAL_TAB) 0 else prefs.dwell.coerceAtLeast(0)
         val owner = OverlayLifecycleOwner().apply { performCreate() }
         // The ComposeView defaults to DisposeOnDetachedFromWindow for
         // programmatic creation, which is what we want: re-attaching after a
@@ -472,7 +475,7 @@ object BlockOverlayController {
             setContent {
                 SafeMeApp {
                     BlockOverlay(
-                        dwell = prefs.dwell.coerceAtLeast(0),
+                        dwell = effectiveDwell,
                         msg = blockGateMessage(
                             prefs.message,
                             context.getString(R.string.bs_preview_msg_default),

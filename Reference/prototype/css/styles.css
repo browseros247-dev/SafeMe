@@ -565,3 +565,496 @@
   /* ---------- Sheet category chips (KeywordManagerScreen CategoryPicker) ---------- */
   #sheetKw .chips,#sheetSite .chips{flex-wrap:wrap;overflow:visible;gap:8px}
   #sheetKw .chip,#sheetSite .chip{font-size:12px;font-weight:600}
+
+
+  /* ---------- Secure Tunnel Developer Mode full-screen layout ---------- */
+  .dev-screen .sub-desc{max-width:300px}
+  .dev-hero{padding:14px;background:linear-gradient(150deg,var(--brand-mist),var(--brand-soft));border-color:rgba(217,119,87,.32)}
+  .dev-hero-top{display:flex;align-items:center;gap:12px}
+  .dev-icon{width:42px;height:42px;border-radius:14px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 7px 16px rgba(217,119,87,.25)}
+  .dev-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .dev-hero-copy{flex:1;min-width:0}
+  .dev-hero-copy .ctitle{font-size:15px;color:var(--brand-dark)}
+  .dev-hero-copy .csub{color:var(--brand-dark);font-size:12px}
+  .dev-warning{margin-top:12px;padding:11px 12px}
+  .dev-card{padding:14px}
+  .dev-card-head{display:flex;align-items:flex-start;gap:10px;min-width:0}
+  .dev-card-head > div:first-child{flex:1;min-width:0}
+  .dev-card-head .btn{flex:none}
+  .dev-kv{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+  .dev-kv:first-of-type{margin-top:12px}
+  .dev-kv b{color:var(--ink);font-size:12px;text-align:right;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dev-actions{display:flex;gap:8px;margin-top:12px}
+  .dev-actions .btn{flex:1;min-width:0}
+  .dev-actions-secondary{margin-top:8px}
+  .dev-actions-danger{border-top:1px solid var(--line);padding-top:12px}
+  .dev-screen .field{margin-top:10px}
+  .dev-screen .field:first-of-type{margin-top:14px}
+  .dev-screen .group-label{margin-top:18px}
+  .dev-screen .pill{flex:none}
+  @media (max-width:360px){
+    .dev-hero-top{align-items:flex-start;flex-wrap:wrap}
+    .dev-hero-top .pill{margin-left:54px;margin-top:-4px}
+    .dev-card-head{align-items:flex-start}
+    .dev-card-head .btn{padding-left:12px;padding-right:12px}
+  }
+
+
+  /* ---------- Expanded Developer Mode sections ---------- */
+  .dev-seg{margin-top:14px}
+  .dev-monitor-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+  .dev-monitor-item{padding:11px 10px;background:var(--bg);border:1px solid var(--line);border-radius:13px;min-width:0}
+  .dev-monitor-item span{display:block;font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.35px;font-weight:700}
+  .dev-monitor-item b{display:block;font-size:12px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dev-source-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .dev-source{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:74px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink-2);font-size:12px;font-weight:700}
+  .dev-source.on,.dev-source:active{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-dark)}
+  .dev-source-ic{font-size:20px;line-height:20px;color:var(--brand-dark)}
+  .dev-source-status{margin-top:12px;padding:10px 11px;border-radius:12px;background:var(--bg);color:var(--ink-2);font-size:12px;line-height:18px}
+  .dev-form-row{display:flex;gap:8px}
+  .dev-form-row .field{flex:1;min-width:0}
+  .dev-app-screen .app-picker{max-height:calc(100vh - 310px)}
+  @media (max-width:360px){
+    .dev-monitor-grid{grid-template-columns:1fr}
+    .dev-form-row{display:block}
+    .dev-form-row .field + .field{margin-top:10px}
+  }
+
+
+  /* ---------- Collapsed Developer Mode navigation root ---------- */
+  .dev-nav-list{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .dev-nav-card{display:flex;align-items:center;gap:11px;width:100%;min-height:70px;padding:12px 13px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;color:var(--ink);box-shadow:0 1px 2px rgba(31,26,22,.04);transition:.16s var(--ease)}
+  .dev-nav-card:active{transform:scale(.988);border-color:var(--brand);background:var(--brand-mist)}
+  .dev-nav-icon{width:38px;height:38px;border-radius:12px;background:var(--brand-soft);color:var(--brand-dark);display:flex;align-items:center;justify-content:center;flex:none}
+  .dev-nav-icon svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .dev-nav-copy{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+  .dev-nav-copy b{font-size:14px;line-height:18px}
+  .dev-nav-copy small{font-size:11.5px;line-height:16px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dev-nav-status{font-size:10px;color:var(--success);font-weight:800;white-space:nowrap}
+  .dev-nav-chevron{font-size:26px;line-height:20px;color:var(--ink-3);flex:none;margin-left:2px}
+  .dev-nav-card + .dev-nav-card{margin-top:0}
+
+
+  /* ---------- WireGuard-style tunnel editor and request monitoring ---------- */
+  .sub-actions{display:flex;align-items:center;gap:4px;margin-left:auto}
+  .sub-actions .act{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+  .sub-actions .act svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .dev-sensitive-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .dev-sensitive-row:first-child{margin-top:10px}
+  .dev-sensitive-row > div{display:flex;flex-direction:column;gap:3px}
+  .dev-sensitive-row b{font-size:13px}
+  .dev-sensitive-row small{font-size:11.5px;color:var(--ink-2)}
+  .dev-request-log{display:flex;flex-direction:column;gap:8px}
+  .dev-request-log > div{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--ink-2)}
+  .dev-request-log > div:last-child{border-bottom:none}
+  .dev-request-log > div span:nth-child(2){flex:1;min-width:0}
+  .dev-request-log > div b{font-size:12px;color:var(--ink)}
+  .dev-request-log .pill{font-size:9px;padding:4px 7px}
+
+  /* ---------- Two-column collapsed Developer Mode card grid ---------- */
+  .dev-nav-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+  .dev-nav-card{position:relative;display:grid;grid-template-columns:38px 1fr;grid-template-rows:auto 1fr auto;align-items:start;min-height:142px;padding:12px}
+  .dev-nav-card .dev-nav-icon{grid-column:1;grid-row:1}
+  .dev-nav-card .dev-nav-copy{grid-column:1 / -1;grid-row:2;margin-top:10px}
+  .dev-nav-card .dev-nav-status{grid-column:1;grid-row:3;margin-top:8px}
+  .dev-nav-card .dev-nav-chevron{position:absolute;right:11px;top:10px}
+  .dev-nav-card:last-child{grid-column:1 / -1;min-height:92px;grid-template-columns:38px 1fr auto;grid-template-rows:auto 1fr}
+  .dev-nav-card:last-child .dev-nav-copy{grid-column:2;grid-row:1 / -1;margin-top:0;align-self:center}
+  .dev-nav-card:last-child .dev-nav-status{grid-column:3;grid-row:1;align-self:center;margin-top:0;margin-right:22px}
+  @media (max-width:360px){
+    .dev-nav-card{min-height:150px}
+  }
+
+  /* ---------- Developer Mode configuration FAB and six-card grid ---------- */
+  .dev-nav-card:last-child{grid-column:auto;min-height:142px;grid-template-columns:38px 1fr;grid-template-rows:auto 1fr auto}
+  .dev-nav-card:last-child .dev-nav-copy{grid-column:1 / -1;grid-row:2;margin-top:10px;align-self:initial}
+  .dev-nav-card:last-child .dev-nav-status{grid-column:1;grid-row:3;align-self:initial;margin-top:8px;margin-right:0}
+  .dev-fab{position:sticky;bottom:12px;display:flex;align-items:center;gap:8px;margin:14px 0 0 auto;height:48px;padding:0 18px;border-radius:999px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;box-shadow:0 8px 20px rgba(217,119,87,.35);z-index:4}
+  .dev-fab svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+  .dev-capture-minimal{margin-top:14px}
+
+  /* ---------- Screenshot-aligned Developer Mode settings rows ---------- */
+  .dev-wg-header{flex-wrap:nowrap;align-items:center;padding-bottom:12px}
+  .dev-wg-header h1{flex:1;flex-basis:auto;margin-top:0;font-size:20px;line-height:1.2}
+  .dev-wg-header .sub-actions{margin-left:auto}
+  .dev-wg-section-title{margin:13px 0 9px 8px;color:var(--brand-dark);font-size:14px;font-weight:800;letter-spacing:.1px}
+  .dev-wg-setting-row{display:flex;align-items:center;gap:12px;min-height:62px;padding:7px 4px;color:var(--ink)}
+  .dev-wg-info-row{min-height:62px}
+  .dev-wg-icon{width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex:none;color:var(--ink-2)}
+  .dev-wg-icon svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .dev-wg-copy{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+  .dev-wg-copy b{font-size:15px;line-height:20px;font-weight:600;letter-spacing:.05px}
+  .dev-wg-copy small{color:var(--ink-2);font-size:12.5px;line-height:19px;white-space:normal}
+  .dev-wg-select-row{align-items:center}
+  .dev-wg-select-row .dev-wg-copy{padding-right:4px}
+  .dev-wg-select{max-width:56%;min-width:112px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:inherit;font-size:13px;line-height:20px;text-align:right;padding:8px 4px 8px 8px;outline:none}
+  .dev-wg-select:focus{background:var(--brand-soft);box-shadow:0 0 0 2px var(--brand-soft)}
+  .dev-wg-field{position:relative;display:block;margin:8px 0 14px;padding:17px 14px 10px;border:1px solid var(--ink-3);border-radius:14px;background:transparent;color:var(--ink)}
+  .dev-wg-field:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .dev-wg-field span{position:absolute;top:-9px;left:14px;padding:0 7px;background:var(--bg);color:var(--ink-2);font-size:12px;line-height:18px}
+  .dev-wg-field input{width:100%;font-size:13px;line-height:20px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dev-wg-actions{display:flex;gap:8px;margin-top:12px}
+  .dev-wg-actions .btn{flex:1;min-width:0}
+  .dev-wg-nav-list{display:flex;flex-direction:column;margin-top:12px}
+  .dev-wg-nav-row{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;padding:10px 4px;text-align:left;color:var(--ink);border:0;border-bottom:1px solid var(--line);background:transparent}
+  .dev-wg-nav-row:active{background:var(--brand-mist)}
+  .dev-wg-nav-row .dev-wg-copy b{font-size:15px}
+  .dev-wg-chevron{margin-left:auto;color:var(--ink-3);font-size:28px;line-height:20px}
+  .dev-wg-recovery-row{align-items:flex-start;min-height:82px;padding-top:8px;padding-bottom:8px}
+  .dev-wg-recovery-row .dev-wg-copy{padding-top:1px}
+  .dev-wg-recovery-row .sw{margin-top:4px}
+  .dev-wg-recovery-row .dev-wg-select{align-self:center;min-width:82px;max-width:92px;font-size:14px}
+  @media (max-width:360px){
+    .dev-wg-setting-row{gap:8px;padding-left:0;padding-right:0}
+    .dev-wg-copy b{font-size:14px}
+    .dev-wg-copy small{font-size:11.5px;line-height:18px}
+    .dev-wg-select{max-width:49%;min-width:92px;font-size:12px}
+    .dev-wg-field input{font-size:12px}
+    .dev-wg-recovery-row .dev-wg-select{min-width:76px}
+  }
+
+  /* ---------- DNS choice rows and Tunnel configuration screen ---------- */
+  .dev-wg-choice{display:flex;align-items:center;justify-content:flex-end;gap:8px;max-width:58%;min-width:132px;padding:8px 2px 8px 8px;color:var(--ink);font-size:13px;line-height:20px;text-align:right;white-space:nowrap}
+  .dev-wg-choice:active{color:var(--brand-dark)}
+  .dev-wg-choice span:first-child{overflow:hidden;text-overflow:ellipsis}
+  .dev-wg-down{color:var(--ink-2);font-size:22px;line-height:16px;transform:translateY(-2px)}
+  .dev-wg-config-list{display:flex;flex-direction:column;margin-top:16px}
+  .dev-wg-config-row{display:flex;align-items:center;gap:12px;min-height:76px;padding:12px 4px;border-bottom:1px solid var(--line)}
+  .dev-wg-config-row .dev-wg-copy{flex:1}
+  .dev-wg-config-row .sw{margin-left:auto}
+  .dev-choice-sheet{padding-left:0;padding-right:0;max-height:72%;background:var(--surface)}
+  .dev-choice-sheet .grab{margin-bottom:10px}
+  .dev-choice-sheet-short{max-height:50%}
+  .dev-choice-option{display:flex;align-items:center;gap:12px;width:100%;min-height:76px;padding:12px 20px;border-bottom:1px solid var(--line);color:var(--ink);text-align:left;background:transparent}
+  .dev-choice-option:active{background:var(--brand-mist)}
+  .dev-choice-option > span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+  .dev-choice-option b{font-size:15px;line-height:20px;font-weight:600}
+  .dev-choice-option small{font-size:12px;line-height:18px;color:var(--ink-2)}
+  .dev-choice-option .dev-wg-icon{width:36px}
+  .dev-choice-check{margin-left:auto;color:var(--brand);font-size:28px;line-height:28px;font-weight:700}
+  @media (max-width:360px){
+    .dev-wg-choice{max-width:52%;min-width:108px;font-size:12px}
+    .dev-choice-option{padding-left:14px;padding-right:14px}
+    .dev-choice-option b{font-size:14px}
+    .dev-choice-option small{font-size:11.5px}
+  }
+
+  /* ---------- Collapsible prototype navigation ---------- */
+  .ptb{transition:width .22s var(--ease)}
+  .ptb-head-top{display:flex;align-items:flex-start;gap:10px}
+  .ptb-brand-copy{flex:1;min-width:0}
+  .ptb-toggle{width:34px;height:34px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink-2);display:flex;align-items:center;justify-content:center;flex:none;transition:.18s var(--ease)}
+  .ptb-toggle:hover{background:var(--brand-soft);color:var(--brand-dark);border-color:var(--brand)}
+  .ptb-toggle:active{transform:scale(.95)}
+  .ptb-toggle svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .22s var(--ease)}
+  .ptb.is-collapsed{width:72px}
+  .ptb.is-collapsed .ptb-head{padding:14px 12px}
+  .ptb.is-collapsed .ptb-head-top{justify-content:center}
+  .ptb.is-collapsed .ptb-brand-copy{display:none}
+  .ptb.is-collapsed .ptb-toggle svg{transform:rotate(180deg)}
+  .ptb.is-collapsed .ptb-groups{padding:10px 8px}
+  .ptb.is-collapsed .ptb-grp{display:none}
+  .ptb.is-collapsed a{justify-content:center;width:48px;height:42px;margin:0 auto;padding:8px 4px;gap:0}
+  .ptb.is-collapsed a .ptb-label{display:none}
+  .ptb.is-collapsed a .d{width:auto;font-size:10px;color:var(--ink-2)}
+  .ptb.is-collapsed a.on .d{color:#fff}
+  .ptb.is-collapsed .ptb-foot{display:none}
+  body:has(.ptb.is-collapsed) .stage{left:72px}
+  @supports not selector(body:has(.ptb)){.ptb.is-collapsed ~ .stage{left:72px}}
+  /* ---------- Mobile full-screen prototype mode ---------- */
+  @media (max-width:760px){
+    .stage,
+    body:has(.ptb.is-collapsed) .stage,
+    body:has(.ptb:not(.is-collapsed)) .stage{left:0!important;right:0;padding:0;align-items:stretch}
+    .phone{width:100%;height:100%;min-height:0;border-radius:0;box-shadow:none}
+    .ptb{width:0;height:100%;overflow:visible;background:transparent;border-right:0;box-shadow:none}
+    .ptb.is-collapsed{width:0!important;background:transparent;border-right:0;box-shadow:none}
+    .ptb:not(.is-collapsed){width:min(290px,86vw);background:var(--surface);border-right:1px solid var(--line);box-shadow:var(--shadow-lg);overflow:hidden}
+    .ptb.is-collapsed .ptb-head{padding:0;border-bottom:0}
+    .ptb.is-collapsed .ptb-head-top{display:block}
+    .ptb.is-collapsed .ptb-brand-copy{display:none}
+    .ptb.is-collapsed .ptb-toggle{position:absolute;left:10px;top:12px}
+    .ptb.is-collapsed .ptb-groups,.ptb.is-collapsed .ptb-foot{display:none}
+    .ptb:not(.is-collapsed) .ptb-head{padding:20px 18px 14px}
+    .ptb:not(.is-collapsed) .ptb-head-top{display:flex;align-items:flex-start}
+    .ptb:not(.is-collapsed) .ptb-brand-copy{display:block}
+    .ptb:not(.is-collapsed) .ptb-groups{display:block;padding:12px;overflow:auto}
+    .ptb:not(.is-collapsed) .ptb-foot{display:block}
+    .ptb:not(.is-collapsed) a{justify-content:flex-start;width:auto;height:auto;margin:0;padding:8px 10px;gap:10px}
+    .ptb:not(.is-collapsed) a .ptb-label{display:inline}
+    .ptb:not(.is-collapsed) a .d{width:22px;font-size:10.5px}
+    .ptb:not(.is-collapsed) .ptb-toggle svg{transform:none}
+    .ptb.is-collapsed .ptb-toggle svg{transform:rotate(180deg)}
+  }
+
+  /* ---------- Comprehensive mock tunnel monitoring ---------- */
+  .dev-monitor-disclaimer{margin:-4px 0 10px;color:var(--ink-3);font-size:11px;line-height:17px}
+  .dev-monitor-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  .dev-monitor-overview .dev-monitor-item{padding:10px 9px}
+  .dev-monitor-overview .dev-monitor-item span{font-size:9.5px;letter-spacing:.25px}
+  .dev-monitor-overview .dev-monitor-item b{font-size:13px}
+  .dev-monitor-tabs{display:flex;gap:6px;overflow-x:auto;padding:3px 0 7px}
+  .dev-monitor-tabs button{flex:none;height:34px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);font-size:11.5px;font-weight:700}
+  .dev-monitor-tabs button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-dark)}
+  .dev-monitor-filters{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px}
+  .dev-monitor-filters select{min-width:0;height:40px;padding:0 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:11px}
+  .dev-monitor-search{grid-column:1 / -1;display:flex;align-items:center;gap:8px;height:42px;padding:0 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  .dev-monitor-search:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .dev-monitor-search svg{width:17px;height:17px;stroke:var(--ink-3);fill:none;stroke-width:2;stroke-linecap:round}
+  .dev-monitor-search input{flex:1;min-width:0;font-size:12px}
+  .dev-monitor-view-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 1px 7px;color:var(--ink-2);font-size:11px;font-weight:700}
+  .dev-monitor-view{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+  .dev-monitor-view button{height:26px;padding:0 8px;border-radius:7px;color:var(--ink-2);font-size:10px;font-weight:700}
+  .dev-monitor-view button.on{background:var(--brand);color:#fff}
+  .dev-monitor-log-card{padding:10px 12px}
+  .dev-monitor-event-log{display:flex;flex-direction:column}
+  .dev-monitor-event{padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .dev-monitor-event:last-child{border-bottom:0}
+  .dev-monitor-event:active{background:var(--brand-mist)}
+  .dev-monitor-event-top{display:flex;align-items:center;gap:7px;min-width:0}
+  .dev-monitor-event-top .pill{flex:none;font-size:9px;padding:3px 6px}
+  .dev-monitor-event-top b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--ink)}
+  .dev-monitor-event-top time{flex:none;color:var(--ink-3);font-size:10px;font-variant-numeric:tabular-nums}
+  .dev-monitor-event-count{flex:none;color:var(--brand-dark);font-size:10px}
+  .dev-monitor-event-meta{display:flex;gap:7px;margin:5px 0 0 0;overflow:hidden;color:var(--ink-2);font-size:10.5px;white-space:nowrap}
+  .dev-monitor-event-meta span{overflow:hidden;text-overflow:ellipsis}
+  .dev-monitor-event-meta span + span::before{content:'·';margin-right:7px;color:var(--ink-3)}
+  .dev-monitor-event-detail{display:none;flex-direction:column;gap:3px;margin:8px 0 0;padding:8px 9px;border-radius:10px;background:var(--bg);color:var(--ink-2);font-size:10.5px;line-height:16px}
+  .dev-monitor-event.open .dev-monitor-event-detail{display:flex}
+  .dev-monitor-empty{padding:22px 8px;text-align:center;color:var(--ink-3);font-size:11.5px;line-height:18px}
+  @media (max-width:360px){
+    .dev-monitor-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dev-monitor-filters{grid-template-columns:1fr}
+    .dev-monitor-search{grid-column:auto}
+    .dev-monitor-event-meta{font-size:10px}
+  }
+
+  /* ---------- Tunnel monitoring statistics reference treatment ---------- */
+  #sc-developermonitoring.dev-monitor-screen{
+    --monitor-bg:#1f1f1f;--monitor-surface:#272727;--monitor-line:#4d4d4d;--monitor-ink:#f1f1f1;--monitor-muted:#bdbdbd;
+    background:var(--monitor-bg);color:var(--monitor-ink);padding-left:15px;padding-right:15px;padding-bottom:24px;
+  }
+  #sc-developermonitoring.dev-monitor-screen .dev-wg-header{padding-bottom:8px}
+  #sc-developermonitoring.dev-monitor-screen .dev-wg-header .back{background:transparent;border:0;color:var(--monitor-ink);margin-left:-8px}
+  #sc-developermonitoring.dev-monitor-screen .dev-wg-header .act{color:var(--monitor-muted)}
+  #sc-developermonitoring.dev-monitor-screen .dev-wg-header h1{color:var(--monitor-ink);font-size:19px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-disclaimer{display:flex;align-items:center;gap:7px;margin:0;color:#a8caae;font-size:10.5px;line-height:17px}
+  .dev-monitor-live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#72bd82;box-shadow:0 0 0 3px rgba(114,189,130,.14);flex:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-title{text-align:center;padding:12px 0 18px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-chart{width:42px;height:42px;margin:0 auto 8px;color:#70bf83}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-chart svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-title h2{font-size:23px;line-height:1.1;color:var(--monitor-ink);letter-spacing:-.35px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-title p{margin-top:4px;color:#a9a9a9;font-size:11px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-summary-section{padding:0 0 18px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-section-head h3{font-size:17px;line-height:22px;color:var(--monitor-ink);font-weight:700;letter-spacing:-.15px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-section-head>span{color:#c6c6c6;font-size:11px;white-space:nowrap}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-down{font-size:15px;font-weight:400;margin-left:3px;color:#bcbcbc}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;text-align:center}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-stat{min-width:0}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-stat b{display:block;font-size:21px;line-height:25px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-stat small{display:block;margin-top:3px;color:#d1d1d1;font-size:11px;line-height:15px}
+  #sc-developermonitoring.dev-monitor-screen .stat-denied b{color:#ff7650}
+  #sc-developermonitoring.dev-monitor-screen .stat-retry b{color:#dca02a}
+  #sc-developermonitoring.dev-monitor-screen .stat-total b{color:#dedede}
+  #sc-developermonitoring.dev-monitor-screen .stat-saved b{color:#70bd85}
+  #sc-developermonitoring.dev-monitor-screen .stat-upload b{color:#b36cc1}
+  #sc-developermonitoring.dev-monitor-screen .stat-download b{color:#dedede}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-progress{display:flex;overflow:hidden;width:100%;height:8px;margin-top:13px;border-radius:999px;background:#c3c3c3}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-progress i{display:block;width:0;min-width:0;height:100%;transition:width .2s ease}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-progress i:first-child{background:#ff7650}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-progress i:nth-child(2){background:#dca02a}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-progress i:nth-child(3){background:#b36cc1}
+  #sc-developermonitoring.dev-monitor-screen .usage-progress i:first-child{background:#70bd85}
+  #sc-developermonitoring.dev-monitor-screen .usage-progress i:nth-child(2){background:#b36cc1}
+  #sc-developermonitoring.dev-monitor-screen .dns-progress i:first-child{background:#70bd85}
+  #sc-developermonitoring.dev-monitor-screen .dns-progress i:nth-child(2){background:#ff7650}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-link{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;margin-top:8px;color:var(--monitor-ink);text-align:left}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-link-icon{display:flex;align-items:center;justify-content:center;width:24px;color:#6fc184}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-link-icon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-link span:not(.dev-monitor-link-icon){font-size:15px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-link>b{margin-left:auto;color:#d1d1d1;font-size:28px;font-weight:300;line-height:18px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-list{border-top:1px solid var(--monitor-line)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-row{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;border-bottom:1px solid var(--monitor-line);color:var(--monitor-ink);text-align:left}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-row:active{background:rgba(255,255,255,.06)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:#eef1ec;color:#202020;font-size:14px;font-weight:700;flex:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon.app{background:linear-gradient(135deg,#ef4c3b,#efb52b 50%,#37a768);color:#fff}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon.system{background:#8bc79a;color:#172019}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon.unknown{background:#4b4b4b;color:#e6e6e6}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon.destination{background:#3d4858;color:#b9d0ff}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-copy b{font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-copy small{font-size:10px;color:#a9a9a9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-owner-count{font-size:13px;color:#e0e0e0;font-variant-numeric:tabular-nums}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view-all{min-height:42px;margin-top:0;color:#e2e2e2}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view-all span{font-size:12.5px!important}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-inline-empty{padding:12px 0;color:#a8a8a8;font-size:11px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-taxonomy{margin:2px 0 19px;padding:13px 12px;background:var(--monitor-surface);border:1px solid #3a3a3a;border-radius:14px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-taxonomy .dev-monitor-section-head{margin-bottom:10px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-taxonomy .dev-monitor-section-head h3{font-size:14px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-overview .dev-monitor-item{padding:8px 7px;background:#303030;border:1px solid #454545;border-radius:9px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-overview .dev-monitor-item span{display:block;font-size:8.5px;letter-spacing:.2px;color:#aaa;text-transform:uppercase}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-overview .dev-monitor-item b{display:block;margin-top:3px;color:#eee;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-events-section{padding-top:0;margin-bottom:20px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-events-section>.dev-monitor-section-head{margin-bottom:8px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-events-section>.dev-monitor-section-head>span{font-variant-numeric:tabular-nums}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-tabs{gap:6px;padding:2px 0 9px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-tabs button{height:32px;padding:0 12px;border:1px solid #505050;border-radius:999px;background:transparent;color:#c1c1c1;font-size:11px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-tabs button.on{border-color:#6ebc80;background:#31553a;color:#c6efce}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-filters{gap:6px;margin-top:2px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-filters select{height:38px;padding:0 7px;border:1px solid #4c4c4c;border-radius:8px;background:#292929;color:#e6e6e6;font-size:10.5px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-search{height:38px;padding:0 9px;border:1px solid #4c4c4c;border-radius:8px;background:#292929}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-search:focus-within{border-color:#70bd85;box-shadow:0 0 0 2px rgba(112,189,133,.15)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-search svg{width:16px;height:16px;stroke:#aaa}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-search input{color:#eee;font-size:11px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-search input::placeholder{color:#999}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view-row{margin:9px 0 6px;color:#aaa;font-size:10.5px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view{padding:2px;border:1px solid #4c4c4c;border-radius:7px;background:#292929}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view button{height:25px;padding:0 7px;color:#aaa;font-size:9.5px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view button.on{background:#6d9b75;color:#fff}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-log-card{padding:0;background:transparent;border:0;border-radius:0;box-shadow:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-log{border-top:1px solid var(--monitor-line)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event{padding:10px 0 9px;border-bottom:1px solid var(--monitor-line);cursor:pointer}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event:active{background:rgba(255,255,255,.05)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-top{align-items:flex-start;gap:9px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon{display:flex;align-items:center;justify-content:center;width:25px;height:25px;margin-top:1px;border-radius:4px;background:linear-gradient(135deg,#ef4c3b,#efb52b 50%,#37a768);color:#fff;font-size:12px;font-weight:700;flex:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon.system{background:#8bc79a;color:#172019}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon.unknown{background:#4b4b4b;color:#ececec}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-copy b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f0f0f0;font-size:13px;font-weight:500}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b9b9b9;font-size:10px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-top time{flex:none;color:#d0d0d0;font-size:10px;font-variant-numeric:tabular-nums}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-count{display:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta{align-items:center;gap:6px;margin:6px 0 0 34px;color:#a9a9a9;font-size:9.5px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta span+span::before{content:'·';margin-right:6px;color:#737373}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta .pill{padding:2px 5px;border-radius:999px;background:transparent;font-size:8.5px;text-transform:uppercase}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta .pill.g{color:#83c98d}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta .pill.o{color:#e1ad45}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta .pill.r{color:#ff8064}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-detail{display:none;gap:3px;margin:8px 0 0 34px;padding:8px 9px;border:1px solid #414141;border-radius:7px;background:#292929;color:#bdbdbd;font-size:9.5px;line-height:15px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event.open .dev-monitor-event-detail{display:flex}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-empty{padding:22px 8px;color:#aaa;font-size:11px;line-height:18px;border-bottom:1px solid var(--monitor-line)}
+  #sc-developermonitoring.dev-monitor-screen>.group-label{color:#a9a9a9;margin-top:18px}
+  #sc-developermonitoring.dev-monitor-screen>.card{background:var(--monitor-surface);border-color:#3b3b3b;color:var(--monitor-ink);box-shadow:none}
+  #sc-developermonitoring.dev-monitor-screen>.card .dev-monitor-item{background:#303030;border-color:#454545}
+  #sc-developermonitoring.dev-monitor-screen>.card .dev-monitor-item span{color:#aaa}
+  #sc-developermonitoring.dev-monitor-screen>.card .dev-monitor-item b{color:#eee}
+  #sc-developermonitoring.dev-monitor-screen>.card .dev-actions .btn{background:#36553c;color:#d6f0da}
+  #sc-developermonitoring.dev-monitor-screen>.card .dev-kv{border-color:#454545;color:#bdbdbd}
+  #sc-developermonitoring.dev-monitor-screen>.card .dev-kv b{color:#eee}
+  @media (max-width:360px){
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-stat b{font-size:19px}
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-filters{grid-template-columns:1fr}
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-search{grid-column:auto}
+  }
+  body:has(#sc-developermonitoring.show) .statusbar{background:#1f1f1f;color:#f1f1f1}
+
+  /* ---------- SafeMe app-specific monitoring detail ---------- */
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-detail{display:none;position:absolute;inset:0;z-index:30;overflow-y:auto;background:var(--monitor-bg);padding:8px 15px 28px;color:var(--monitor-ink)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-detail.show{display:block}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-detail-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;color:#d8d8d8;font-size:13px;font-weight:600}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-back,#sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-close{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;color:#d6d6d6}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-back:active,#sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-close:active{background:#343434}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-back svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-close{font-size:25px;font-weight:300;line-height:20px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-hero{text-align:center;padding:17px 0 19px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-icon{display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:0 auto 13px;border-radius:16px;background:var(--brand);box-shadow:0 8px 20px rgba(217,119,87,.28);color:#fff;font-size:29px;font-weight:700}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-icon.system{background:#79b987;color:#142519;box-shadow:0 8px 20px rgba(121,185,135,.2)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-icon.unknown{background:#4b4b4b;color:#eee;box-shadow:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-hero h2{font-size:23px;line-height:28px;color:#f3f3f3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-hero p{margin-top:4px;color:#aaa;font-size:11px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;text-align:center;padding:7px 0 15px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-stats b{display:block;color:#f0f0f0;font-size:20px;line-height:24px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-stats div:first-child b{color:#ff7650}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-stats small{display:block;margin-top:3px;color:#bdbdbd;font-size:10.5px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-progress{margin:0 0 22px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-section-head h3{font-size:17px;line-height:22px;color:#f0f0f0}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-section-head .dev-monitor-view{flex:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-log{border-top:1px solid var(--monitor-line)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-all{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:45px;margin-top:5px;color:#e1e1e1;font-size:12px;text-align:left}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-all b{font-size:25px;font-weight:300;color:#cfcfcf}
+  @media (max-width:360px){
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-detail{padding-left:12px;padding-right:12px}
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-stats b{font-size:18px}
+  }
+
+  /* ---------- Production SafeMe identity and real application icons ---------- */
+  #sc-developermonitoring.dev-monitor-screen{--monitor-accent:var(--brand);--monitor-accent-soft:rgba(217,119,87,.22)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-live-dot{background:var(--brand);box-shadow:0 0 0 3px rgba(217,119,87,.16)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-chart{color:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-link-icon{color:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-tabs button.on{border-color:var(--brand);background:var(--monitor-accent-soft);color:#ffd7c8}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-view button.on{background:var(--brand);color:#fff}
+  #sc-developermonitoring.dev-monitor-screen .stat-saved b{color:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .usage-progress i:first-child{background:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dns-progress i:first-child{background:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon.system{background:var(--brand-soft);color:var(--brand-dark)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-icon.system{background:var(--brand-soft);color:var(--brand-dark);box-shadow:0 8px 20px rgba(217,119,87,.18)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-meta .pill.g{color:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon svg,
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon svg{display:block;width:100%;height:100%;padding:3px;border-radius:inherit;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon svg{padding:4px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon{background:#303030}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon.app{background:transparent;color:#fff}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon.system{background:var(--brand-soft);color:var(--brand-dark)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-event-icon.unknown{background:#4b4b4b;color:#eee}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-unknown-mark{font-size:14px;line-height:1;font-weight:700}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-destination-mark{font-size:16px;line-height:1;color:#b9d0ff}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-icon svg{display:block;width:48px;height:48px;padding:3px;border-radius:12px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-app-icon .dev-monitor-unknown-mark{font-size:29px}
+
+  /* ---------- Separate recent-activity surface ---------- */
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-detail{display:none;position:absolute;inset:0;z-index:31;overflow-y:auto;background:var(--monitor-bg);padding:8px 15px 28px;color:var(--monitor-ink)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-detail.show{display:block}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-detail .dev-monitor-app-detail-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;color:#d8d8d8;font-size:13px;font-weight:600}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-hero{text-align:center;padding:18px 0 21px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;margin:0 auto 10px;border-radius:14px;background:var(--brand-soft);color:var(--brand-dark)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-icon svg{width:27px;height:27px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-hero h2{font-size:23px;line-height:28px;color:#f3f3f3}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-hero p{margin-top:4px;color:#aaa;font-size:11px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;color:#aaa;font-size:10.5px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-toolbar .dev-monitor-view{flex:none}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-log{border-top:1px solid var(--monitor-line)}
+  @media (max-width:360px){
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-recent-detail{padding-left:12px;padding-right:12px}
+  }
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-disclaimer{color:#f2b39e}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-search:focus-within{border-color:var(--brand);box-shadow:0 0 0 2px rgba(217,119,87,.18)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-progress i:first-child{background:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-detail-stats div:first-child b{color:var(--brand)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-list-icon.app{background:transparent;color:#fff}
+
+  /* ---------- Consistent vector dropdown chevrons ---------- */
+  #sc-developerdns .dev-chevron{width:18px;height:18px;flex:none;color:var(--ink-2);stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-down{display:inline-block;width:14px;height:14px;margin-left:3px;vertical-align:-3px;color:#bcbcbc;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---------- Detail surfaces must fully replace the overview ---------- */
+  #sc-developermonitoring.dev-monitor-screen.app-detail-open> :not(.dev-monitor-app-detail),
+  #sc-developermonitoring.dev-monitor-screen.recent-activity-open> :not(.dev-monitor-recent-detail){display:none}
+  #sc-developermonitoring.dev-monitor-screen.app-detail-open .dev-monitor-app-detail,
+  #sc-developermonitoring.dev-monitor-screen.recent-activity-open .dev-monitor-recent-detail{display:block}
+
+  /* ---------- Explicit Secure Tunnel interaction boundaries ---------- */
+  #sc-vpn .vpn-advanced-card{display:flex;align-items:center;gap:12px;width:100%;padding:16px;text-align:left;border-style:dashed;background:var(--brand-mist);color:var(--ink);cursor:pointer}
+  #sc-vpn .vpn-advanced-card:active{border-color:var(--brand);background:var(--brand-soft);transform:scale(.995)}
+  #sc-vpn .vpn-advanced-card .chev{margin-left:auto;flex:none}
+  #sc-vpn .vpn-advanced-card .chev svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  /* ---------- Separate All Activity surface ---------- */
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-activity-link{min-height:60px;margin:2px 0 18px;border-top:1px solid var(--monitor-line);border-bottom:1px solid var(--monitor-line)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-activity-link .dev-monitor-link-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-activity-link .dev-monitor-link-copy b{font-size:15px;font-weight:500}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-activity-link .dev-monitor-link-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#a9a9a9;font-size:10px}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-detail{display:none;position:absolute;inset:0;z-index:32;overflow-y:auto;background:var(--monitor-bg);padding:8px 15px 28px;color:var(--monitor-ink)}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-detail.show{display:block}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-detail .dev-monitor-events-section{margin-top:2px;margin-bottom:0;padding-top:0}
+  #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-detail .dev-monitor-events-section>.dev-monitor-section-head{margin-bottom:8px}
+  #sc-developermonitoring.dev-monitor-screen.all-activity-open> :not(.dev-monitor-all-detail),
+  #sc-developermonitoring.dev-monitor-screen.all-activity-open .dev-monitor-recent-detail,
+  #sc-developermonitoring.dev-monitor-screen.all-activity-open .dev-monitor-app-detail{display:none}
+  #sc-developermonitoring.dev-monitor-screen.all-activity-open .dev-monitor-all-detail{display:block}
+  @media (max-width:360px){
+    #sc-developermonitoring.dev-monitor-screen .dev-monitor-all-detail{padding-left:12px;padding-right:12px}
+  }

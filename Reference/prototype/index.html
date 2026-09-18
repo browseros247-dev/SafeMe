@@ -3,20 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SafeMe — Interactive Prototype</title>
+<title>SafeMe</title>
 <script>try{var t=localStorage.getItem('safeme_theme')||'System';var d=t==='Dark'||(t==='System'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light')}catch(e){}</script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-<!-- ============ PROTOTYPE TOOLBAR ============ -->
+<!-- ============ NAVIGATION ============ -->
 <aside class="ptb" id="ptb">
   <div class="ptb-head">
-    <div class="pt-logo">Safe<b>Me</b></div>
-    <small>Interactive prototype · v1.0</small>
+    <div class="ptb-head-top">
+      <div class="ptb-brand-copy"><div class="pt-logo">Safe<b>Me</b></div></div>
+      <button class="ptb-toggle" id="ptbToggle" type="button" aria-label="Collapse navigation" aria-expanded="true" aria-controls="ptb" onclick="togglePrototypeNav()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    </div>
   </div>
   <div class="ptb-groups" id="ptbGroups"></div>
-  <div class="ptb-foot"><b>SafeMe</b> · Anthropic-inspired design system · <b>#D97757</b></div>
+  <div class="ptb-foot"><b>SafeMe</b></div>
 </aside>
 
 <!-- ============ STAGE ============ -->
@@ -183,7 +185,7 @@
         <div class="grid2">
           <button class="qa" onclick="nav('socialblocking')"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="t">Social Media Blocking</div><div class="s">Whole apps or just tabs · Reels · Shorts · Spotlight</div></button>
           <button class="qa" onclick="nav('blockscreen')"><div class="ic d"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div><div class="t">Block Screen</div><div class="s">Message · close-gate</div></button>
-          <button class="qa" onclick="nav('vpn')"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="t">DNS &amp; VPN Filtering</div><div class="s">VPN · presets</div></button>
+          <button class="qa" onclick="nav('vpn')"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="t">Secure Tunnel</div><div class="s">Filtering · schedules</div></button>
           <button class="qa" onclick="nav('antitamper')"><div class="ic r"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="t">Anti-Tamper</div><div class="s">Prevent uninstall · power menu</div></button>
           <button class="qa" onclick="nav('titleblock')"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></div><div class="t">Block Settings by Title</div><div class="s">System pages · app titles</div></button>
           <button class="qa" onclick="nav('otherfeatures')"><div class="ic d"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="t">Some Other Features</div><div class="s">Image/video search · more</div></button>
@@ -324,22 +326,208 @@
       </section>
 
       <section class="screen" id="sc-vpn">
-        <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>DNS &amp; VPN Filtering</h1><p class="sub-desc">Filter traffic at the DNS level to block adult &amp; harmful sites.</p></div>
+        <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Secure Tunnel</h1><p class="sub-desc">Encrypted routing and domain protection, with simple controls for everyday use.</p></div>
         <div class="card" style="display:flex;align-items:center;gap:12px;background:var(--brand-soft);border-color:var(--brand)">
-          <div style="flex:1"><div class="ctitle" style="color:var(--brand-dark)"><span class="pill g" id="vpnPill" style="margin-right:6px"><span class="pdot"></span>Active</span><span id="vpnTitle">VPN filtering is on</span></div><div class="csub" style="color:var(--brand-dark)" id="vpnSub">Cloudflare Family · 0 exempt</div></div>
+          <div style="flex:1"><div class="ctitle" style="color:var(--brand-dark)"><span class="pill g" id="vpnPill" style="margin-right:6px"><span class="pdot"></span>Active</span><span id="vpnTitle">Filtering is active</span></div><div class="csub" style="color:var(--brand-dark)" id="vpnSub">Local protection · 0 app exceptions</div></div>
           <div class="sw on" data-toggle id="vpnToggle"></div>
         </div>
-        <div class="group-label">DNS preset</div>
-        <div class="list">
-          <div class="li" onclick="pickDns(this)"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div><div class="tx"><div class="t">Cloudflare Family</div><div class="s">Balanced · malware + adult blocked</div></div><div class="checkbox on"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div></div>
-          <div class="li" onclick="pickDns(this)"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/></svg></div><div class="tx"><div class="t">AdGuard Family</div><div class="s">Strict · + ads &amp; trackers</div></div><div class="checkbox"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div></div>
-          <div class="li" onclick="pickDns(this)"><div class="ic d"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12h8"/></svg></div><div class="tx"><div class="t">Custom preset</div><div class="s" id="dnsCustomSub">IPv4 / IPv6 validated</div></div><div class="checkbox"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></svg></div></div>
+
+        <div class="group-label">Protection</div>
+        <div class="card" style="display:flex;gap:12px;align-items:center">
+          <div class="ic g" style="width:40px;height:40px;border-radius:13px;background:#E7F0EC;color:var(--success);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div style="flex:1"><div class="ctitle">Domain protection</div><div class="csub">Ads · trackers · malicious domains · adult content</div></div><span class="pill g"><span class="pdot"></span>Active</span>
         </div>
+
+        <div class="group-label">App exceptions</div>
         <div class="card" style="display:flex;gap:12px;align-items:center"><div class="ic g" style="width:40px;height:40px;border-radius:13px;background:#E7F0EC;color:var(--success);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M17 7l5 5-5 5M7 17l-5-5 5-5"/></svg></div><div style="flex:1"><div class="ctitle">VPN whitelist apps</div><div class="csub" id="vpnWhitelistSub">No apps exempt</div></div><button class="btn sm btn-secondary" onclick="openSheet('sheetVpnApps')">Manage</button></div>
-        <div class="group-label">Notification</div>
-        <div class="seg" style="margin-bottom:10px"><button class="on" onclick="togSeg(this);setVpnNotif(this)">Default</button><button onclick="togSeg(this);setVpnNotif(this)">Hide</button><button onclick="togSeg(this);setVpnNotif(this)">Custom</button></div>
-        <label class="field" id="vpnNotifWrap" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 016 6v5l2 2H4l2-2V9a6 6 0 016-6zM10 20h4"/></svg><input id="vpnNotifCustom" placeholder="Custom message…"></label>
-        <div class="note"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>Foreground service with START_STICKY — auto-restores on boot &amp; app foreground.</span></div>
+
+        <div class="group-label">Advanced</div>
+        <button class="card vpn-advanced-card" type="button" aria-label="Open Developer Mode" onclick="nav('developermode')"><div class="ic" style="width:40px;height:40px;border-radius:13px;background:#F3E4D8;color:var(--brand-dark);display:flex;align-items:center;justify-content:center;flex:none"><svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></svg></div><div style="flex:1"><div class="ctitle">Developer Mode</div><div class="csub">Advanced configuration and diagnostics</div></div><span class="chev"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></button>
+        <div class="note"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span><b>Scheduled app protection · Active</b><br>Filtering and schedules continue in Local Protection.</span></div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developermode">
+        <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Developer Mode</h1><p class="sub-desc">Advanced tunnel configuration and diagnostics for SafeMe protection.</p></div>
+        <div class="dev-nav-list">
+          <button class="dev-nav-card" onclick="nav('developerapps')"><span class="dev-nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></span><span class="dev-nav-copy"><b>App mode</b><small id="devRootAppSummary">All applications</small></span><span class="dev-nav-status" id="devRootAppStatus">Active</span><span class="dev-nav-chevron">›</span></button>
+          <button class="dev-nav-card" onclick="nav('developerdns')"><span class="dev-nav-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg></span><span class="dev-nav-copy"><b>DNS settings</b><small id="devRootDnsSummary">Protected DNS · Active</small></span><span class="dev-nav-status">Ready</span><span class="dev-nav-chevron">›</span></button>
+          <button class="dev-nav-card" onclick="nav('developerglobals')"><span class="dev-nav-icon"><svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16M7 7l10 10M17 7L7 17"/></svg></span><span class="dev-nav-copy"><b>Tunnel globals</b><small id="devRootGlobalsSummary">Global tunnel disabled</small></span><span class="dev-nav-status">SafeMe</span><span class="dev-nav-chevron">›</span></button>
+          <button class="dev-nav-card" onclick="nav('developerrecovery')"><span class="dev-nav-icon"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2 5"/><path d="M20 5v6h-6"/></svg></span><span class="dev-nav-copy"><b>Tunnel recovery</b><small id="devRootRecoverySummary">Local Protection fallback ready</small></span><span class="dev-nav-status">Ready</span><span class="dev-nav-chevron">›</span></button>
+          <button class="dev-nav-card" onclick="nav('developermonitoring')"><span class="dev-nav-icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></span><span class="dev-nav-copy"><b>Tunnel monitoring</b><small id="devRootMonitorSummary">Monitoring available</small></span><span class="dev-nav-status">Live</span><span class="dev-nav-chevron">›</span></button>
+          <button class="dev-nav-card" onclick="nav('developercapture')"><span class="dev-nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 5l1.5-2h5L16 5M12 10v4M10 12h4"/></svg></span><span class="dev-nav-copy"><b>Screen capture protection</b><small id="devRootCaptureSummary">Screens protected</small></span><span class="dev-nav-status">On</span><span class="dev-nav-chevron">›</span></button>
+        </div>
+        <button class="dev-fab" aria-label="New configuration" onclick="nav('developerconfig')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>New configuration</span></button>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developerapps">
+        <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>App mode</h1><p class="sub-desc">Choose how SafeMe exposes and protects tunnel traffic.</p></div>
+        <div class="card dev-card">
+          <div class="dev-card-head"><div><div class="ctitle">Tunnel mode</div><div class="csub" id="devTunnelModeSummary">Standard system-wide VPN mode.</div></div><span class="pill g"><span class="pdot"></span>SafeMe</span></div>
+          <div class="seg dev-seg" id="devTunnelModes"><button class="on" data-mode="vpn" onclick="setDevTunnelMode(this,'vpn')">VPN</button><button data-mode="proxy" onclick="setDevTunnelMode(this,'proxy')">Local proxy</button><button data-mode="lockdown" onclick="setDevTunnelMode(this,'lockdown')">Kill switch</button></div>
+        </div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developerdns">
+        <div class="sub dev-wg-header"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>DNS settings</h1><div class="sub-actions"><button class="act" aria-label="Save DNS settings" onclick="saveDns()"><svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 20v-6h8v6"/></svg></button></div></div>
+        <div class="dev-wg-section-title">System</div>
+        <div class="dev-wg-setting-row dev-wg-info-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M8.5 8.5a5 5 0 017 7M5.2 5.2a9 9 0 0013.6 13.6M2 12a10 10 0 0110-10"/></svg></span>
+          <span class="dev-wg-copy"><b>Current system DNS</b><small>Servers: <span id="devSystemDns">192.168.10.1</span></small></span>
+        </div>
+
+        <div class="dev-wg-section-title">Peer Resolution</div>
+        <div class="dev-wg-setting-row dev-wg-select-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="5" rx="1"/><rect x="4" y="14" width="16" height="5" rx="1"/><path d="M7 7.5h.01M7 16.5h.01"/></svg></span>
+          <span class="dev-wg-copy"><b>Resolution method</b></span>
+          <button class="dev-wg-choice" type="button" onclick="openSheet('sheetDevResolution')"><span id="devResolutionChoice">DNS over HTTPS (DoH)</span><svg class="dev-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <label class="dev-wg-field"><span>DNS server endpoint</span><input id="devDnsEndpoint" value="https://dns.example/dns-query" spellcheck="false"></label>
+
+        <div class="dev-wg-section-title">Tunnel DNS</div>
+        <div class="dev-wg-setting-row dev-wg-select-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9l3 3-3 3M13 15h3"/></svg></span>
+          <span class="dev-wg-copy"><b>Tunnel DNS mode</b><small id="devDnsStatus">Current: Encrypted DNS</small></span>
+          <button class="dev-wg-choice" type="button" onclick="openSheet('sheetDevDnsMode')"><span id="devDnsModeChoice">Encrypted DNS</span><svg class="dev-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <div class="dev-wg-setting-row dev-wg-select-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M4 15h16M6 12h12M8 9h8M10 6h4"/><path d="M4 18h16"/></svg></span>
+          <span class="dev-wg-copy"><b>Protocol</b></span>
+          <button class="dev-wg-choice" type="button" onclick="openSheet('sheetDevProtocol')"><span id="devProtocolChoice">DNS over HTTPS (DoH)</span><svg class="dev-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <label class="dev-wg-field"><span>DNS server endpoint</span><input id="devTunnelDnsEndpoint" value="https://dns.example/dns-query" spellcheck="false"></label>
+        <div class="dev-wg-setting-row dev-wg-select-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="5" rx="1"/><rect x="4" y="14" width="16" height="5" rx="1"/><path d="M7 7.5h.01M7 16.5h.01"/></svg></span>
+          <span class="dev-wg-copy"><b>Transit DNS requests</b><small>How to handle plain DNS request sent to a server different than the tunnel's DNS servers</small></span>
+          <button class="dev-wg-choice" type="button" onclick="openSheet('sheetDevTransit')"><span id="devTransitDnsChoice">Redirect</span><svg class="dev-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <div class="dev-wg-actions"><button class="btn btn-primary" onclick="saveDns()">Save DNS settings</button><button class="btn btn-secondary" onclick="devRunTest('DNS')">Test DNS</button></div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developerglobals">
+        <div class="sub dev-wg-header"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Tunnel globals</h1></div>
+        <div class="dev-wg-nav-list">
+          <button class="dev-wg-nav-row" onclick="nav('developertunnelconfig')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM9 3v5h6V3M9 12h6M9 16h6"/></svg></span><span class="dev-wg-copy"><b>Tunnel configuration</b></span><span class="dev-wg-chevron">›</span></button>
+        </div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developertunnelconfig">
+        <div class="sub dev-wg-header"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Tunnel configuration</h1><div class="sub-actions"><button class="act" aria-label="Save tunnel configuration" onclick="devSaveTunnelConfiguration()"><svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 20v-6h8v6"/></svg></button><button class="act" aria-label="Import tunnel configuration" onclick="devImportTunnelConfiguration()"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7zM15 3v5h4M3 8v13h12M7 13l3 3 3-3M10 16V9"/></svg></button></div></div>
+        <div class="dev-wg-config-list">
+          <div class="dev-wg-config-row"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="16" rx="1"/><path d="M7 8h.01M7 12h.01M7 16h.01M17 8h.01M17 12h.01M17 16h.01"/></svg></span><span class="dev-wg-copy"><b>DNS servers</b></span><div class="sw" id="devConfigDnsSw" role="switch" aria-label="DNS servers" onclick="toggleDevSetting(this,'configDns')"></div></div>
+          <div class="dev-wg-config-row"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 8h8M8 12h5M8 16h8M12 5v14"/></svg></span><span class="dev-wg-copy"><b>Amnezia configuration</b></span><div class="sw" id="devAmneziaSw" role="switch" aria-label="Amnezia configuration" onclick="toggleDevSetting(this,'amnezia')"></div></div>
+        </div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developerrecovery">
+        <div class="sub dev-wg-header"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Tunnel recovery</h1><div class="sub-actions"><button class="act" aria-label="Tunnel recovery information" onclick="toast('Seamless tunnel recovery keeps protection active while the tunnel recovers.')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg></button></div></div>
+        <div class="dev-wg-section-title">Tunnel recovery</div>
+        <div class="dev-wg-setting-row dev-wg-recovery-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 9a7 7 0 0112.7-2M18.5 15a7 7 0 01-12.7 2"/></svg></span>
+          <span class="dev-wg-copy"><b>Seamless tunnel recovery</b><small>Maintains protection while recovering from DDNS changes, network switches, and NAT issues</small></span>
+          <div class="sw on" id="devRecoverySw" role="switch" aria-label="Seamless tunnel recovery" onclick="toggleDevSetting(this,'recovery')"></div>
+        </div>
+        <div class="dev-wg-setting-row dev-wg-recovery-row">
+          <span class="dev-wg-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 13V9M9 3h6M12 3v3M19 6l1.5-1.5"/></svg></span>
+          <span class="dev-wg-copy"><b>Seamless recovery delay</b><small>Handshake failure threshold before seamless recovery triggers</small></span>
+          <select id="devRecoveryDelay" class="dev-wg-select" aria-label="Seamless recovery delay" onchange="setDevRecoveryDelay(this)"><option>10 sec</option><option selected>30 sec</option><option>60 sec</option><option>120 sec</option></select>
+        </div>
+      </section>
+
+      <section class="screen dev-screen dev-monitor-screen" id="sc-developermonitoring">
+        <div class="sub dev-wg-header"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Tunnel monitoring</h1><div class="sub-actions"><button class="act" aria-label="Refresh monitoring" onclick="devRefreshMonitor()"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2 5"/><path d="M20 5v6h-6"/></svg></button><button class="act" aria-label="Clear monitoring history" onclick="devClearMonitor()"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button></div></div>
+        <div class="dev-monitor-disclaimer"><span class="dev-monitor-live-dot"></span>Metadata only · HTTPS payloads are never captured or inspected.</div>
+        <div class="dev-monitor-title"><div class="dev-monitor-chart"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4v16h16A16 16 0 0020 4z"/><path d="M18 8a16 16 0 1016 16H18z"/></svg></div><h2>Statistics</h2><p>Current metadata activity</p></div>
+
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorRequestsHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorRequestsHeading">Requests</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-stat-row">
+            <div class="dev-monitor-stat stat-denied"><b id="devRequestBlockedStat">0</b><small>blocked</small></div><div class="dev-monitor-stat stat-retry"><b id="devRequestRetriedStat">0</b><small>retried</small></div><div class="dev-monitor-stat stat-total"><b id="devRequestTotalStat">0</b><small>events</small></div>
+          </div>
+          <div class="dev-monitor-progress" aria-hidden="true"><i id="devMonitorAllowedBar"></i><i id="devMonitorDeniedBar"></i><i id="devMonitorFailedBar"></i></div>
+          <button class="dev-monitor-link" onclick="openRecentMonitorActivity()"><span class="dev-monitor-link-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></span><span>Recent activity</span><b>›</b></button>
+        </section>
+
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorUsageHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorUsageHeading">Data usage</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-stat-row usage-row">
+            <div class="dev-monitor-stat stat-saved"><b id="devMonitorBytesTotal">0 B</b><small>total</small></div><div class="dev-monitor-stat stat-upload"><b id="devMonitorBytesOutStat">0 B</b><small>outbound</small></div><div class="dev-monitor-stat stat-download"><b id="devMonitorBytesInStat">0 B</b><small>inbound</small></div>
+          </div>
+          <div class="dev-monitor-progress usage-progress" aria-hidden="true"><i id="devMonitorInBar"></i><i id="devMonitorOutBar"></i></div>
+        </section>
+
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorOwnersHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorOwnersHeading">Apps &amp; owners</h3><span>Events <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div id="devMonitorOwnerList" class="dev-monitor-owner-list"></div>
+          <button class="dev-monitor-link dev-monitor-view-all" onclick="focusMonitorLog('owners')"><span>View all owners</span><b>›</b></button>
+        </section>
+
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorDestinationsHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorDestinationsHeading">Destinations</h3><span>Metadata <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div id="devMonitorDestinationList" class="dev-monitor-owner-list"></div>
+          <button class="dev-monitor-link dev-monitor-view-all" onclick="focusMonitorLog('destinations')"><span>View all destinations</span><b>›</b></button>
+        </section>
+
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorDnsHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorDnsHeading">DNS statistics</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-stat-row dns-row">
+            <div class="dev-monitor-stat stat-denied"><b id="devMonitorDnsBlockedStat">0</b><small>blocked</small></div><div class="dev-monitor-stat stat-total"><b id="devMonitorDnsTotalStat">0</b><small>requests</small></div><div class="dev-monitor-stat stat-saved"><b id="devMonitorDnsBytesStat">0 B</b><small>bytes</small></div>
+          </div>
+          <div class="dev-monitor-progress dns-progress" aria-hidden="true"><i id="devMonitorDnsAllowedBar"></i><i id="devMonitorDnsBlockedBar"></i></div>
+        </section>
+
+        <section class="dev-monitor-taxonomy" aria-labelledby="devMonitorTaxonomyHeading"><div class="dev-monitor-section-head"><h3 id="devMonitorTaxonomyHeading">Metadata counters</h3><span>All categories</span></div><div class="dev-monitor-overview" id="devMonitorOverview">
+          <div class="dev-monitor-item"><span>Inbound</span><b id="devInboundCount">0</b></div><div class="dev-monitor-item"><span>Outbound</span><b id="devOutboundCount">0</b></div><div class="dev-monitor-item"><span>DNS</span><b id="devDnsRequestCount">0</b></div><div class="dev-monitor-item"><span>Allowed</span><b id="devAllowedCount">0</b></div><div class="dev-monitor-item"><span>Blocked</span><b id="devBlockedCount">0</b></div><div class="dev-monitor-item"><span>Dropped</span><b id="devDroppedCount">0</b></div><div class="dev-monitor-item"><span>Failed</span><b id="devFailedCount">0</b></div><div class="dev-monitor-item"><span>Retried</span><b id="devRetriedCount">0</b></div><div class="dev-monitor-item"><span>Active</span><b id="devActiveConnections">0</b></div><div class="dev-monitor-item"><span>Closed</span><b id="devClosedConnections">0</b></div><div class="dev-monitor-item"><span>Unknown owner</span><b id="devUnknownOwners">0</b></div><div class="dev-monitor-item"><span>Bytes in / out</span><b id="devBytesSummary">0 / 0</b></div>
+        </div></section>
+
+        <button class="dev-monitor-link dev-monitor-all-activity-link" onclick="openAllMonitorActivity()"><span class="dev-monitor-link-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></span><span class="dev-monitor-link-copy"><b>All activity</b><small id="devMonitorOverviewActivitySummary">Browse filters, raw events, and lifecycle groups</small></span><b>›</b></button>
+
+        <div class="dev-monitor-all-detail" id="devMonitorAllActivity" aria-hidden="true">
+          <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeAllMonitorActivity()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>All activity</span><button class="dev-monitor-detail-close" aria-label="Close all activity" onclick="closeAllMonitorActivity()">×</button></div>
+          <div class="dev-monitor-recent-hero"><div class="dev-monitor-recent-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></div><h2>All activity</h2><p>Filter and inspect metadata events</p></div>
+          <div class="dev-monitor-events-section" role="region" aria-labelledby="devMonitorEventsHeading"><div class="dev-monitor-section-head"><h3 id="devMonitorEventsHeading">All activity</h3><span id="devMonitorCount">0 events</span></div>
+          <div class="dev-monitor-tabs" id="devMonitorCategories"><button class="on" data-category="all" onclick="setDevMonitorCategory(this,'all')">All</button><button data-category="apps" onclick="setDevMonitorCategory(this,'apps')">Apps</button><button data-category="requests" onclick="setDevMonitorCategory(this,'requests')">Requests</button><button data-category="dns" onclick="setDevMonitorCategory(this,'dns')">DNS</button><button data-category="blocked" onclick="setDevMonitorCategory(this,'blocked')">Blocked</button><button data-category="connections" onclick="setDevMonitorCategory(this,'connections')">Connections</button></div>
+          <div class="dev-monitor-filters">
+            <select id="devMonitorDirection" aria-label="Direction" onchange="renderDevMonitor()"><option value="all">All directions</option><option value="OUT">Outbound</option><option value="IN">Inbound</option><option value="DNS">DNS</option></select>
+            <select id="devMonitorAction" aria-label="Action" onchange="renderDevMonitor()"><option value="all">All actions</option><option value="allowed">Allowed</option><option value="blocked">Blocked</option><option value="dropped">Dropped</option><option value="failed">Failed</option><option value="retried">Retried</option></select>
+            <select id="devMonitorOwner" aria-label="Owner" onchange="renderDevMonitor()"><option value="all">All owners</option><option value="app">Known apps</option><option value="system">System / SafeMe</option><option value="unknown">Unknown owner</option></select>
+            <label class="dev-monitor-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="devMonitorSearch" placeholder="Search events…" oninput="renderDevMonitor()"></label>
+          </div>
+          <div class="dev-monitor-view-row"><span>Chronology</span><div class="seg dev-monitor-view" id="devMonitorView"><button class="on" data-view="raw" onclick="setDevMonitorView(this,'raw')">Raw events</button><button data-view="lifecycle" onclick="setDevMonitorView(this,'lifecycle')">Lifecycle</button></div></div>
+          <div class="card dev-card dev-monitor-log-card"><div class="dev-monitor-event-log" id="devRequestLog"><div class="dev-monitor-empty">No activity yet. Refresh to update the metadata stream.</div></div></div>
+          </div>
+        </div>
+
+        <div class="dev-monitor-recent-detail" id="devMonitorRecentActivity" aria-hidden="true">
+          <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeRecentMonitorActivity()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>Recent activity</span><button class="dev-monitor-detail-close" aria-label="Close recent activity" onclick="closeRecentMonitorActivity()">×</button></div>
+          <div class="dev-monitor-recent-hero"><div class="dev-monitor-recent-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></div><h2>Recent activity</h2><p>Latest metadata events</p></div>
+          <div class="dev-monitor-recent-toolbar"><span id="devMonitorRecentCount">0 events</span><div class="seg dev-monitor-view" id="devMonitorRecentView"><button class="on" onclick="setDevMonitorRecentView('raw')">Raw</button><button onclick="setDevMonitorRecentView('lifecycle')">Lifecycle</button></div></div>
+          <div class="dev-monitor-event-log dev-monitor-recent-log" id="devMonitorRecentLog"></div>
+        </div>
+
+        <div class="dev-monitor-app-detail" id="devMonitorAppDetail" aria-hidden="true">
+          <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeMonitorAppDetail()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>App activity</span><button class="dev-monitor-detail-close" aria-label="Close app activity" onclick="closeMonitorAppDetail()">×</button></div>
+          <div class="dev-monitor-app-hero"><div class="dev-monitor-app-icon" id="devMonitorDetailIcon">?</div><h2 id="devMonitorDetailName">App</h2><p id="devMonitorDetailSubtitle">Metadata activity</p></div>
+          <div class="dev-monitor-detail-stats"><div><b id="devMonitorDetailBlocked">0</b><small>blocked</small></div><div><b id="devMonitorDetailRequests">0</b><small>requests</small></div><div><b id="devMonitorDetailBytes">0 B</b><small>bytes</small></div></div>
+          <div class="dev-monitor-progress dev-monitor-detail-progress" aria-hidden="true"><i id="devMonitorDetailAllowedBar"></i><i id="devMonitorDetailBlockedBar"></i><i id="devMonitorDetailFailedBar"></i></div>
+          <div class="dev-monitor-detail-section-head"><h3>Recent activity</h3><div class="seg dev-monitor-view" id="devMonitorDetailView"><button class="on" onclick="setDevMonitorDetailView('raw')">Raw</button><button onclick="setDevMonitorDetailView('lifecycle')">Lifecycle</button></div></div>
+          <div class="dev-monitor-event-log dev-monitor-detail-log" id="devMonitorDetailLog"></div>
+        </div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developercapture">
+        <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Screen capture protection</h1><p class="sub-desc">Control capture protection for SafeMe screens.</p></div>
+        <div class="card dev-card dev-capture-minimal"><div class="dev-card-head"><div><div class="ctitle">Screenshot and recording protection</div><div class="csub">Prevent screenshots and screen recording while this setting is enabled.</div></div><div class="sw on" id="devCaptureSw" role="switch" aria-label="Screenshot and recording protection" onclick="toggleDevSetting(this,'capture')"></div></div></div>
+      </section>
+
+      <section class="screen dev-screen" id="sc-developerconfig">
+        <div class="sub"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>New tunnel</h1><div class="sub-actions"><button class="act" aria-label="Save configuration" onclick="devSaveConfigDraft()"><svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5zM8 4v6h8V4M8 20v-6h8v6"/></svg></button><button class="act" aria-label="Preview configuration" onclick="toast('Configuration preview')"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg></button><button class="act" aria-label="Paste configuration" onclick="devConfigSourceAction('clipboard')"><svg viewBox="0 0 24 24"><path d="M9 5h6M8 4h8v3H8zM6 7H4v14h14v-2M10 11h7M10 15h5"/></svg></button></div><p class="sub-desc">Import or create a tunnel configuration, then review safe non-sensitive fields before connecting.</p></div>
+        <div class="card dev-card"><div class="ctitle">Choose a source</div><div class="dev-source-grid"><button class="dev-source" onclick="devConfigSourceAction('file')"><span class="dev-source-ic">↥</span><span>File</span></button><button class="dev-source" onclick="devConfigSourceAction('clipboard')"><span class="dev-source-ic">▣</span><span>Clipboard</span></button><button class="dev-source" onclick="devConfigSourceAction('manual')"><span class="dev-source-ic">＋</span><span>Manual</span></button></div><div class="dev-source-status" id="devConfigSourceStatus">No source selected. Imported values will be previewed in redacted form.</div></div>
+        <div class="group-label">Interface</div>
+        <div class="card dev-card"><label class="field"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg><input id="devCfgName" placeholder="Tunnel name"></label><div class="dev-sensitive-row"><div><b>Private key</b><small>Sensitive value hidden</small></div><span class="pill o"><span class="pdot"></span>Hidden</span></div><div class="dev-sensitive-row"><div><b>Public key</b><small>Derived value hidden</small></div><span class="pill o"><span class="pdot"></span>Hidden</span></div><label class="field"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg><input id="devCfgAddresses" placeholder="Addresses (comma separated)"></label><div class="dev-form-row"><label class="field"><input id="devCfgListenPort" placeholder="Listen port"></label><label class="field"><input id="devCfgMtu" placeholder="MTU (auto)"></label></div><label class="field"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="devCfgDns" placeholder="DNS servers"></label></div>
+        <div class="group-label">Peer</div>
+        <div class="card dev-card"><div class="dev-sensitive-row"><div><b>Peer public key</b><small>Present · hidden</small></div><span class="pill o"><span class="pdot"></span>Hidden</span></div><label class="field"><svg viewBox="0 0 24 24"><path d="M3 12h18M12 3v18"/></svg><input id="devCfgEndpoint" placeholder="Endpoint and port"></label><label class="field"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg><input id="devCfgRoutes" placeholder="Allowed IPs / routes"></label><label class="field"><input id="devCfgKeepalive" placeholder="Persistent keepalive"></label><button class="btn btn-secondary btn-block" style="margin-top:14px" onclick="toast('Peer editor ready')">Add peer</button></div>
+        <div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>Sensitive key material is never shown or stored by SafeMe.</span></div>
+        <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="devSaveConfigDraft()">Save configuration</button>
       </section>
 
       <section class="screen" id="sc-antitamper">
@@ -533,7 +721,7 @@
         <div class="qa" style="display:flex;align-items:center;gap:12px;margin-top:10px">
           <div class="ic g"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
           <div style="flex:1;min-width:0"><div class="t">Exclude Apps from Blocking</div><div class="s" id="blkExcludeSub">Never blocked by keywords or porn blocking</div></div>
-          <button class="btn btn-secondary" style="height:36px;padding:0 16px;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink)" onclick="openSheet('sheetApps')">Manage</button>
+          <button class="btn btn-secondary" style="height:36px;padding:0 16px;font-size:13px;border:1px solid var(--line);b-line);background:var(--surface);color:var(--ink)" onclick="openSheet('sheetApps')">Manage</button>
         </div>
       </section>
 
@@ -669,6 +857,8 @@
               <div class="sw on" id="socialFacebook" onclick="togSocialFeature(this,'facebook')"></div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
+              <div style="width:42px;height:42px;border-radius:14px;background:#FDF3E3;color:#B78A00;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M12 2.7c-2 .3-4 1.3-4 3.5 0 1.4.8 2.7 1.7 3.7-.6.6-1.7 1.2-2.6 1.5 0 0 2.2 1.6 4.3 1 .9.4 1.7.6 2.6.6s1.7-.2 2.6-.6c2.1.6 4.3-1 4.3-1-.9-.3-2-.9-2.6-1.5.9-1 1.7-2.3 1.7-3.7 0-2.2-2-3.2-4-3.5-1.2-.2-2.4-.2-3.6 0-.4 0-.8.1-1.2.1-.4 0-.8 0-/div>
+            <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px">
               <div style="width:42px;height:42px;border-radius:14px;background:#FDF3E3;color:#B78A00;display:flex;align-items:center;justify-content:center;flex:none;border:1px solid var(--line)"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M12 2.7c-2 .3-4 1.3-4 3.5 0 1.4.8 2.7 1.7 3.7-.6.6-1.7 1.2-2.6 1.5 0 0 2.2 1.6 4.3 1 .9.4 1.7.6 2.6.6s1.7-.2 2.6-.6c2.1.6 4.3-1 4.3-1-.9-.3-2-.9-2.6-1.5.9-1 1.7-2.3 1.7-3.7 0-2.2-2-3.2-4-3.5-1.2-.2-2.4-.2-3.6 0-.4 0-.8.1-1.2.1-.4 0-.8 0-1.2-.1z"/></svg></div>
               <div style="flex:1;min-width:0">
                 <div style="font-size:14px;font-weight:600;color:var(--ink);line-height:1.2">Snapchat Spotlight</div>
@@ -692,7 +882,7 @@
             <div class="sw on" data-toggle></div>
           </div>
           <div class="svc-row" data-name="Keyguard AppLock">
-            <div class="svc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></div>
+            <div class="svc-ic"><svg viewBox="0 0 24 24"><" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></div>
             <div class="tx"><div class="t">Keyguard AppLock</div><div class="s">com.example.keyguard</div></div>
             <div class="sw" data-toggle></div>
           </div>
@@ -728,6 +918,33 @@
 
     <!-- ============ MODALS ============ -->
     <div class="scrim" id="scrim" onclick="closeSheets()"></div>
+
+    <div class="sheet dev-choice-sheet" id="sheetDevResolution">
+      <div class="grab"></div>
+      <button class="dev-choice-option" onclick="selectDevResolution('system')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0118 0M6 12a6 6 0 0112 0M9 12a3 3 0 016 0"/></svg></span><span><b>System</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevResolution('doh')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 12h8M12 8v8"/></svg></span><span><b>DNS over HTTPS (DoH)</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevResolution('dot')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5"/></svg></span><span><b>DNS over TLS (DoT)</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevResolution('plain')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span><b>Plain DNS (port 53)</b></span></button>
+    </div>
+    <div class="sheet dev-choice-sheet" id="sheetDevDnsMode">
+      <div class="grab"></div>
+      <button class="dev-choice-option" onclick="selectDevDnsMode('default')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1116 0"/><path d="M12 4v8l5 3"/></svg></span><span><b>Default</b><small>Standard plain DNS through the tunnel using the tunnel DNS servers</small></span></button>
+      <button class="dev-choice-option selected" onclick="selectDevDnsMode('encrypted')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3M12 14v3"/></svg></span><span><b>Encrypted DNS</b><small>Encrypted DNS through the tunnel using a custom server</small></span><span class="dev-choice-check">✓</span></button>
+      <button class="dev-choice-option" onclick="selectDevDnsMode('split')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M12 4v16M12 8l7-4M12 16l7 4M12 12H5"/></svg></span><span><b>Split DNS</b><small>Split resolution by domain suffix between system DNS and tunnel DNS</small></span></button>
+      <button class="dev-choice-option" onclick="selectDevDnsMode('system')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0118 0M6 12a6 6 0 0112 0M9 12a3 3 0 016 0"/></svg></span><span><b>System DNS only</b><small>All DNS queries are send to the system's DNS servers and bypass the tunnel</small></span></button>
+    </div>
+    <div class="sheet dev-choice-sheet dev-choice-sheet-short" id="sheetDevProtocol">
+      <div class="grab"></div>
+      <button class="dev-choice-option" onclick="selectDevProtocol('doh')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 12h8M12 8v8"/></svg></span><span><b>DNS over HTTPS (DoH)</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevProtocol('dot')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 9h8M8 13h5"/></svg></span><span><b>DNS over TLS (DoT)</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevProtocol('plain')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span><b>Plain DNS (port 53)</b></span></button>
+    </div>
+    <div class="sheet dev-choice-sheet dev-choice-sheet-short" id="sheetDevTransit">
+      <div class="grab"></div>
+      <button class="dev-choice-option" onclick="selectDevTransit('redirect')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M12 3v8M8 7l4 4 4-4"/></svg></span><span><b>Redirect</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevTransit('block')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M7 7l10 10"/></svg></span><span><b>Block</b></span></button>
+      <button class="dev-choice-option" onclick="selectDevTransit('allow')"><span class="dev-wg-icon"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg></span><span><b>Allow</b></span></button>
+    </div>
 
         <div class="sheet" id="sheetKw">
       <div class="grab"></div>
@@ -902,17 +1119,6 @@
       <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm btn-secondary" style="flex:1" id="selAllAppsBtn" onclick="selectAllApps()">Select All (12)</button><button class="btn sm btn-secondary" style="flex:1" id="deselAllAppsBtn" onclick="deselectAllApps()">Deselect All (12)</button></div>
       <div class="app-picker" id="appList"></div>
       <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="appsDone()">Done</button>
-    </div>
-
-    <!-- Custom DNS preset -->
-    <div class="sheet" id="sheetDnsCustom">
-      <div class="grab"></div>
-      <h3>Custom DNS</h3>
-      <div class="s-sub">Enter resolver addresses — IPv4 is required.</div>
-      <label class="field"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="dnsIpv4" placeholder="IPv4 e.g. 1.1.1.1"></label>
-      <label class="field" style="margin-top:10px"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg><input id="dnsIpv6" placeholder="IPv6 (optional)"></label>
-      <div class="note" style="margin-top:12px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg><span>IPv4 is validated strictly; IPv6 is optional and validated if provided.</span></div>
-      <div class="row2" style="margin-top:18px"><button class="btn btn-ghost" onclick="closeSheets()">Cancel</button><button class="btn btn-primary" onclick="saveDns()">Save</button></div>
     </div>
 
     <!-- VPN whitelist apps -->

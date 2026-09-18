@@ -3,12 +3,12 @@
   const SCREENS = {
     welcome:{group:'Onboarding'}, permissions:{group:'Onboarding'}, permbattery:{group:'Onboarding'}, perma11y:{group:'Onboarding'},
     home:{group:'Main',nav:true}, block:{group:'Main',nav:true}, schedule:{group:'Main',nav:true}, profile:{group:'Main',nav:true},
-    keywords:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, antitamper:{group:'Blocking'},
+    keywords:{group:'Blocking'}, blockscreen:{group:'Blocking'}, vpn:{group:'Blocking'}, developermode:{group:'Blocking'}, developerapps:{group:'Blocking'}, developerdns:{group:'Blocking'}, developerglobals:{group:'Blocking'}, developertunnelconfig:{group:'Blocking'}, developerrecovery:{group:'Blocking'}, developermonitoring:{group:'Blocking'}, developercapture:{group:'Blocking'}, developerconfig:{group:'Blocking'}, antitamper:{group:'Blocking'},
     selfprotect:{group:'Blocking'}, servicepicker:{group:'Blocking'}, titleblock:{group:'Blocking'}, otherfeatures:{group:'Blocking'}, socialblocking:{group:'Blocking'},
     applock:{group:'Protection'}, backup:{group:'Protection'}, troubleshoot:{group:'Protection'}, about:{group:'Protection'},
     history:{group:'Activity & Schedules'}, scheduleedit:{group:'Activity & Schedules'}, quickactions:{group:'Activity & Schedules'}
   };
-  const ORDER = ['welcome','permissions','permbattery','perma11y','home','block','schedule','profile','keywords','blockscreen','vpn','antitamper','selfprotect','servicepicker','titleblock','otherfeatures','socialblocking','applock','backup','troubleshoot','about','history','scheduleedit','quickactions'];
+  const ORDER = ['welcome','permissions','permbattery','perma11y','home','block','schedule','profile','keywords','blockscreen','vpn','developermode','developerapps','developerdns','developerglobals','developertunnelconfig','developerrecovery','developermonitoring','developercapture','developerconfig','antitamper','selfprotect','servicepicker','titleblock','otherfeatures','socialblocking','applock','backup','troubleshoot','about','history','scheduleedit','quickactions'];
   let stack = [];
 
   // Build prototype navigator
@@ -18,11 +18,45 @@
   for(const g in groups){
     ptb.insertAdjacentHTML('beforeend',`<div class="ptb-grp">${g}</div>`);
     groups[g].forEach(([s,i])=>{
-      ptb.insertAdjacentHTML('beforeend',`<a href="#/s/${s}" data-pt="${s}" class="${s==='home'?'on':''}">${title(s)}<span class="d">${String(i+1).padStart(2,'0')}</span></a>`);
+      ptb.insertAdjacentHTML('beforeend',`<a href="#/s/${s}" data-pt="${s}" title="${title(s)}" class="${s==='home'?'on':''}"><span class="ptb-label">${title(s)}</span><span class="d">${String(i+1).padStart(2,'0')}</span></a>`);
     });
   }
 
   function title(s){ return s.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase()); }
+
+  // ---------- Collapsible prototype navigation ----------
+  function setPrototypeNavCollapsed(collapsed, persist){
+    const ptb=document.getElementById('ptb');
+    const btn=document.getElementById('ptbToggle');
+    if(!ptb || !btn) return;
+    ptb.classList.toggle('is-collapsed', collapsed);
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', collapsed?'Expand navigation':'Collapse navigation');
+    if(persist){
+      try{ localStorage.setItem('safeme_ptb_collapsed', collapsed?'1':'0'); }catch(e){}
+    }
+  }
+  function togglePrototypeNav(){
+    const ptb=document.getElementById('ptb');
+    if(ptb) setPrototypeNavCollapsed(!ptb.classList.contains('is-collapsed'), true);
+  }
+  try{
+    const savedNavState=localStorage.getItem('safeme_ptb_collapsed');
+    const mobileDefault=savedNavState===null && window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+    setPrototypeNavCollapsed(savedNavState==='1' || mobileDefault, false);
+  }catch(e){ setPrototypeNavCollapsed(false, false); }
+  const ptbNav=document.getElementById('ptb');
+  if(ptbNav) ptbNav.addEventListener('click', e=>{
+    if(e.target.closest('a') && window.matchMedia && window.matchMedia('(max-width: 760px)').matches){
+      setTimeout(()=>setPrototypeNavCollapsed(true, true), 0);
+    }
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape' && window.matchMedia && window.matchMedia('(max-width: 760px)').matches){
+      const ptb=document.getElementById('ptb');
+      if(ptb && !ptb.classList.contains('is-collapsed')) setPrototypeNavCollapsed(true, true);
+    }
+  });
 
   function show(name, push){
     document.querySelectorAll('.screen').forEach(el=>el.classList.remove('show'));
@@ -34,6 +68,7 @@
     document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.nav===name));
     document.querySelectorAll('#ptbGroups a').forEach(a=>a.classList.toggle('on', a.dataset.pt===name));
     document.getElementById('statusbar').style.visibility = 'visible';
+    if(name!=='developermonitoring'){ closeAllMonitorActivity(); closeRecentMonitorActivity(); closeMonitorAppDetail(); }
     if(push) stack.push(name);
   }
 
@@ -967,15 +1002,25 @@
   loadSocial();
 
   // ---------- DNS & VPN ----------
-  let vpnPreset='Cloudflare Family', dnsV4='1.1.1.1', dnsV6='', vpnWhitelist=[], vpnNotif='Default';
+  let vpnPreset='Family-safe filtering', dnsV4='', dnsV6='', vpnWhitelist=[], vpnNotif='Default', vpnState='local-only', vpnConnectTimer=null;
+  let devTunnelMode='vpn', devDnsMode='encrypted', devDnsSearchDomains='', devDnsEndpoint='https://dns.example/dns-query', devTunnelDnsEndpoint='https://dns.example/dns-query', devSystemDns='58.145.191.174, 202.134.14.230, 2404:1c40:1::6, 2404:1c40:4::e', devResolutionMethod='doh', devProtocol='doh', devTransitDns='redirect', devGlobalTunnel=false, devCaptureProtection=true, devRecoveryEnabled=true, devRecoveryDelay='30 sec', devConfigDnsEnabled=false, devAmneziaEnabled=false, devConfigSource='none';
+  const DEV_MONITOR_KEY='safeme_dev_monitor_events'; let devMonitorEvents=loadDevMonitorEvents(), devMonitorCategory='all', devMonitorView='raw', devMonitorRecentView='raw', devMonitorDetailView='raw', devMonitorDetailName=''; let devInboundCount=0, devOutboundCount=0, devDnsRequestCount=0, devBlockedCount=0, devDroppedCount=0, devFailedCount=0, devRetriedCount=0, devActiveConnections=0, devClosedConnections=0, devUnknownOwners=0, devAllowedCount=0, devBytesIn=0, devBytesOut=0;
   function saveDns(){
-    const v4=document.getElementById('dnsIpv4').value.trim();
-    const v6=document.getElementById('dnsIpv6').value.trim();
-    if(!/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(v4)){ toast('Enter a valid IPv4 address'); return; }
-    if(v6 && !/^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/.test(v6)){ toast('Enter a valid IPv6 address'); return; }
-    dnsV4=v4; dnsV6=v6;
-    const cs=document.getElementById('dnsCustomSub'); if(cs) cs.textContent='IPv4 '+v4+(v6?' · IPv6 '+v6:'');
-    vpnStatus(); closeSheets(); toast('Custom DNS saved');
+    const v4=document.getElementById('dnsIpv4');
+    const v6=document.getElementById('dnsIpv6');
+    const search=document.getElementById('dnsSearchDomains');
+    const endpoint=document.getElementById('devDnsEndpoint');
+    const tunnelEndpoint=document.getElementById('devTunnelDnsEndpoint');
+    if(v4 && v4.value.trim() && !/^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(v4.value.trim())){ toast('Enter a valid IPv4 address'); return; }
+    if(v6 && v6.value.trim() && !/^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/.test(v6.value.trim())){ toast('Enter a valid IPv6 address'); return; }
+    dnsV4=v4 ? v4.value.trim() : dnsV4;
+    dnsV6=v6 ? v6.value.trim() : dnsV6;
+    devDnsSearchDomains=search ? search.value.trim() : devDnsSearchDomains;
+    devDnsEndpoint=endpoint ? endpoint.value.trim() : devDnsEndpoint;
+    devTunnelDnsEndpoint=tunnelEndpoint ? tunnelEndpoint.value.trim() : devTunnelDnsEndpoint;
+    devRenderSettings();
+    vpnStatus();
+    toast('DNS settings saved');
   }
   function selectAllVpnApps(){
     const q=(document.getElementById('vpnAppSearch')||{}).value||'';
@@ -1015,16 +1060,478 @@
     toast('Notification: '+vpnNotif);
   }
   function vpnStatus(){
-    const on=document.getElementById('vpnToggle').classList.contains('on');
+    const toggle=document.getElementById('vpnToggle');
+    const on=toggle ? toggle.classList.contains('on') : true;
     const p=document.getElementById('vpnPill'); if(p){ p.className='pill '+(on?'g':'r'); p.innerHTML='<span class="pdot"></span>'+(on?'Active':'Off'); }
-    const tt=document.getElementById('vpnTitle'); if(tt) tt.textContent=on?'VPN filtering is on':'VPN filtering is off';
+    const tt=document.getElementById('vpnTitle'); if(tt) tt.textContent=on?'Filtering is active':'Filtering is off';
     const s=document.getElementById('vpnSub');
-    if(s){
-      const base=vpnPreset==='Custom preset'?('Custom · '+dnsV4+(dnsV6?' · '+dnsV6:'')):vpnPreset;
-      s.textContent=on?(base+' · '+vpnWhitelist.length+' exempt'):'Tap to re-enable protection';
-    }
+    if(s) s.textContent=on?('Local protection · '+vpnWhitelist.length+' app'+(vpnWhitelist.length===1?'':'s')+' exempt'):'Tap to re-enable protection';
+
+    const states={
+      'local-only':{title:'Local Protection',summary:'Domain filtering and scheduled app protection are active locally.',pill:'Active',pillClass:'g',config:'Not configured',mode:'Local protection',ipv4:'Local only',ipv6:'Local only',endpoint:'Not configured',mtu:'Default',handshake:'Not connected'},
+      'configuration-ready':{title:'Configuration ready',summary:'A VPN configuration is imported but encrypted routing is not connected.',pill:'Ready',pillClass:'o',config:'Configuration ready',mode:'Local protection',ipv4:'Not connected',ipv6:'Not connected',endpoint:'Imported configuration',mtu:'Default',handshake:'Not connected'},
+      'connecting':{title:'Connecting',summary:'SafeMe is starting encrypted routing. Local protection remains active.',pill:'Starting',pillClass:'o',config:'Connecting…',mode:'Starting',ipv4:'Verifying…',ipv6:'Verifying…',endpoint:'Imported configuration',mtu:'Default',handshake:'Pending'},
+      'connected':{title:'Secure Tunnel',summary:'Encrypted routing is connected alongside SafeMe filtering.',pill:'Connected',pillClass:'g',config:'Connected',mode:'Secure tunnel',ipv4:'Verified',ipv6:'Verified',endpoint:'Imported configuration',mtu:'Default',handshake:'Active'},
+      'connection-failed':{title:'Protected with limits',summary:'Local filtering and scheduled protection remain active. Encrypted routing is unavailable.',pill:'Unavailable',pillClass:'r',config:'Connection failed',mode:'Local protection',ipv4:'Unavailable',ipv6:'Unavailable',endpoint:'Imported configuration',mtu:'Default',handshake:'Unavailable'}
+    };
+    const state=states[vpnState]||states['local-only'];
+    const setText=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
+    setText('devModeTitle',state.title); setText('devModeSummary',state.summary); setText('devConfigSub',state.config);
+    setText('devModeValue',state.mode); setText('devIpv4Value',state.ipv4); setText('devIpv6Value',state.ipv6);
+    setText('devEndpointValue',state.endpoint); setText('devMtuValue',state.mtu); setText('devHandshakeValue',state.handshake);
+    const dp=document.getElementById('devModePill');
+    if(dp){ dp.className='pill '+state.pillClass; dp.innerHTML='<span class="pdot"></span>'+state.pill; }
+    const dns4=document.getElementById('dnsIpv4'); if(dns4 && document.activeElement!==dns4) dns4.value=dnsV4;
+    const dns6=document.getElementById('dnsIpv6'); if(dns6 && document.activeElement!==dns6) dns6.value=dnsV6;
+    const importBtn=document.getElementById('devImportBtn'); if(importBtn) importBtn.textContent=vpnState==='local-only'?'Import':'Replace configuration';
+    const connectBtn=document.getElementById('devConnectBtn'); if(connectBtn) connectBtn.disabled=!(vpnState==='configuration-ready'||vpnState==='connection-failed');
+    const disconnectBtn=document.getElementById('devDisconnectBtn'); if(disconnectBtn) disconnectBtn.disabled=!(vpnState==='connected'||vpnState==='connecting');
+    const replaceBtn=document.getElementById('devReplaceBtn'); if(replaceBtn) replaceBtn.disabled=vpnState==='connecting';
+    const removeBtn=document.getElementById('devRemoveBtn'); if(removeBtn) removeBtn.disabled=vpnState==='local-only';
+    devRenderSettings();
   }
   vpnStatus();
+
+  // ---------- Secure Tunnel Developer Mode ----------
+  function devRenderSettings(){
+    const setText=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
+    const tunnelLabels={vpn:'VPN',proxy:'Local proxy',lockdown:'Kill switch'};
+    const tunnelSummary={vpn:'Standard system-wide VPN mode.',proxy:'Expose the tunnel as a local proxy.',lockdown:'Block non-tunnel traffic when protection is unavailable.'};
+    const resolutionLabels={system:'System',doh:'DNS over HTTPS (DoH)',dot:'DNS over TLS (DoT)',plain:'Plain DNS (port 53)'};
+    const dnsModeLabels={default:'Default',encrypted:'Encrypted DNS',split:'Split DNS',system:'System DNS only'};
+    setText('devTunnelModeSummary',tunnelSummary[devTunnelMode]);
+    setText('devRootAppSummary',tunnelLabels[devTunnelMode]);
+    setText('devRootDnsSummary',resolutionLabels[devResolutionMethod]||'DNS over HTTPS (DoH)');
+    setText('devRootGlobalsSummary','Tunnel configuration');
+    setText('devRootRecoverySummary',devRecoveryEnabled?'Seamless recovery · '+devRecoveryDelay:'Seamless recovery disabled');
+    setText('devRootMonitorSummary',({'local-only':'Local Protection','configuration-ready':'Configuration ready','connecting':'Connecting','connected':'Secure Tunnel','connection-failed':'Protected with limits'})[vpnState]+' · '+devInboundCount+' in · '+devOutboundCount+' out');
+    setText('devRootConfigSummary',devConfigSource==='none'?'Import from file or clipboard':'Configuration editor ready');
+    setText('devSystemDns',devSystemDns);
+    setText('devDnsStatus','Current: '+(dnsModeLabels[devDnsMode]||'Encrypted DNS'));
+    setText('devResolutionChoice',resolutionLabels[devResolutionMethod]||'DNS over HTTPS (DoH)');
+    setText('devProtocolChoice',resolutionLabels[devProtocol]||'DNS over HTTPS (DoH)');
+    setText('devDnsModeChoice',dnsModeLabels[devDnsMode]||'Encrypted DNS');
+    setText('devTransitDnsChoice',devTransitDns==='redirect'?'Redirect':devTransitDns==='block'?'Block':'Allow');
+    const endpoint=document.getElementById('devDnsEndpoint'); if(endpoint && document.activeElement!==endpoint) endpoint.value=devDnsEndpoint;
+    const tunnelEndpoint=document.getElementById('devTunnelDnsEndpoint'); if(tunnelEndpoint && document.activeElement!==tunnelEndpoint) tunnelEndpoint.value=devTunnelDnsEndpoint;
+    const recovery=document.getElementById('devRecoverySw'); if(recovery) recovery.classList.toggle('on',devRecoveryEnabled);
+    const delay=document.getElementById('devRecoveryDelay'); if(delay) delay.value=devRecoveryDelay;
+    const dnsConfig=document.getElementById('devConfigDnsSw'); if(dnsConfig) dnsConfig.classList.toggle('on',devConfigDnsEnabled);
+    const amnezia=document.getElementById('devAmneziaSw'); if(amnezia) amnezia.classList.toggle('on',devAmneziaEnabled);
+    const global=document.getElementById('devGlobalSw'); if(global) global.classList.toggle('on',devGlobalTunnel);
+    const capture=document.getElementById('devCaptureSw'); if(capture) capture.classList.toggle('on',devCaptureProtection);
+    const dns4=document.getElementById('dnsIpv4'); if(dns4 && document.activeElement!==dns4) dns4.value=dnsV4;
+    const dns6=document.getElementById('dnsIpv6'); if(dns6 && document.activeElement!==dns6) dns6.value=dnsV6;
+    const search=document.getElementById('dnsSearchDomains'); if(search && document.activeElement!==search) search.value=devDnsSearchDomains;
+    renderDevMonitor();
+  }
+
+  function selectDevResolution(mode){
+    devResolutionMethod=mode;
+    closeSheets();
+    devRenderSettings();
+  }
+  function selectDevProtocol(mode){
+    devProtocol=mode;
+    closeSheets();
+    devRenderSettings();
+  }
+  function selectDevDnsMode(mode){
+    devDnsMode=mode;
+    closeSheets();
+    devRenderSettings();
+  }
+  function selectDevTransit(mode){
+    devTransitDns=mode;
+    closeSheets();
+    devRenderSettings();
+  }
+  function setDevTunnelMode(btn,mode){
+    devTunnelMode=mode; togSeg(btn); devRenderSettings();
+    toast(mode==='vpn'?'VPN mode selected':mode==='proxy'?'Local proxy mode selected':'Kill switch mode selected');
+  }
+  function setDevRecoveryDelay(select){
+    devRecoveryDelay=select.value;
+    devRenderSettings();
+    toast('Seamless recovery delay set to '+devRecoveryDelay);
+  }
+  function toggleDevSetting(sw,kind){
+    if(kind==='global'){
+      if(!devGlobalTunnel && vpnState!=='connected'){ toast('Connect the tunnel before enabling Global Tunnel'); return; }
+      devGlobalTunnel=sw.classList.toggle('on');
+    }
+    if(kind==='capture') devCaptureProtection=sw.classList.toggle('on');
+    if(kind==='recovery') devRecoveryEnabled=sw.classList.toggle('on');
+    if(kind==='configDns') devConfigDnsEnabled=sw.classList.toggle('on');
+    if(kind==='amnezia') devAmneziaEnabled=sw.classList.toggle('on');
+    devRenderSettings();
+    toast(kind==='global'?(devGlobalTunnel?'Global tunnel enabled':'Global tunnel disabled'):kind==='recovery'?(devRecoveryEnabled?'Seamless tunnel recovery enabled':'Seamless tunnel recovery disabled'):kind==='configDns'?(devConfigDnsEnabled?'DNS servers enabled':'DNS servers disabled'):kind==='amnezia'?(devAmneziaEnabled?'Amnezia configuration enabled':'Amnezia configuration disabled'):(devCaptureProtection?'Capture protection enabled':'Capture protection disabled for testing'));
+  }
+  function devSaveTunnelConfiguration(){
+    toast('Tunnel configuration saved');
+  }
+  function devImportTunnelConfiguration(){
+    toast('Tunnel configuration import opened');
+  }
+  function devConfigSourceAction(source){
+    devConfigSource=source;
+    const status=document.getElementById('devConfigSourceStatus');
+    const labels={file:'File selected · configuration parsed for preview.',clipboard:'Clipboard text received · configuration parsed for preview.',manual:'Manual configuration editor ready.'};
+    if(status) status.textContent=labels[source];
+    document.querySelectorAll('.dev-source').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick').includes("'"+source+"'")));
+    if(source!=='manual'){
+      const set=(id,value)=>{const el=document.getElementById(id); if(el) el.value=value;};
+      set('devCfgName','Imported configuration'); set('devCfgAddresses','10.0.0.2/32'); set('devCfgEndpoint','endpoint.example:51820'); set('devCfgDns','Protected DNS'); set('devCfgRoutes','0.0.0.0/0, ::/0'); set('devCfgListenPort','Auto'); set('devCfgMtu','Auto'); set('devCfgKeepalive','25');
+    }
+    toast(source==='file'?'Configuration file loaded':source==='clipboard'?'Configuration clipboard text loaded':'Manual configuration ready');
+  }
+  function devSaveConfigDraft(){
+    devConfigSource='saved';
+    vpnState='configuration-ready';
+    devGlobalTunnel=false;
+    vpnStatus();
+    toast('Configuration saved — ready to connect');
+    back();
+  }
+  function devImportConfig(){
+    if(vpnConnectTimer){ clearTimeout(vpnConnectTimer); vpnConnectTimer=null; }
+    vpnState='configuration-ready';
+    devGlobalTunnel=false;
+    vpnStatus();
+    toast('VPN configuration imported — ready to connect');
+  }
+  function devConnect(){
+    if(vpnState==='local-only'){ toast('Import a VPN configuration first'); return; }
+    if(vpnState==='connected'){ toast('Encrypted routing is already connected'); return; }
+    if(vpnConnectTimer) clearTimeout(vpnConnectTimer);
+    vpnState='connecting'; vpnStatus(); toast('Connecting encrypted routing…');
+    vpnConnectTimer=setTimeout(()=>{
+      vpnConnectTimer=null;
+      if(vpnState==='connecting'){
+        vpnState='connected'; vpnStatus(); toast('Encrypted routing connected');
+      }
+    },900);
+  }
+  function devDisconnect(){
+    if(vpnConnectTimer){ clearTimeout(vpnConnectTimer); vpnConnectTimer=null; }
+    if(vpnState!=='connected' && vpnState!=='connecting'){ toast('Encrypted routing is not connected'); return; }
+    vpnState='configuration-ready'; devGlobalTunnel=false; vpnStatus(); toast('Encrypted routing disconnected — Local Protection restored');
+  }
+  function devRemoveConfig(){
+    if(vpnConnectTimer){ clearTimeout(vpnConnectTimer); vpnConnectTimer=null; }
+    vpnState='local-only'; devGlobalTunnel=false; vpnStatus(); toast('VPN configuration removed — Local Protection restored');
+  }
+  function devUpdateLists(){
+    const status=document.getElementById('devListStatus'); if(status) status.textContent='Updated just now';
+    toast('Protection lists are current');
+  }
+  function devRunTest(kind){
+    const value=kind+' passed';
+    const last=document.getElementById('devLastDiagnostic'); if(last) last.textContent=value;
+    const monitor=document.getElementById('devMonLastTest'); if(monitor) monitor.textContent=value;
+    toast(kind+' protection test passed');
+  }
+  function devRestartService(){
+    const status=document.getElementById('devServiceStatus');
+    if(status) status.textContent='Restarting…';
+    toast('Protection service restarting…');
+    setTimeout(()=>{ if(status) status.textContent='Running'; toast('Protection service running'); },700);
+  }
+  function loadDevMonitorEvents(){
+    try{
+      const saved=localStorage.getItem(DEV_MONITOR_KEY);
+      if(saved===null){
+        const initial=makeMockMonitorEvents();
+        localStorage.setItem(DEV_MONITOR_KEY,JSON.stringify(initial));
+        return initial;
+      }
+      const parsed=JSON.parse(saved||'[]');
+      return Array.isArray(parsed)?parsed.slice(-500).map(normalizeMonitorEvent):[];
+    }catch(e){ return []; }
+  }
+  function saveDevMonitorEvents(){
+    devMonitorEvents=devMonitorEvents.slice(-500);
+    try{ localStorage.setItem(DEV_MONITOR_KEY,JSON.stringify(devMonitorEvents)); }catch(e){}
+  }
+  function escapeMonitorText(value){
+    return String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function monitorNow(offset){
+    return new Date(Date.now()-(offset||0)).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  function normalizeMonitorOwner(name){
+    const aliases={'Browser':'Chrome','Video app':'YouTube','Mail app':'Gmail'};
+    return aliases[name]||name||'Unknown owner';
+  }
+  function normalizeMonitorEvent(event){
+    const copy=Object.assign({},event||{});
+    copy.owner=normalizeMonitorOwner(copy.owner);
+    return copy;
+  }
+  function monitorAppMeta(name){
+    const normalized=normalizeMonitorOwner(name);
+    return APPS.find(app=>app.name===normalized)||null;
+  }
+  function monitorIconMarkup(name,kind){
+    if(kind==='app'){
+      const app=monitorAppMeta(name);
+      if(app) return '<svg viewBox="0 0 24 24" aria-hidden="true" style="background:'+app.bg+';color:'+app.fg+'">'+app.ic+'</svg>';
+    }
+    if(kind==='system') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>';
+    return '<span class="dev-monitor-unknown-mark">?</span>';
+  }
+  function makeMockMonitorEvents(){
+    const flowBase=Date.now();
+    return [
+      {id:flowBase+'-1',flowId:'flow-web-1',time:monitorNow(0),type:'request',direction:'OUT',action:'allowed',state:'complete',protocol:'TCP',family:'IPv4',interface:'Wi-Fi',owner:'Chrome',ownerKind:'app',source:'192.0.2.10:54122',destination:'203.0.113.20:443',host:'example.test',bytesIn:1280,bytesOut:420},
+      {id:flowBase+'-2',flowId:'flow-dns-1',time:monitorNow(80),type:'dns',direction:'DNS',action:'allowed',state:'complete',protocol:'DNS',family:'IPv4',interface:'Wi-Fi',owner:'SafeMe DNS',ownerKind:'system',source:'192.0.2.10:42100',destination:'192.0.2.53:53',host:'example.test',bytesIn:96,bytesOut:72},
+      {id:flowBase+'-3',flowId:'flow-ad-1',time:monitorNow(160),type:'request',direction:'OUT',action:'blocked',state:'complete',protocol:'UDP',family:'IPv6',interface:'Mobile',owner:'YouTube',ownerKind:'app',source:'2001:db8::10:50001',destination:'2001:db8::20:443',host:'ads.example.test',bytesIn:0,bytesOut:96},
+      {id:flowBase+'-4',flowId:'flow-in-1',time:monitorNow(240),type:'request',direction:'IN',action:'allowed',state:'complete',protocol:'TCP',family:'IPv6',interface:'Mobile',owner:'Unknown owner',ownerKind:'unknown',source:'2001:db8::20:443',destination:'2001:db8::10:54122',host:'example.test',bytesIn:2048,bytesOut:0},
+      {id:flowBase+'-5',flowId:'flow-icmp-1',time:monitorNow(320),type:'request',direction:'OUT',action:'allowed',state:'active',protocol:'ICMP',family:'IPv4',interface:'Wi-Fi',owner:'System',ownerKind:'system',source:'192.0.2.10',destination:'192.0.2.1',host:'',bytesIn:0,bytesOut:64},
+      {id:flowBase+'-6',flowId:'flow-conn-1',time:monitorNow(400),type:'connection',direction:'OUT',action:'dropped',state:'closed',protocol:'UDP',family:'IPv4',interface:'Loopback',owner:'SafeMe service',ownerKind:'system',source:'127.0.0.1:9050',destination:'192.0.2.53:53',host:'',bytesIn:0,bytesOut:0},
+      {id:flowBase+'-7',flowId:'flow-retry-1',time:monitorNow(480),type:'request',direction:'OUT',action:'retried',state:'retrying',protocol:'TCP',family:'IPv4',interface:'Mobile',owner:'Gmail',ownerKind:'app',source:'192.0.2.10:54410',destination:'203.0.113.25:443',host:'mail.example.test',bytesIn:0,bytesOut:256},
+      {id:flowBase+'-8',flowId:'flow-fail-1',time:monitorNow(560),type:'request',direction:'IN',action:'failed',state:'failed',protocol:'TCP',family:'IPv6',interface:'Wi-Fi',owner:'Unknown owner',ownerKind:'unknown',source:'2001:db8::25:443',destination:'2001:db8::10:54410',host:'mail.example.test',bytesIn:0,bytesOut:0},
+      {id:flowBase+'-9',flowId:'flow-dns-2',time:monitorNow(640),type:'dns',direction:'DNS',action:'blocked',state:'complete',protocol:'DNS',family:'IPv6',interface:'Wi-Fi',owner:'SafeMe DNS',ownerKind:'system',source:'2001:db8::10:53000',destination:'2001:db8::53:53',host:'tracker.example.test',bytesIn:0,bytesOut:88},
+      {id:flowBase+'-10',flowId:'flow-loop-1',time:monitorNow(720),type:'connection',direction:'IN',action:'allowed',state:'active',protocol:'TCP',family:'IPv4',interface:'Loopback',owner:'SafeMe service',ownerKind:'system',source:'127.0.0.1:9090',destination:'127.0.0.1:9050',host:'',bytesIn:512,bytesOut:512}
+    ];
+  }
+  function monitorStats(events){
+    const e=events||devMonitorEvents;
+    const sum=(fn)=>e.filter(fn).length;
+    return {
+      inbound:sum(x=>x.direction==='IN'), outbound:sum(x=>x.direction==='OUT'), dns:sum(x=>x.type==='dns'), allowed:sum(x=>x.action==='allowed'), blocked:sum(x=>x.action==='blocked'), dropped:sum(x=>x.action==='dropped'), failed:sum(x=>x.action==='failed'), retried:sum(x=>x.action==='retried'), active:sum(x=>x.state==='active'||x.state==='retrying'), closed:sum(x=>x.state==='closed'), unknown:sum(x=>x.ownerKind==='unknown'), known:sum(x=>x.ownerKind!=='unknown'), bytesIn:e.reduce((n,x)=>n+(Number(x.bytesIn)||0),0), bytesOut:e.reduce((n,x)=>n+(Number(x.bytesOut)||0),0)
+    };
+  }
+  function monitorMatches(e){
+    const val=id=>(document.getElementById(id)||{}).value||'all';
+    const direction=val('devMonitorDirection'), action=val('devMonitorAction'), owner=val('devMonitorOwner'), search=((document.getElementById('devMonitorSearch')||{}).value||'').trim().toLowerCase();
+    if(devMonitorCategory==='apps' && e.ownerKind!=='app') return false;
+    if(devMonitorCategory==='requests' && !(e.type==='request'||e.type==='connection')) return false;
+    if(devMonitorCategory==='dns' && e.type!=='dns') return false;
+    if(devMonitorCategory==='blocked' && !['blocked','dropped','failed'].includes(e.action)) return false;
+    if(devMonitorCategory==='connections' && e.type!=='connection') return false;
+    if(direction!=='all' && e.direction!==direction) return false;
+    if(action!=='all' && e.action!==action) return false;
+    if(owner!=='all' && e.ownerKind!==owner) return false;
+    if(search && !JSON.stringify(e).toLowerCase().includes(search)) return false;
+    return true;
+  }
+  function formatMonitorBytes(value){
+    const n=Math.max(0,Number(value)||0);
+    if(n<1024) return n+' B';
+    if(n<1024*1024) return (n/1024).toFixed(n<10*1024?1:0)+' KB';
+    if(n<1024*1024*1024) return (n/(1024*1024)).toFixed(n<10*1024*1024?1:0)+' MB';
+    return (n/(1024*1024*1024)).toFixed(1)+' GB';
+  }
+  function monitorGroupRows(keyFn){
+    const groups=new Map();
+    devMonitorEvents.forEach(e=>{
+      const key=keyFn(e)||'Unknown';
+      if(!groups.has(key)) groups.set(key,{name:key,count:0,bytesIn:0,bytesOut:0,ownerKind:e.ownerKind||'unknown'});
+      const row=groups.get(key); row.count++; row.bytesIn+=Number(e.bytesIn)||0; row.bytesOut+=Number(e.bytesOut)||0;
+    });
+    return [...groups.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name));
+  }
+  function monitorListIcon(row, destination){
+    const kind=destination?'destination':(row.ownerKind||'unknown');
+    return '<span class="dev-monitor-list-icon '+kind+'">'+(destination?'<span class="dev-monitor-destination-mark">↗</span>':monitorIconMarkup(row.name,row.ownerKind))+'</span>';
+  }
+  function monitorListRow(row, destination){
+    const sub=destination?(row.count+' event'+(row.count===1?'':'s')):(row.count+' event'+(row.count===1?'':'s')+' · '+formatMonitorBytes(row.bytesIn+row.bytesOut));
+    const attr=escapeMonitorText(row.name);
+    const action=destination?'filterMonitorByOwner':'openMonitorAppDetail';
+    return '<button class="dev-monitor-owner-row" data-owner="'+attr+'" onclick="'+action+'(this.dataset.owner)">'+monitorListIcon(row,destination)+'<span class="dev-monitor-owner-copy"><b>'+attr+'</b><small>'+escapeMonitorText(sub)+'</small></span><span class="dev-monitor-owner-count">'+row.count+'</span></button>';
+  }
+  function renderMonitorDigest(stats){
+    const set=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
+    const requestEvents=devMonitorEvents.filter(e=>e.type==='request'||e.type==='connection');
+    const requestTotal=requestEvents.length;
+    const denied=devMonitorEvents.filter(e=>e.action==='blocked'||e.action==='dropped').length;
+    const dnsEvents=devMonitorEvents.filter(e=>e.type==='dns');
+    const dnsBlocked=dnsEvents.filter(e=>e.action==='blocked'||e.action==='dropped').length;
+    const totalBytes=stats.bytesIn+stats.bytesOut;
+    set('devRequestBlockedStat',denied); set('devRequestRetriedStat',stats.retried); set('devRequestTotalStat',requestTotal);
+    set('devMonitorBytesTotal',formatMonitorBytes(totalBytes)); set('devMonitorBytesOutStat',formatMonitorBytes(stats.bytesOut)); set('devMonitorBytesInStat',formatMonitorBytes(stats.bytesIn));
+    set('devMonitorDnsBlockedStat',dnsBlocked); set('devMonitorDnsTotalStat',dnsEvents.length); set('devMonitorDnsBytesStat',formatMonitorBytes(dnsEvents.reduce((n,e)=>n+(Number(e.bytesIn)||0)+(Number(e.bytesOut)||0),0)));
+    const setBar=(id,value,total)=>{const el=document.getElementById(id); if(el) el.style.width=(total?Math.max(value/total*100,value?3:0):0)+'%';};
+    const requestAllowed=requestEvents.filter(e=>e.action==='allowed').length;
+    const requestFailed=requestEvents.filter(e=>e.action==='failed').length;
+    setBar('devMonitorAllowedBar',requestAllowed,requestTotal); setBar('devMonitorDeniedBar',denied,requestTotal); setBar('devMonitorFailedBar',requestFailed,requestTotal);
+    setBar('devMonitorInBar',stats.bytesIn,totalBytes); setBar('devMonitorOutBar',stats.bytesOut,totalBytes);
+    setBar('devMonitorDnsAllowedBar',dnsEvents.length-dnsBlocked,dnsEvents.length); setBar('devMonitorDnsBlockedBar',dnsBlocked,dnsEvents.length);
+    const owners=monitorGroupRows(e=>e.owner||'Unknown owner').sort((a,b)=>{const rank={app:0,system:1,unknown:2}; return (rank[a.ownerKind]??3)-(rank[b.ownerKind]??3)||b.count-a.count||a.name.localeCompare(b.name);}).slice(0,5);
+    const ownerHost=document.getElementById('devMonitorOwnerList'); if(ownerHost) ownerHost.innerHTML=owners.length?owners.map(row=>monitorListRow(row,false)).join(''):'<div class="dev-monitor-inline-empty">No owners recorded yet.</div>';
+    const destinations=monitorGroupRows(e=>e.host||e.destination||'Unknown destination').slice(0,3);
+    const destinationHost=document.getElementById('devMonitorDestinationList'); if(destinationHost) destinationHost.innerHTML=destinations.length?destinations.map(row=>monitorListRow(row,true)).join(''):'<div class="dev-monitor-inline-empty">No destinations recorded yet.</div>';
+  }
+  function monitorPillClass(e){ return e.action==='blocked'||e.action==='dropped'||e.action==='failed'?'r':e.action==='retried'?'o':'g'; }
+  function monitorEventRow(e, grouped){
+    const summary=e.type==='dns'?(e.host||'DNS resolver request'):(e.host||e.destination||'Network flow');
+    const endpoint=(e.protocol||'network').toLowerCase()+'://'+(e.destination||'redacted');
+    const count=grouped?'<span class="dev-monitor-event-count">'+e.count+' events</span>':'';
+    const detail1=(e.direction||'')+' · '+(e.protocol||'')+' · '+(e.family||'')+' · '+(e.interface||'');
+    const detail2=(e.source||'redacted')+' → '+(e.destination||'redacted');
+    const detail3=(e.owner||'Unknown owner')+' · '+(e.action||'unknown')+' · '+(e.state||'unknown');
+    const detail4=(e.host||'No domain')+' · '+formatMonitorBytes((Number(e.bytesIn)||0)+(Number(e.bytesOut)||0))+' total';
+    return '<div class="dev-monitor-event" data-event-id="'+escapeMonitorText(e.id)+'" onclick="toggleMonitorEvent(this)">'+
+      '<div class="dev-monitor-event-top"><span class="dev-monitor-event-icon '+escapeMonitorText(e.ownerKind||'unknown')+'">'+monitorIconMarkup(e.owner,e.ownerKind)+'</span><span class="dev-monitor-event-copy"><b>'+escapeMonitorText(summary)+'</b><small>'+escapeMonitorText(endpoint)+'</small></span><time>'+escapeMonitorText(e.time)+'</time>'+count+'</div>'+
+      '<div class="dev-monitor-event-meta"><span class="pill '+monitorPillClass(e)+'"><span class="pdot"></span>'+escapeMonitorText(e.action)+'</span><span>'+escapeMonitorText(e.owner||'Unknown owner')+'</span><span>'+escapeMonitorText(e.state||'unknown')+'</span></div>'+
+      '<div class="dev-monitor-event-detail"><span>'+escapeMonitorText(detail1)+'</span><span>'+escapeMonitorText(detail2)+'</span><span>'+escapeMonitorText(detail3)+'</span><span>'+escapeMonitorText(detail4)+'</span></div></div>';
+  }
+  function renderDevMonitor(){
+    const stats=monitorStats();
+    devInboundCount=stats.inbound; devOutboundCount=stats.outbound; devDnsRequestCount=stats.dns; devAllowedCount=stats.allowed; devBlockedCount=stats.blocked; devDroppedCount=stats.dropped; devFailedCount=stats.failed; devRetriedCount=stats.retried; devActiveConnections=stats.active; devClosedConnections=stats.closed; devUnknownOwners=stats.unknown; devBytesIn=stats.bytesIn; devBytesOut=stats.bytesOut;
+    const set=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
+    set('devInboundCount',stats.inbound); set('devOutboundCount',stats.outbound); set('devDnsRequestCount',stats.dns); set('devAllowedCount',stats.allowed); set('devBlockedCount',stats.blocked); set('devDroppedCount',stats.dropped); set('devFailedCount',stats.failed); set('devRetriedCount',stats.retried); set('devActiveConnections',stats.active); set('devClosedConnections',stats.closed); set('devUnknownOwners',stats.unknown); set('devBytesSummary',formatMonitorBytes(stats.bytesIn)+' / '+formatMonitorBytes(stats.bytesOut)); set('devRootMonitorSummary','Monitoring · '+stats.inbound+' in · '+stats.outbound+' out');
+    renderMonitorDigest(stats);
+    document.querySelectorAll('#devMonitorCategories button').forEach(b=>b.classList.toggle('on',b.dataset.category===devMonitorCategory));
+    document.querySelectorAll('#devMonitorView button').forEach(b=>b.classList.toggle('on',b.dataset.view===devMonitorView));
+    const host=document.getElementById('devRequestLog'); if(!host) return;
+    let filtered=devMonitorEvents.filter(monitorMatches).slice().reverse();
+    if(devMonitorView==='lifecycle'){
+      const groups=new Map(); filtered.forEach(e=>{const key=e.flowId||e.id; if(!groups.has(key)){const copy=Object.assign({},e,{count:1}); groups.set(key,copy);} else groups.get(key).count++;}); filtered=[...groups.values()];
+    }
+    set('devMonitorCount',filtered.length+' '+(filtered.length===1?'event':'events')); set('devMonitorOverviewActivitySummary',filtered.length+' '+(filtered.length===1?'event':'events')+' · filters and lifecycle groups');
+    host.innerHTML=filtered.length?filtered.slice(0,100).map(e=>monitorEventRow(e,devMonitorView==='lifecycle')).join(''):'<div class="dev-monitor-empty">No events match the selected filters.</div>';
+    renderMonitorAppDetail();
+    renderRecentMonitorActivity();
+  }
+  function filterMonitorByOwner(owner){
+    devMonitorCategory='all';
+    const direction=document.getElementById('devMonitorDirection'); if(direction) direction.value='all';
+    const action=document.getElementById('devMonitorAction'); if(action) action.value='all';
+    const ownerFilter=document.getElementById('devMonitorOwner'); if(ownerFilter) ownerFilter.value='all';
+    const search=document.getElementById('devMonitorSearch');
+    if(search){ search.value=owner; openAllMonitorActivity(); }
+  }
+  const MONITOR_SURFACES={
+    all:{id:'devMonitorAllActivity',state:'all-activity-open'},
+    recent:{id:'devMonitorRecentActivity',state:'recent-activity-open'},
+    app:{id:'devMonitorAppDetail',state:'app-detail-open'}
+  };
+  function setMonitorSurface(active){
+    const screen=document.getElementById('sc-developermonitoring');
+    Object.keys(MONITOR_SURFACES).forEach(key=>{
+      const surface=MONITOR_SURFACES[key];
+      const panel=document.getElementById(surface.id);
+      const open=key===active;
+      if(panel){ panel.classList.toggle('show',open); panel.setAttribute('aria-hidden',String(!open)); }
+      if(screen) screen.classList.toggle(surface.state,open);
+    });
+  }
+  function closeMonitorSurface(key){
+    const surface=MONITOR_SURFACES[key];
+    if(!surface) return;
+    const panel=document.getElementById(surface.id);
+    if(panel){ panel.classList.remove('show'); panel.setAttribute('aria-hidden','true'); }
+    const screen=document.getElementById('sc-developermonitoring'); if(screen) screen.classList.remove(surface.state);
+  }
+  function openAllMonitorActivity(){
+    const panel=document.getElementById('devMonitorAllActivity');
+    if(!panel) return;
+    setMonitorSurface('all');
+    const screen=document.getElementById('sc-developermonitoring');
+    if(screen) screen.scrollTop=0;
+    renderDevMonitor(); panel.scrollTop=0;
+  }
+  function closeAllMonitorActivity(){ closeMonitorSurface('all'); }
+  function focusMonitorLog(scope){
+    devMonitorCategory='all';
+    const direction=document.getElementById('devMonitorDirection'); if(direction) direction.value='all';
+    const action=document.getElementById('devMonitorAction'); if(action) action.value='all';
+    const owner=document.getElementById('devMonitorOwner'); if(owner) owner.value='all';
+    const search=document.getElementById('devMonitorSearch'); if(search) search.value='';
+    openAllMonitorActivity();
+  }
+  function focusEventStream(){ openAllMonitorActivity(); }
+  function renderRecentMonitorActivity(){
+    const panel=document.getElementById('devMonitorRecentActivity');
+    if(!panel || !panel.classList.contains('show')) return;
+    document.querySelectorAll('#devMonitorRecentView button').forEach((b,i)=>b.classList.toggle('on',(i===0?'raw':'lifecycle')===devMonitorRecentView));
+    let shown=devMonitorEvents.slice().reverse();
+    if(devMonitorRecentView==='lifecycle'){
+      const groups=new Map();
+      shown.forEach(e=>{const key=e.flowId||e.id; if(!groups.has(key)){groups.set(key,Object.assign({},e,{count:1}));}else groups.get(key).count++;});
+      shown=[...groups.values()];
+    }
+    const host=document.getElementById('devMonitorRecentLog');
+    const count=document.getElementById('devMonitorRecentCount');
+    if(count) count.textContent=shown.length+' '+(shown.length===1?'event':'events');
+    if(host) host.innerHTML=shown.length?shown.slice(0,100).map(e=>monitorEventRow(e,devMonitorRecentView==='lifecycle')).join(''):'<div class="dev-monitor-empty">No recent activity yet.</div>';
+  }
+  function openRecentMonitorActivity(){
+    const panel=document.getElementById('devMonitorRecentActivity');
+    if(!panel) return;
+    setMonitorSurface('recent');
+    const screen=document.getElementById('sc-developermonitoring');
+    if(screen) screen.scrollTop=0;
+    devMonitorRecentView='raw';
+    renderRecentMonitorActivity(); panel.scrollTop=0;
+  }
+  function closeRecentMonitorActivity(){ closeMonitorSurface('recent'); }
+  function setDevMonitorRecentView(view){ devMonitorRecentView=view; renderRecentMonitorActivity(); }
+  function monitorDetailEvents(){
+    return devMonitorEvents.filter(e=>(e.owner||'Unknown owner')===devMonitorDetailName);
+  }
+  function renderMonitorAppDetail(){
+    const panel=document.getElementById('devMonitorAppDetail');
+    if(!panel || !panel.classList.contains('show')) return;
+    const events=monitorDetailEvents();
+    const stats=monitorStats(events);
+    const set=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
+    const first=events[0]||{};
+    const kind=first.ownerKind||'unknown';
+    set('devMonitorDetailName',devMonitorDetailName||'Unknown owner');
+    set('devMonitorDetailSubtitle',kind==='app'?'Known app · metadata activity':kind==='system'?'SafeMe/system service · metadata activity':'Owner not identified · metadata activity');
+    const icon=document.getElementById('devMonitorDetailIcon');
+    if(icon){ icon.innerHTML=monitorIconMarkup(devMonitorDetailName,kind); icon.className='dev-monitor-app-icon '+kind; }
+    const requestEvents=events.filter(e=>e.type==='request'||e.type==='connection');
+    const denied=events.filter(e=>e.action==='blocked'||e.action==='dropped').length;
+    const totalBytes=stats.bytesIn+stats.bytesOut;
+    set('devMonitorDetailBlocked',denied); set('devMonitorDetailRequests',requestEvents.length); set('devMonitorDetailBytes',formatMonitorBytes(totalBytes));
+    const setBar=(id,value,total)=>{const el=document.getElementById(id); if(el) el.style.width=(total?Math.max(value/total*100,value?3:0):0)+'%';};
+    setBar('devMonitorDetailAllowedBar',requestEvents.filter(e=>e.action==='allowed').length,requestEvents.length); setBar('devMonitorDetailBlockedBar',denied,requestEvents.length); setBar('devMonitorDetailFailedBar',requestEvents.filter(e=>e.action==='failed').length,requestEvents.length);
+    document.querySelectorAll('#devMonitorDetailView button').forEach((b,i)=>b.classList.toggle('on',(i===0?'raw':'lifecycle')===devMonitorDetailView));
+    let shown=events.slice().reverse();
+    if(devMonitorDetailView==='lifecycle'){
+      const groups=new Map();
+      shown.forEach(e=>{const key=e.flowId||e.id; if(!groups.has(key)){groups.set(key,Object.assign({},e,{count:1}));}else groups.get(key).count++;});
+      shown=[...groups.values()];
+    }
+    const host=document.getElementById('devMonitorDetailLog');
+    if(host) host.innerHTML=shown.length?shown.slice(0,100).map(e=>monitorEventRow(e,devMonitorDetailView==='lifecycle')).join(''):'<div class="dev-monitor-empty">No metadata activity for this owner yet.</div>';
+  }
+  function openMonitorAppDetail(name){
+    devMonitorDetailName=name||'Unknown owner'; devMonitorDetailView='raw';
+    const panel=document.getElementById('devMonitorAppDetail');
+    if(!panel) return;
+    setMonitorSurface('app');
+    const screen=document.getElementById('sc-developermonitoring');
+    if(screen) screen.scrollTop=0;
+    renderMonitorAppDetail(); panel.scrollTop=0;
+  }
+  function closeMonitorAppDetail(){
+    closeMonitorSurface('app');
+    devMonitorDetailName='';
+  }
+  function setDevMonitorDetailView(view){ devMonitorDetailView=view; renderMonitorAppDetail(); }
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const appPanel=document.getElementById('devMonitorAppDetail'), recentPanel=document.getElementById('devMonitorRecentActivity'), allPanel=document.getElementById('devMonitorAllActivity'); if(appPanel&&appPanel.classList.contains('show')) closeMonitorAppDetail(); else if(recentPanel&&recentPanel.classList.contains('show')) closeRecentMonitorActivity(); else if(allPanel&&allPanel.classList.contains('show')) closeAllMonitorActivity(); } });
+  function setDevMonitorCategory(btn,category){ devMonitorCategory=category; renderDevMonitor(); }
+  function setDevMonitorView(btn,view){ devMonitorView=view; renderDevMonitor(); }
+  function toggleMonitorEvent(row){ row.classList.toggle('open'); }
+  function devRefreshMonitor(){
+    devMonitorEvents=devMonitorEvents.concat(makeMockMonitorEvents()).slice(-500);
+    saveDevMonitorEvents(); renderDevMonitor(); toast('Activity refreshed');
+  }
+  function devClearMonitor(){
+    devMonitorEvents=[]; saveDevMonitorEvents(); renderDevMonitor(); toast('Monitoring history cleared');
+  }
+  function devReset(){
+    if(vpnConnectTimer){ clearTimeout(vpnConnectTimer); vpnConnectTimer=null; }
+    vpnState='local-only'; dnsV4=''; dnsV6=''; devDnsSearchDomains=''; devDnsEndpoint='https://dns.example/dns-query'; devTunnelDnsEndpoint='https://dns.example/dns-query'; devDnsMode='encrypted'; devResolutionMethod='doh'; devProtocol='doh'; devTransitDns='redirect'; devGlobalTunnel=false; devCaptureProtection=true; devRecoveryEnabled=true; devRecoveryDelay='30 sec'; devConfigDnsEnabled=false; devAmneziaEnabled=false; devTunnelMode='vpn'; devConfigSource='none'; devMonitorEvents=[]; saveDevMonitorEvents(); devInboundCount=0; devOutboundCount=0; devDnsRequestCount=0; devAllowedCount=0; devBlockedCount=0; devDroppedCount=0; devFailedCount=0; devRetriedCount=0; devActiveConnections=0; devClosedConnections=0; devUnknownOwners=0; devBytesIn=0; devBytesOut=0;
+    const ds=document.getElementById('devDnsStatus'); if(ds) ds.textContent='Current: Encrypted DNS';
+    vpnStatus(); toast('Local Protection restored');
+  }
 
   // ---------- Accessibility status ----------
   let a11yOn=false;

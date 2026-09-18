@@ -441,7 +441,7 @@
         <section class="dev-monitor-summary-section" aria-labelledby="devMonitorRequestsHeading">
           <div class="dev-monitor-section-head"><h3 id="devMonitorRequestsHeading">Requests</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div class="dev-monitor-stat-row">
-            <div class="dev-monitor-stat stat-denied"><b id="devRequestBlockedStat">0</b><small>blocked</small></div><div class="dev-monitor-stat stat-retry"><b id="devRequestRetriedStat">0</b><small>retried</small></div><div class="dev-monitor-stat stat-total"><b id="devRequestTotalStat">0</b><small>events</small></div>
+            <div class="dev-monitor-stat stat-denied"><b id="devRequestBlockedStat">0</b><small>ads</small></div><div class="dev-monitor-stat stat-retry"><b id="devRequestRetriedStat">0</b><small>trackers</small></div><div class="dev-monitor-stat stat-total"><b id="devRequestTotalStat">0</b><small>requests</small></div>
           </div>
           <div class="dev-monitor-progress" aria-hidden="true"><i id="devMonitorAllowedBar"></i><i id="devMonitorDeniedBar"></i><i id="devMonitorFailedBar"></i></div>
           <button class="dev-monitor-link" onclick="openRecentMonitorActivity()"><span class="dev-monitor-link-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></span><span>Recent activity</span><b>›</b></button>
@@ -450,21 +450,22 @@
         <section class="dev-monitor-summary-section" aria-labelledby="devMonitorUsageHeading">
           <div class="dev-monitor-section-head"><h3 id="devMonitorUsageHeading">Data usage</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div class="dev-monitor-stat-row usage-row">
-            <div class="dev-monitor-stat stat-saved"><b id="devMonitorBytesTotal">0 B</b><small>total</small></div><div class="dev-monitor-stat stat-upload"><b id="devMonitorBytesOutStat">0 B</b><small>outbound</small></div><div class="dev-monitor-stat stat-download"><b id="devMonitorBytesInStat">0 B</b><small>inbound</small></div>
+            <div class="dev-monitor-stat stat-saved"><b id="devMonitorBytesTotal">0 B</b><small>saved</small></div><div class="dev-monitor-stat stat-upload"><b id="devMonitorBytesOutStat">0 B</b><small>uploaded</small></div><div class="dev-monitor-stat stat-download"><b id="devMonitorBytesInStat">0 B</b><small>downloaded</small></div>
           </div>
           <div class="dev-monitor-progress usage-progress" aria-hidden="true"><i id="devMonitorInBar"></i><i id="devMonitorOutBar"></i></div>
         </section>
 
-        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorOwnersHeading">
-          <div class="dev-monitor-section-head"><h3 id="devMonitorOwnersHeading">Apps &amp; owners</h3><span>Events <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorAppsHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorAppsHeading">Apps</h3><span>Ads <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div id="devMonitorOwnerList" class="dev-monitor-owner-list"></div>
-          <button class="dev-monitor-link dev-monitor-view-all" onclick="focusMonitorLog('owners')"><span>View all owners</span><b>›</b></button>
+          <button class="dev-monitor-link dev-monitor-view-all" onclick="focusMonitorLog('owners')"><span>View all apps</span><b>›</b></button>
         </section>
 
-        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorDestinationsHeading">
-          <div class="dev-monitor-section-head"><h3 id="devMonitorDestinationsHeading">Destinations</h3><span>Metadata <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+        <section class="dev-monitor-summary-section" aria-labelledby="devMonitorCompaniesHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorCompaniesHeading">Companies</h3><span>Ads <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div id="devMonitorDestinationList" class="dev-monitor-owner-list"></div>
           <button class="dev-monitor-link dev-monitor-view-all" onclick="focusMonitorLog('destinations')"><span>View all destinations</span><b>›</b></button>
+          <button class="dev-monitor-link dev-monitor-secondary-link" onclick="openMonitorCompanies()"><span>View all companies</span><b>›</b></button>
         </section>
 
         <section class="dev-monitor-summary-section" aria-labelledby="devMonitorDnsHeading">
@@ -475,15 +476,16 @@
           <div class="dev-monitor-progress dns-progress" aria-hidden="true"><i id="devMonitorDnsAllowedBar"></i><i id="devMonitorDnsBlockedBar"></i></div>
         </section>
 
-        <section class="dev-monitor-taxonomy" aria-labelledby="devMonitorTaxonomyHeading"><div class="dev-monitor-section-head"><h3 id="devMonitorTaxonomyHeading">Metadata counters</h3><span>All categories</span></div><div class="dev-monitor-overview" id="devMonitorOverview">
-          <div class="dev-monitor-item"><span>Inbound</span><b id="devInboundCount">0</b></div><div class="dev-monitor-item"><span>Outbound</span><b id="devOutboundCount">0</b></div><div class="dev-monitor-item"><span>DNS</span><b id="devDnsRequestCount">0</b></div><div class="dev-monitor-item"><span>Allowed</span><b id="devAllowedCount">0</b></div><div class="dev-monitor-item"><span>Blocked</span><b id="devBlockedCount">0</b></div><div class="dev-monitor-item"><span>Dropped</span><b id="devDroppedCount">0</b></div><div class="dev-monitor-item"><span>Failed</span><b id="devFailedCount">0</b></div><div class="dev-monitor-item"><span>Retried</span><b id="devRetriedCount">0</b></div><div class="dev-monitor-item"><span>Active</span><b id="devActiveConnections">0</b></div><div class="dev-monitor-item"><span>Closed</span><b id="devClosedConnections">0</b></div><div class="dev-monitor-item"><span>Unknown owner</span><b id="devUnknownOwners">0</b></div><div class="dev-monitor-item"><span>Bytes in / out</span><b id="devBytesSummary">0 / 0</b></div>
-        </div></section>
+        <section class="dev-monitor-summary-section dev-monitor-battery-section" aria-labelledby="devMonitorBatteryHeading">
+          <div class="dev-monitor-section-head"><h3 id="devMonitorBatteryHeading">Battery usage</h3></div>
+          <button class="dev-monitor-battery-row" onclick="toast('Battery usage is a prototype estimate.')"><span class="dev-monitor-battery-icon"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="17" height="8" rx="2"/><path d="M21 11v2M6 11v2M9 11v2M12 11v2"/></svg></span><span><b>Last 24 hours</b><small>Metadata-only estimate</small></span><strong>5.27 mAh</strong><b class="dev-monitor-battery-chevron">›</b></button>
+        </section>
 
         <button class="dev-monitor-link dev-monitor-all-activity-link" onclick="openAllMonitorActivity()"><span class="dev-monitor-link-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></span><span class="dev-monitor-link-copy"><b>All activity</b><small id="devMonitorOverviewActivitySummary">Browse filters, raw events, and lifecycle groups</small></span><b>›</b></button>
 
         <div class="dev-monitor-all-detail" id="devMonitorAllActivity" aria-hidden="true">
           <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeAllMonitorActivity()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>All activity</span><button class="dev-monitor-detail-close" aria-label="Close all activity" onclick="closeAllMonitorActivity()">×</button></div>
-          <div class="dev-monitor-recent-hero"><div class="dev-monitor-recent-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></div><h2>All activity</h2><p>Filter and inspect metadata events</p></div>
+          <div class="dev-monitor-recent-hero"><div class="dev-monitor-recent-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></div><h2>All activity</h2><p>From the last 500 metadata requests</p></div>
           <div class="dev-monitor-events-section" role="region" aria-labelledby="devMonitorEventsHeading"><div class="dev-monitor-section-head"><h3 id="devMonitorEventsHeading">All activity</h3><span id="devMonitorCount">0 events</span></div>
           <div class="dev-monitor-tabs" id="devMonitorCategories"><button class="on" data-category="all" onclick="setDevMonitorCategory(this,'all')">All</button><button data-category="apps" onclick="setDevMonitorCategory(this,'apps')">Apps</button><button data-category="requests" onclick="setDevMonitorCategory(this,'requests')">Requests</button><button data-category="dns" onclick="setDevMonitorCategory(this,'dns')">DNS</button><button data-category="blocked" onclick="setDevMonitorCategory(this,'blocked')">Blocked</button><button data-category="connections" onclick="setDevMonitorCategory(this,'connections')">Connections</button></div>
           <div class="dev-monitor-filters">
@@ -497,20 +499,32 @@
           </div>
         </div>
 
+        <div class="dev-monitor-companies-detail" id="devMonitorCompaniesActivity" aria-hidden="true">
+          <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeMonitorCompanies()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>Companies</span><button class="dev-monitor-detail-close" aria-label="Close companies" onclick="closeMonitorCompanies()">×</button></div>
+          <div class="dev-monitor-companies-hero"><div class="dev-monitor-companies-icon"><svg viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16M8 9h2M14 9h2M8 13h2M14 13h2M8 17h2M14 17h2"/><path d="M2 21h20"/></svg></div><h2>Companies</h2><p>All time</p></div>
+          <label class="dev-monitor-company-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="devMonitorCompaniesSearch" placeholder="Search companies" oninput="renderMonitorCompanies()"></label>
+          <div class="dev-monitor-company-count" id="devMonitorCompaniesCount">0 companies</div>
+          <div class="dev-monitor-company-list" id="devMonitorCompaniesList"></div>
+        </div>
+
         <div class="dev-monitor-recent-detail" id="devMonitorRecentActivity" aria-hidden="true">
           <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeRecentMonitorActivity()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>Recent activity</span><button class="dev-monitor-detail-close" aria-label="Close recent activity" onclick="closeRecentMonitorActivity()">×</button></div>
-          <div class="dev-monitor-recent-hero"><div class="dev-monitor-recent-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></div><h2>Recent activity</h2><p>Latest metadata events</p></div>
-          <div class="dev-monitor-recent-toolbar"><span id="devMonitorRecentCount">0 events</span><div class="seg dev-monitor-view" id="devMonitorRecentView"><button class="on" onclick="setDevMonitorRecentView('raw')">Raw</button><button onclick="setDevMonitorRecentView('lifecycle')">Lifecycle</button></div></div>
+          <div class="dev-monitor-recent-hero"><div class="dev-monitor-recent-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></div><h2>Recent activity</h2><p>From the last 100 metadata requests</p></div>
+          <div class="dev-monitor-recent-toolbar"><span id="devMonitorRecentCount">0 events</span><div class="dev-monitor-recent-filter"><select id="devMonitorRecentOwnerFilter" aria-label="Filter recent activity by app" onchange="setDevMonitorRecentOwner(this.value)"><option value="">All apps</option></select><button type="button" aria-label="Clear app filter" onclick="setDevMonitorRecentOwner('')">×</button></div></div>
           <div class="dev-monitor-event-log dev-monitor-recent-log" id="devMonitorRecentLog"></div>
         </div>
 
         <div class="dev-monitor-app-detail" id="devMonitorAppDetail" aria-hidden="true">
           <div class="dev-monitor-app-detail-header"><button class="dev-monitor-detail-back" aria-label="Back to monitoring" onclick="closeMonitorAppDetail()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><span>App activity</span><button class="dev-monitor-detail-close" aria-label="Close app activity" onclick="closeMonitorAppDetail()">×</button></div>
-          <div class="dev-monitor-app-hero"><div class="dev-monitor-app-icon" id="devMonitorDetailIcon">?</div><h2 id="devMonitorDetailName">App</h2><p id="devMonitorDetailSubtitle">Metadata activity</p></div>
-          <div class="dev-monitor-detail-stats"><div><b id="devMonitorDetailBlocked">0</b><small>blocked</small></div><div><b id="devMonitorDetailRequests">0</b><small>requests</small></div><div><b id="devMonitorDetailBytes">0 B</b><small>bytes</small></div></div>
+          <div class="dev-monitor-app-hero"><div class="dev-monitor-app-icon" id="devMonitorDetailIcon">?</div><h2 id="devMonitorDetailName">App</h2><p id="devMonitorDetailSubtitle">Metadata activity · All time</p></div>
+          <div class="dev-monitor-detail-stats"><div><b id="devMonitorDetailBlocked">0</b><small>ads</small></div><div><b id="devMonitorDetailRetried">0</b><small>trackers</small></div><div><b id="devMonitorDetailRequests">0</b><small>requests</small></div></div>
           <div class="dev-monitor-progress dev-monitor-detail-progress" aria-hidden="true"><i id="devMonitorDetailAllowedBar"></i><i id="devMonitorDetailBlockedBar"></i><i id="devMonitorDetailFailedBar"></i></div>
-          <div class="dev-monitor-detail-section-head"><h3>Recent activity</h3><div class="seg dev-monitor-view" id="devMonitorDetailView"><button class="on" onclick="setDevMonitorDetailView('raw')">Raw</button><button onclick="setDevMonitorDetailView('lifecycle')">Lifecycle</button></div></div>
-          <div class="dev-monitor-event-log dev-monitor-detail-log" id="devMonitorDetailLog"></div>
+          <button class="dev-monitor-link dev-monitor-detail-recent-link" onclick="openRecentMonitorActivity(document.getElementById('devMonitorDetailName').textContent)"><span class="dev-monitor-link-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></span><span>Recent activity</span><b>›</b></button>
+          <div class="dev-monitor-detail-section-head"><h3>Domains</h3><span>All time <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-detail-list" id="devMonitorDetailDomains"></div>
+          <button class="dev-monitor-link dev-monitor-detail-all-link" onclick="openMonitorCompanies(document.getElementById('devMonitorDetailName').textContent)"><span>View all domains</span><b>›</b></button>
+          <div class="dev-monitor-detail-section-head"><h3>Apps</h3><span>Ads <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-detail-list" id="devMonitorDetailApps"></div>
         </div>
       </section>
 

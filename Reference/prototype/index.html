@@ -185,7 +185,7 @@
         <div class="grid2">
           <button class="qa" onclick="nav('socialblocking')"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="t">Social Media Blocking</div><div class="s">Whole apps or just tabs · Reels · Shorts · Spotlight</div></button>
           <button class="qa" onclick="nav('blockscreen')"><div class="ic d"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div><div class="t">Block Screen</div><div class="s">Message · close-gate</div></button>
-          <button class="qa" onclick="nav('vpn')"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="t">Secure Tunnel</div><div class="s">Filtering · schedules</div></button>
+          <button class="qa" onclick="nav('vpn')"><div class="ic g"><svg viewBox="0 0 24 24"><path d="M12 2l8 3v5c0 5-3 9-8 12-5-3-8-7-8-12V5z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="t">VPN and DNS filtering</div><div class="s">VPN · DNS protection</div></button>
           <button class="qa" onclick="nav('antitamper')"><div class="ic r"><svg viewBox="0 0 24 24"><path d="M12 2l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 8v4M12 16h.01"/></svg></div><div class="t">Anti-Tamper</div><div class="s">Prevent uninstall · power menu</div></button>
           <button class="qa" onclick="nav('titleblock')"><div class="ic o"><svg viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></svg></div><div class="t">Block Settings by Title</div><div class="s">System pages · app titles</div></button>
           <button class="qa" onclick="nav('otherfeatures')"><div class="ic d"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></div><div class="t">Some Other Features</div><div class="s">Image/video search · more</div></button>
@@ -436,10 +436,10 @@
       <section class="screen dev-screen dev-monitor-screen" id="sc-developermonitoring">
         <div class="sub dev-wg-header"><button class="back" onclick="back()"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h1>Tunnel monitoring</h1><div class="sub-actions"><button class="act" aria-label="Refresh monitoring" onclick="devRefreshMonitor()"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2 5"/><path d="M20 5v6h-6"/></svg></button><button class="act" aria-label="Clear monitoring history" onclick="devClearMonitor()"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg></button></div></div>
         <div class="dev-monitor-disclaimer"><span class="dev-monitor-live-dot"></span>Metadata only · HTTPS payloads are never captured or inspected.</div>
-        <div class="dev-monitor-title"><div class="dev-monitor-chart"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4v16h16A16 16 0 0020 4z"/><path d="M18 8a16 16 0 1016 16H18z"/></svg></div><h2>Statistics</h2><p>Current metadata activity</p></div>
+        <div class="dev-monitor-title"><div class="dev-monitor-chart"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4v16h16A16 16 0 0020 4z"/><path d="M18 8a16 16 0 1016 16H18z"/></svg></div><h2>Statistics</h2><p>Current metadata activity</p><div class="dev-monitor-scope-controls" aria-label="Statistics scope"><label>Network <select id="devMonitorNetworkScope" aria-label="Statistics network scope" onchange="setDevMonitorNetworkScope(this.value)"><option value="all">All data</option><option value="mobile">Mobile data only</option><option value="wifi">Wi-Fi only</option></select></label><label>Range <select id="devMonitorTimeScope" aria-label="Statistics time range" onchange="setDevMonitorTimeScope(this.value)"><option value="all">All time</option><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option></select></label></div></div>
 
         <section class="dev-monitor-summary-section" aria-labelledby="devMonitorRequestsHeading">
-          <div class="dev-monitor-section-head"><h3 id="devMonitorRequestsHeading">Requests</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-section-head"><h3 id="devMonitorRequestsHeading">Requests</h3><span class="dev-monitor-network-label">All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div class="dev-monitor-stat-row">
             <div class="dev-monitor-stat stat-denied"><b id="devRequestBlockedStat">0</b><small>ads</small></div><div class="dev-monitor-stat stat-retry"><b id="devRequestRetriedStat">0</b><small>trackers</small></div><div class="dev-monitor-stat stat-total"><b id="devRequestTotalStat">0</b><small>requests</small></div>
           </div>
@@ -448,7 +448,7 @@
         </section>
 
         <section class="dev-monitor-summary-section" aria-labelledby="devMonitorUsageHeading">
-          <div class="dev-monitor-section-head"><h3 id="devMonitorUsageHeading">Data usage</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-section-head"><h3 id="devMonitorUsageHeading">Data usage</h3><span class="dev-monitor-network-label">All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div class="dev-monitor-stat-row usage-row">
             <div class="dev-monitor-stat stat-saved"><b id="devMonitorBytesTotal">0 B</b><small>saved</small></div><div class="dev-monitor-stat stat-upload"><b id="devMonitorBytesOutStat">0 B</b><small>uploaded</small></div><div class="dev-monitor-stat stat-download"><b id="devMonitorBytesInStat">0 B</b><small>downloaded</small></div>
           </div>
@@ -469,7 +469,7 @@
         </section>
 
         <section class="dev-monitor-summary-section" aria-labelledby="devMonitorDnsHeading">
-          <div class="dev-monitor-section-head"><h3 id="devMonitorDnsHeading">DNS statistics</h3><span>All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
+          <div class="dev-monitor-section-head"><h3 id="devMonitorDnsHeading">DNS statistics</h3><span class="dev-monitor-network-label">All data <svg class="dev-monitor-down" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></div>
           <div class="dev-monitor-stat-row dns-row">
             <div class="dev-monitor-stat stat-denied"><b id="devMonitorDnsBlockedStat">0</b><small>blocked</small></div><div class="dev-monitor-stat stat-total"><b id="devMonitorDnsTotalStat">0</b><small>requests</small></div><div class="dev-monitor-stat stat-saved"><b id="devMonitorDnsBytesStat">0 B</b><small>bytes</small></div>
           </div>
@@ -478,7 +478,7 @@
 
         <section class="dev-monitor-summary-section dev-monitor-battery-section" aria-labelledby="devMonitorBatteryHeading">
           <div class="dev-monitor-section-head"><h3 id="devMonitorBatteryHeading">Battery usage</h3></div>
-          <button class="dev-monitor-battery-row" onclick="toast('Battery usage is a prototype estimate.')"><span class="dev-monitor-battery-icon"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="17" height="8" rx="2"/><path d="M21 11v2M6 11v2M9 11v2M12 11v2"/></svg></span><span><b>Last 24 hours</b><small>Metadata-only estimate</small></span><strong>5.27 mAh</strong><b class="dev-monitor-battery-chevron">›</b></button>
+          <button class="dev-monitor-battery-row" onclick="toast('Battery usage is a prototype estimate.')"><span class="dev-monitor-battery-icon"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="17" height="8" rx="2"/><path d="M21 11v2M6 11v2M9 11v2M12 11v2"/></svg></span><span><b id="devMonitorBatteryRange">Last 24 hours</b><small id="devMonitorBatterySub">Metadata-only estimate</small></span><strong id="devMonitorBatteryValue">5.27 mAh</strong><b class="dev-monitor-battery-chevron">›</b></button>
         </section>
 
         <button class="dev-monitor-link dev-monitor-all-activity-link" onclick="openAllMonitorActivity()"><span class="dev-monitor-link-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7"/></svg></span><span class="dev-monitor-link-copy"><b>All activity</b><small id="devMonitorOverviewActivitySummary">Browse filters, raw events, and lifecycle groups</small></span><b>›</b></button>

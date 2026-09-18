@@ -1004,7 +1004,7 @@
   // ---------- DNS & VPN ----------
   let vpnPreset='Family-safe filtering', dnsV4='', dnsV6='', vpnWhitelist=[], vpnNotif='Default', vpnState='local-only', vpnConnectTimer=null;
   let devTunnelMode='vpn', devDnsMode='encrypted', devDnsSearchDomains='', devDnsEndpoint='https://dns.example/dns-query', devTunnelDnsEndpoint='https://dns.example/dns-query', devSystemDns='58.145.191.174, 202.134.14.230, 2404:1c40:1::6, 2404:1c40:4::e', devResolutionMethod='doh', devProtocol='doh', devTransitDns='redirect', devGlobalTunnel=false, devCaptureProtection=true, devRecoveryEnabled=true, devRecoveryDelay='30 sec', devConfigDnsEnabled=false, devAmneziaEnabled=false, devConfigSource='none';
-  const DEV_MONITOR_KEY='safeme_dev_monitor_events'; let devMonitorEvents=loadDevMonitorEvents(), devMonitorCategory='all', devMonitorView='raw', devMonitorRecentView='raw', devMonitorDetailView='raw', devMonitorDetailName='', devMonitorRecentOwner='', devMonitorCompaniesOwner=''; let devInboundCount=0, devOutboundCount=0, devDnsRequestCount=0, devBlockedCount=0, devDroppedCount=0, devFailedCount=0, devRetriedCount=0, devActiveConnections=0, devClosedConnections=0, devUnknownOwners=0, devAllowedCount=0, devBytesIn=0, devBytesOut=0;
+  const DEV_MONITOR_KEY='safeme_dev_monitor_events'; let devMonitorEvents=loadDevMonitorEvents(), devMonitorCategory='all', devMonitorView='raw', devMonitorRecentView='raw', devMonitorDetailView='raw', devMonitorDetailName='', devMonitorRecentOwner='', devMonitorCompaniesOwner='', devMonitorNetworkScope='all', devMonitorTimeScope='all'; let devInboundCount=0, devOutboundCount=0, devDnsRequestCount=0, devBlockedCount=0, devDroppedCount=0, devFailedCount=0, devRetriedCount=0, devActiveConnections=0, devClosedConnections=0, devUnknownOwners=0, devAllowedCount=0, devBytesIn=0, devBytesOut=0;
   function saveDns(){
     const v4=document.getElementById('dnsIpv4');
     const v6=document.getElementById('dnsIpv6');
@@ -1246,7 +1246,7 @@
         return initial;
       }
       const parsed=JSON.parse(saved||'[]');
-      return Array.isArray(parsed)?parsed.slice(-500).map(normalizeMonitorEvent):[];
+      return Array.isArray(parsed)?parsed.slice(-500).map((event,index)=>normalizeMonitorEvent(event,index)):[];
     }catch(e){ return []; }
   }
   function saveDevMonitorEvents(){
@@ -1263,9 +1263,12 @@
     const aliases={'Browser':'Chrome','Video app':'YouTube','Mail app':'Gmail'};
     return aliases[name]||name||'Unknown owner';
   }
-  function normalizeMonitorEvent(event){
+  function normalizeMonitorEvent(event,index){
     const copy=Object.assign({},event||{});
     copy.owner=normalizeMonitorOwner(copy.owner);
+    copy.createdAt=Number(copy.createdAt)||Date.now()-((Number(index)||0)*60000);
+    copy.networkType=copy.networkType||(/mobile/i.test(copy.interface||'')?'mobile':'wifi');
+    copy.classification=copy.classification||(copy.type==='dns'?'dns':(copy.action==='blocked'||copy.action==='dropped'||copy.action==='failed'?'ads':copy.action==='retried'?'trackers':'content'));
     return copy;
   }
   function monitorAppMeta(name){
@@ -1280,9 +1283,9 @@
     if(kind==='system') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>';
     return '<span class="dev-monitor-unknown-mark">?</span>';
   }
-  function makeMockMonitorEvents(){
+  function makeMockMonitorEvents(batchIndex){
     const flowBase=Date.now();
-    return [
+    const events=[
       {id:flowBase+'-1',flowId:'flow-web-1',time:monitorNow(0),type:'request',direction:'OUT',action:'allowed',state:'complete',protocol:'TCP',family:'IPv4',interface:'Wi-Fi',owner:'Chrome',ownerKind:'app',source:'192.0.2.10:54122',destination:'203.0.113.20:443',host:'example.test',bytesIn:1280,bytesOut:420},
       {id:flowBase+'-2',flowId:'flow-dns-1',time:monitorNow(80),type:'dns',direction:'DNS',action:'allowed',state:'complete',protocol:'DNS',family:'IPv4',interface:'Wi-Fi',owner:'SafeMe DNS',ownerKind:'system',source:'192.0.2.10:42100',destination:'192.0.2.53:53',host:'example.test',bytesIn:96,bytesOut:72},
       {id:flowBase+'-3',flowId:'flow-ad-1',time:monitorNow(160),type:'request',direction:'OUT',action:'blocked',state:'complete',protocol:'UDP',family:'IPv6',interface:'Mobile',owner:'YouTube',ownerKind:'app',source:'2001:db8::10:50001',destination:'2001:db8::20:443',host:'ads.example.test',bytesIn:0,bytesOut:96},
@@ -1294,12 +1297,52 @@
       {id:flowBase+'-9',flowId:'flow-dns-2',time:monitorNow(640),type:'dns',direction:'DNS',action:'blocked',state:'complete',protocol:'DNS',family:'IPv6',interface:'Wi-Fi',owner:'SafeMe DNS',ownerKind:'system',source:'2001:db8::10:53000',destination:'2001:db8::53:53',host:'tracker.example.test',bytesIn:0,bytesOut:88},
       {id:flowBase+'-10',flowId:'flow-loop-1',time:monitorNow(720),type:'connection',direction:'IN',action:'allowed',state:'active',protocol:'TCP',family:'IPv4',interface:'Loopback',owner:'SafeMe service',ownerKind:'system',source:'127.0.0.1:9090',destination:'127.0.0.1:9050',host:'',bytesIn:512,bytesOut:512}
     ];
+    const variant=Number(batchIndex)||0;
+    const multiplier=1+(variant%3)*0.25;
+    return events.map((event,index)=>{
+      const copy=Object.assign({},event);
+      copy.id=flowBase+'-'+variant+'-'+(index+1);
+      copy.flowId=event.flowId+'-'+variant;
+      copy.createdAt=flowBase-(index*80000);
+      copy.time=new Date(copy.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      copy.bytesIn=Math.round((Number(copy.bytesIn)||0)*multiplier);
+      copy.bytesOut=Math.round((Number(copy.bytesOut)||0)*multiplier);
+      copy.networkType=(copy.interface==='Mobile'||(variant+index)%5===0)?'mobile':'wifi';
+      copy.classification=copy.type==='dns'?'dns':(copy.action==='blocked'||copy.action==='dropped'||copy.action==='failed'?'ads':(copy.action==='retried'||(variant%2===1&&index%3===0)?'trackers':'content'));
+      if(variant>0 && copy.host && variant%2===0) copy.host='edge.'+copy.host;
+      return copy;
+    });
   }
+  function monitorScopeEvents(events){
+    const source=events||devMonitorEvents;
+    const now=Date.now();
+    const maxAge=devMonitorTimeScope==='24h'?24*60*60*1000:devMonitorTimeScope==='7d'?7*24*60*60*1000:Infinity;
+    return source.filter(e=>{
+      const networkOk=devMonitorNetworkScope==='all'||(e.networkType||'wifi')===devMonitorNetworkScope;
+      const created=Number(e.createdAt)||now;
+      return networkOk && (maxAge===Infinity || now-created<=maxAge);
+    });
+  }
+  function monitorNetworkLabel(){ return ({all:'All data',mobile:'Mobile data only',wifi:'Wi-Fi only'})[devMonitorNetworkScope]||'All data'; }
+  function monitorTimeLabel(){ return ({all:'All time','24h':'Last 24 hours','7d':'Last 7 days'})[devMonitorTimeScope]||'All time'; }
+  function syncMonitorScopeControls(){
+    const network=document.getElementById('devMonitorNetworkScope'); if(network) network.value=devMonitorNetworkScope;
+    const time=document.getElementById('devMonitorTimeScope'); if(time) time.value=devMonitorTimeScope;
+    document.querySelectorAll('.dev-monitor-network-label').forEach(el=>{
+      const svg=el.querySelector('svg'); el.textContent=monitorNetworkLabel()+' '; if(svg) el.appendChild(svg);
+    });
+    const range=document.getElementById('devMonitorBatteryRange'); if(range) range.textContent=monitorTimeLabel();
+    const sub=document.getElementById('devMonitorBatterySub'); if(sub) sub.textContent='Prototype estimate · '+monitorTimeLabel();
+  }
+  function setDevMonitorNetworkScope(scope){ devMonitorNetworkScope=['all','mobile','wifi'].includes(scope)?scope:'all'; renderDevMonitor(); toast('Statistics: '+monitorNetworkLabel()); }
+  function setDevMonitorTimeScope(scope){ devMonitorTimeScope=['all','24h','7d'].includes(scope)?scope:'all'; renderDevMonitor(); toast('Statistics: '+monitorTimeLabel()); }
   function monitorStats(events){
     const e=events||devMonitorEvents;
     const sum=(fn)=>e.filter(fn).length;
+    const bytes=(x)=>(Number(x.bytesIn)||0)+(Number(x.bytesOut)||0);
+    const saved=e.filter(x=>x.classification==='ads'||x.action==='blocked'||x.action==='dropped'||x.action==='failed').reduce((n,x)=>n+bytes(x),0);
     return {
-      inbound:sum(x=>x.direction==='IN'), outbound:sum(x=>x.direction==='OUT'), dns:sum(x=>x.type==='dns'), allowed:sum(x=>x.action==='allowed'), blocked:sum(x=>x.action==='blocked'), dropped:sum(x=>x.action==='dropped'), failed:sum(x=>x.action==='failed'), retried:sum(x=>x.action==='retried'), active:sum(x=>x.state==='active'||x.state==='retrying'), closed:sum(x=>x.state==='closed'), unknown:sum(x=>x.ownerKind==='unknown'), known:sum(x=>x.ownerKind!=='unknown'), bytesIn:e.reduce((n,x)=>n+(Number(x.bytesIn)||0),0), bytesOut:e.reduce((n,x)=>n+(Number(x.bytesOut)||0),0)
+      inbound:sum(x=>x.direction==='IN'), outbound:sum(x=>x.direction==='OUT'), dns:sum(x=>x.type==='dns'), allowed:sum(x=>x.action==='allowed'), blocked:sum(x=>x.action==='blocked'), dropped:sum(x=>x.action==='dropped'), failed:sum(x=>x.action==='failed'), retried:sum(x=>x.action==='retried'), ads:sum(x=>x.classification==='ads'), trackers:sum(x=>x.classification==='trackers'), active:sum(x=>x.state==='active'||x.state==='retrying'), closed:sum(x=>x.state==='closed'), unknown:sum(x=>x.ownerKind==='unknown'), known:sum(x=>x.ownerKind!=='unknown'), saved, bytesIn:e.reduce((n,x)=>n+(Number(x.bytesIn)||0),0), bytesOut:e.reduce((n,x)=>n+(Number(x.bytesOut)||0),0)
     };
   }
   function monitorMatches(e){
@@ -1354,7 +1397,7 @@
     const host=document.getElementById('devMonitorCompaniesList');
     if(!host) return;
     const search=((document.getElementById('devMonitorCompaniesSearch')||{}).value||'').trim().toLowerCase();
-    const source=devMonitorCompaniesOwner?monitorDetailEvents():devMonitorEvents;
+    const source=devMonitorCompaniesOwner?monitorDetailEvents():monitorScopeEvents();
     const rows=monitorGroupRows(e=>e.host||e.destination||'Unknown company',source).filter(row=>!search||row.name.toLowerCase().includes(search));
     const count=document.getElementById('devMonitorCompaniesCount');
     if(count) count.textContent=rows.length+' compan'+(rows.length===1?'y':'ies');
@@ -1364,6 +1407,31 @@
     const attr=escapeMonitorText(row.name);
     const metrics='<span class="dev-monitor-row-metrics"><b class="metric-blocked">'+row.blocked+'</b><b class="metric-retried">'+row.retried+'</b><b class="metric-total">'+row.count+'</b></span>';
     return '<button class="dev-monitor-detail-list-row" data-owner="'+attr+'" onclick="filterMonitorByOwner(this.dataset.owner)"><span class="dev-monitor-domain-mark">↗</span><span class="dev-monitor-company-copy"><b>'+attr+'</b><small>'+row.count+' event'+(row.count===1?'':'s')+'</small></span>'+metrics+'</button>';
+  }
+  function renderMonitorDigest(stats, scopedEvents){
+    const set=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
+    const events=scopedEvents||monitorScopeEvents();
+    const requestEvents=events.filter(e=>e.type==='request'||e.type==='connection');
+    const requestTotal=requestEvents.length;
+    const denied=events.filter(e=>e.action==='blocked'||e.action==='dropped'||e.action==='failed').length;
+    const dnsEvents=events.filter(e=>e.type==='dns');
+    const dnsBlocked=dnsEvents.filter(e=>e.action==='blocked'||e.action==='dropped'||e.action==='failed').length;
+    const totalBytes=stats.bytesIn+stats.bytesOut;
+    set('devRequestBlockedStat',stats.ads); set('devRequestRetriedStat',stats.trackers); set('devRequestTotalStat',requestTotal);
+    set('devMonitorBytesTotal',formatMonitorBytes(stats.saved)); set('devMonitorBytesOutStat',formatMonitorBytes(stats.bytesOut)); set('devMonitorBytesInStat',formatMonitorBytes(stats.bytesIn));
+    set('devMonitorDnsBlockedStat',dnsBlocked); set('devMonitorDnsTotalStat',dnsEvents.length); set('devMonitorDnsBytesStat',formatMonitorBytes(dnsEvents.reduce((n,e)=>n+(Number(e.bytesIn)||0)+(Number(e.bytesOut)||0),0)));
+    const setBar=(id,value,total)=>{const el=document.getElementById(id); if(el) el.style.width=(total?Math.max(value/total*100,value?3:0):0)+'%';};
+    const requestAllowed=requestEvents.filter(e=>e.action==='allowed').length;
+    const requestFailed=requestEvents.filter(e=>e.action==='failed').length;
+    setBar('devMonitorAllowedBar',requestAllowed,requestTotal); setBar('devMonitorDeniedBar',denied,requestTotal); setBar('devMonitorFailedBar',requestFailed,requestTotal);
+    setBar('devMonitorInBar',stats.bytesIn,totalBytes); setBar('devMonitorOutBar',stats.bytesOut,totalBytes);
+    setBar('devMonitorDnsAllowedBar',dnsEvents.length-dnsBlocked,dnsEvents.length); setBar('devMonitorDnsBlockedBar',dnsBlocked,dnsEvents.length);
+    const battery=Math.max(0.42,(events.length*0.18)+(totalBytes/1024/1024*0.04));
+    set('devMonitorBatteryValue',battery.toFixed(2)+' mAh');
+    const owners=monitorGroupRows(e=>e.owner||'Unknown owner',events).filter(row=>row.ownerKind==='app').slice(0,3);
+    const ownerHost=document.getElementById('devMonitorOwnerList'); if(ownerHost) ownerHost.innerHTML=owners.length?owners.map(row=>monitorListRow(row,false)).join(''):'<div class="dev-monitor-inline-empty">No apps recorded for this scope.</div>';
+    const destinations=monitorGroupRows(e=>e.host||e.destination||'Unknown destination',events).slice(0,3);
+    const destinationHost=document.getElementById('devMonitorDestinationList'); if(destinationHost) destinationHost.innerHTML=destinations.length?destinations.map(row=>monitorListRow(row,true)).join(''):'<div class="dev-monitor-inline-empty">No companies recorded for this scope.</div>';
   }
   function monitorPillClass(e){ return e.action==='blocked'||e.action==='dropped'||e.action==='failed'?'r':e.action==='retried'?'o':'g'; }
   function monitorEventRow(e, grouped){
@@ -1380,11 +1448,14 @@
       '<div class="dev-monitor-event-detail"><span>'+escapeMonitorText(detail1)+'</span><span>'+escapeMonitorText(detail2)+'</span><span>'+escapeMonitorText(detail3)+'</span><span>'+escapeMonitorText(detail4)+'</span></div></div>';
   }
   function renderDevMonitor(){
-    const stats=monitorStats();
-    devInboundCount=stats.inbound; devOutboundCount=stats.outbound; devDnsRequestCount=stats.dns; devAllowedCount=stats.allowed; devBlockedCount=stats.blocked; devDroppedCount=stats.dropped; devFailedCount=stats.failed; devRetriedCount=stats.retried; devActiveConnections=stats.active; devClosedConnections=stats.closed; devUnknownOwners=stats.unknown; devBytesIn=stats.bytesIn; devBytesOut=stats.bytesOut;
+    const allStats=monitorStats();
+    const scopedEvents=monitorScopeEvents();
+    const stats=monitorStats(scopedEvents);
+    devInboundCount=allStats.inbound; devOutboundCount=allStats.outbound; devDnsRequestCount=allStats.dns; devAllowedCount=allStats.allowed; devBlockedCount=allStats.blocked; devDroppedCount=allStats.dropped; devFailedCount=allStats.failed; devRetriedCount=allStats.retried; devActiveConnections=allStats.active; devClosedConnections=allStats.closed; devUnknownOwners=allStats.unknown; devBytesIn=allStats.bytesIn; devBytesOut=allStats.bytesOut;
     const set=(id,value)=>{const el=document.getElementById(id); if(el) el.textContent=value;};
-    set('devInboundCount',stats.inbound); set('devOutboundCount',stats.outbound); set('devDnsRequestCount',stats.dns); set('devAllowedCount',stats.allowed); set('devBlockedCount',stats.blocked); set('devDroppedCount',stats.dropped); set('devFailedCount',stats.failed); set('devRetriedCount',stats.retried); set('devActiveConnections',stats.active); set('devClosedConnections',stats.closed); set('devUnknownOwners',stats.unknown); set('devBytesSummary',formatMonitorBytes(stats.bytesIn)+' / '+formatMonitorBytes(stats.bytesOut)); set('devRootMonitorSummary','Monitoring · '+stats.inbound+' in · '+stats.outbound+' out');
-    renderMonitorDigest(stats);
+    set('devInboundCount',stats.inbound); set('devOutboundCount',stats.outbound); set('devDnsRequestCount',stats.dns); set('devAllowedCount',stats.allowed); set('devBlockedCount',stats.blocked); set('devDroppedCount',stats.dropped); set('devFailedCount',stats.failed); set('devRetriedCount',stats.retried); set('devActiveConnections',stats.active); set('devClosedConnections',stats.closed); set('devUnknownOwners',stats.unknown); set('devBytesSummary',formatMonitorBytes(stats.bytesIn)+' / '+formatMonitorBytes(stats.bytesOut)); set('devRootMonitorSummary','Monitoring · '+allStats.inbound+' in · '+allStats.outbound+' out');
+    syncMonitorScopeControls();
+    renderMonitorDigest(stats,scopedEvents);
     document.querySelectorAll('#devMonitorCategories button').forEach(b=>b.classList.toggle('on',b.dataset.category===devMonitorCategory));
     document.querySelectorAll('#devMonitorView button').forEach(b=>b.classList.toggle('on',b.dataset.view===devMonitorView));
     const host=document.getElementById('devRequestLog'); if(!host) return;
@@ -1538,7 +1609,7 @@
   function setDevMonitorView(btn,view){ devMonitorView=view; renderDevMonitor(); }
   function toggleMonitorEvent(row){ row.classList.toggle('open'); }
   function devRefreshMonitor(){
-    devMonitorEvents=devMonitorEvents.concat(makeMockMonitorEvents()).slice(-500);
+    devMonitorEvents=devMonitorEvents.concat(makeMockMonitorEvents(Math.floor(devMonitorEvents.length/10)+1)).slice(-500);
     saveDevMonitorEvents(); renderDevMonitor(); toast('Activity refreshed');
   }
   function devClearMonitor(){
@@ -1546,7 +1617,7 @@
   }
   function devReset(){
     if(vpnConnectTimer){ clearTimeout(vpnConnectTimer); vpnConnectTimer=null; }
-    vpnState='local-only'; dnsV4=''; dnsV6=''; devDnsSearchDomains=''; devDnsEndpoint='https://dns.example/dns-query'; devTunnelDnsEndpoint='https://dns.example/dns-query'; devDnsMode='encrypted'; devResolutionMethod='doh'; devProtocol='doh'; devTransitDns='redirect'; devGlobalTunnel=false; devCaptureProtection=true; devRecoveryEnabled=true; devRecoveryDelay='30 sec'; devConfigDnsEnabled=false; devAmneziaEnabled=false; devTunnelMode='vpn'; devConfigSource='none'; devMonitorEvents=[]; saveDevMonitorEvents(); devInboundCount=0; devOutboundCount=0; devDnsRequestCount=0; devAllowedCount=0; devBlockedCount=0; devDroppedCount=0; devFailedCount=0; devRetriedCount=0; devActiveConnections=0; devClosedConnections=0; devUnknownOwners=0; devBytesIn=0; devBytesOut=0;
+    vpnState='local-only'; devMonitorNetworkScope='all'; devMonitorTimeScope='all'; dnsV4=''; dnsV6=''; devDnsSearchDomains=''; devDnsEndpoint='https://dns.example/dns-query'; devTunnelDnsEndpoint='https://dns.example/dns-query'; devDnsMode='encrypted'; devResolutionMethod='doh'; devProtocol='doh'; devTransitDns='redirect'; devGlobalTunnel=false; devCaptureProtection=true; devRecoveryEnabled=true; devRecoveryDelay='30 sec'; devConfigDnsEnabled=false; devAmneziaEnabled=false; devTunnelMode='vpn'; devConfigSource='none'; devMonitorEvents=[]; saveDevMonitorEvents(); devInboundCount=0; devOutboundCount=0; devDnsRequestCount=0; devAllowedCount=0; devBlockedCount=0; devDroppedCount=0; devFailedCount=0; devRetriedCount=0; devActiveConnections=0; devClosedConnections=0; devUnknownOwners=0; devBytesIn=0; devBytesOut=0;
     const ds=document.getElementById('devDnsStatus'); if(ds) ds.textContent='Current: Encrypted DNS';
     vpnStatus(); toast('Local Protection restored');
   }
